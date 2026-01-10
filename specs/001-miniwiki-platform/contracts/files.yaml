@@ -1,0 +1,797 @@
+openapi: 3.1.0
+info:
+  title: miniWiki Files API
+  description: |
+    File storage and attachment management endpoints for miniWiki platform.
+    Uses MinIO (S3-compatible) for object storage with upload/download support.
+  version: 1.0.0
+  contact:
+    name: miniWiki API Support
+    email: support@miniwiki.local
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.miniwiki.local/v1/files
+    description: Production server
+  - url: http://localhost:8080/v1/files
+    description: Development server
+
+tags:
+  - name: File Upload
+    description: File upload operations
+  - name: File Download
+    description: File retrieval operations
+  - name: File Management
+    description: File metadata and deletion
+
+paths:
+  # ============ FILE UPLOAD ============
+  /upload:
+    post:
+      tags:
+        - File Upload
+      summary: Upload file (simple)
+      description: |
+        Uploads a single file to the specified space.
+        Maximum file size is 50MB. Larger files should use chunked upload.
+      operationId: uploadFile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadFileRequest'
+            encoding:
+              file:
+                contentType: application/octet-stream,image/*,application/pdf
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          description: Invalid file or request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '415':
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /upload/chunked/init:
+    post:
+      tags:
+        - File Upload
+      summary: Initialize chunked upload
+      description: |
+        Initializes a chunked upload session for large files.
+        Returns a uploadId to be used for subsequent chunk uploads.
+      operationId: initChunkedUpload
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitChunkedUploadRequest'
+      responses:
+        '201':
+          description: Upload session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChunkedUploadInitResponse'
+
+  /upload/chunked/{uploadId}:
+    put:
+      tags:
+        - File Upload
+      summary: Upload file chunk
+      description: |
+        Uploads a single chunk of a file.
+        Chunks are numbered from 0. All chunks must be same size except possibly the last.
+      operationId: uploadChunk
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Chunk uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChunkUploadResponse'
+        '400':
+          description: Invalid chunk
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Upload session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - File Upload
+      summary: Complete chunked upload
+      description: |
+        Completes the chunked upload and creates the file record.
+        All chunks must be uploaded before calling this endpoint.
+      operationId: completeChunkedUpload
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteChunkedUploadRequest'
+      responses:
+        '201':
+          description: File created from chunks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+        '400':
+          description: Incomplete or invalid chunks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - File Upload
+      summary: Cancel chunked upload
+      description: |
+        Cancels an ongoing chunked upload and cleans up uploaded chunks.
+      operationId: cancelChunkedUpload
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: uploadId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Upload cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /upload/presigned-url:
+    post:
+      tags:
+        - File Upload
+      summary: Get presigned upload URL
+      description: |
+        Returns a presigned URL for direct upload to MinIO/S3.
+        Useful for client-side uploads to avoid passing through the API server.
+      operationId: getPresignedUploadUrl
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignedUploadRequest'
+      responses:
+        '200':
+          description: Presigned URL for upload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignedUrlResponse'
+
+  # ============ FILE DOWNLOAD ============
+  /{fileId}/download:
+    get:
+      tags:
+        - File Download
+      summary: Download file
+      description: |
+        Downloads a file by its ID. Returns the file content directly.
+      operationId: downloadFile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            image/*:
+              schema:
+                type: string
+                format: binary
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename="document.pdf"
+            Content-Length:
+              schema:
+                type: integer
+            Content-Type:
+              schema:
+                type: string
+        '403':
+          description: No access to file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{fileId}/download/presigned-url:
+    get:
+      tags:
+        - File Download
+      summary: Get presigned download URL
+      description: |
+        Returns a temporary presigned URL for direct download from MinIO/S3.
+        URL expires after 15 minutes.
+      operationId: getPresignedDownloadUrl
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Presigned URL for download
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignedUrlResponse'
+
+  # ============ FILE MANAGEMENT ============
+  /{fileId}:
+    get:
+      tags:
+        - File Management
+      summary: Get file metadata
+      description: Returns file metadata without downloading content.
+      operationId: getFileMetadata
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDetailResponse'
+        '404':
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - File Management
+      summary: Delete file
+      description: |
+        Soft deletes a file. File can be restored within 30 days.
+        Actual file in MinIO is retained for 90 days.
+      operationId: deleteFile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: No permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{fileId}/restore:
+    post:
+      tags:
+        - File Management
+      summary: Restore deleted file
+      description: Restores a soft-deleted file within 30 days.
+      operationId: restoreFile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileResponse'
+
+  /{fileId}/permanent-delete:
+    delete:
+      tags:
+        - File Management
+      summary: Permanently delete file
+      description: |
+        Permanently deletes a file immediately (bypasses 30-day retention).
+        Admin only - requires superuser role.
+      operationId: permanentDeleteFile
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: fileId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: File permanently deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Not admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============ SPACE FILES ============
+  /spaces/{spaceId}/files:
+    get:
+      tags:
+        - File Management
+      summary: List files in space
+      description: Returns all files attached to documents in a space.
+      operationId: listSpaceFiles
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: documentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+            description: Filter by document
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of files
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileListResponse'
+
+  # ============ BULK OPERATIONS ============
+  /bulk/delete:
+    post:
+      tags:
+        - File Management
+      summary: Delete multiple files
+      description: Bulk soft-delete multiple files at once.
+      operationId: bulkDeleteFiles
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDeleteRequest'
+      responses:
+        '200':
+          description: Files deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkDeleteResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Upload request schemas
+    UploadFileRequest:
+      type: object
+      required:
+        - file
+        - spaceId
+      properties:
+        file:
+          type: string
+          format: binary
+          description: File content
+        spaceId:
+          type: string
+          format: uuid
+          description: Target space
+        documentId:
+          type: string
+          format: uuid
+          description: Optional document to attach to
+        fileName:
+          type: string
+          maxLength: 255
+          description: Optional filename override
+
+    InitChunkedUploadRequest:
+      type: object
+      required:
+        - spaceId
+        - fileName
+        - totalSize
+        - contentType
+      properties:
+        spaceId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          maxLength: 255
+        totalSize:
+          type: integer
+          minimum: 1
+          description: Total file size in bytes
+        contentType:
+          type: string
+          description: MIME type
+        chunkSize:
+          type: integer
+          default: 5242880
+          description: Chunk size in bytes (default 5MB)
+
+    ChunkedUploadInitResponse:
+      type: object
+      properties:
+        uploadId:
+          type: string
+          format: uuid
+        uploadUrl:
+          type: string
+          description: Base URL for chunk uploads
+        chunkSize:
+          type: integer
+        totalChunks:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+
+    ChunkUploadResponse:
+      type: object
+      properties:
+        chunkNumber:
+          type: integer
+        uploadedBytes:
+          type: integer
+        chunksUploaded:
+          type: integer
+        totalChunks:
+          type: integer
+        expiresAt:
+          type: string
+          format: date-time
+
+    CompleteChunkedUploadRequest:
+      type: object
+      required:
+        - chunks
+      properties:
+        chunks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChunkInfo'
+        checksum:
+          type: string
+          description: SHA-256 checksum for verification
+
+    ChunkInfo:
+      type: object
+      properties:
+        chunkNumber:
+          type: integer
+        etag:
+          type: string
+          description: ETag from upload
+
+    PresignedUploadRequest:
+      type: object
+      required:
+        - spaceId
+        - fileName
+        - contentType
+        - contentLength
+      properties:
+        spaceId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+          maxLength: 255
+        contentType:
+          type: string
+        contentLength:
+          type: integer
+          description: File size in bytes
+
+    PresignedUrlResponse:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Presigned URL
+        method:
+          type: string
+          example: PUT
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresIn:
+          type: integer
+          description: URL validity in seconds
+        expiresAt:
+          type: string
+          format: date-time
+
+    # File response schemas
+    FileResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+          nullable: true
+        fileName:
+          type: string
+        fileType:
+          type: string
+        fileSize:
+          type: integer
+        downloadUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    FileDetailResponse:
+      type: object
+      properties:
+        file:
+          $ref: '#/components/schemas/FileResponse'
+        uploadedBy:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            displayName:
+              type: string
+            avatarUrl:
+              type: string
+              nullable: true
+        checksum:
+          type: string
+        storagePath:
+          type: string
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    FileListResponse:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileResponse'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    # Bulk operations
+    BulkDeleteRequest:
+      type: object
+      required:
+        - fileIds
+      properties:
+        fileIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
+
+    BulkDeleteResponse:
+      type: object
+      properties:
+        deleted:
+          type: array
+          items:
+            type: string
+            format: uuid
+        failed:
+          type: array
+          items:
+            type: object
+            properties:
+              fileId:
+                type: string
+                format: uuid
+              reason:
+                type: string
+
+    # Common schemas
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+  # Response examples
+  examples:
+    fileTooLarge:
+      value:
+        code: FILE_TOO_LARGE
+        message: File size exceeds maximum allowed (50MB)
+        details:
+          maxSize: 52428800
+          providedSize: 62914560
+
+    unsupportedType:
+      value:
+        code: UNSUPPORTED_FILE_TYPE
+        message: File type not allowed
+        details:
+          allowedTypes:
+            - image/*
+            - application/pdf
+            - text/*
+            - video/*
+            - audio/*
+          providedType: application/x-msdownload
+
+security:
+  - BearerAuth: []

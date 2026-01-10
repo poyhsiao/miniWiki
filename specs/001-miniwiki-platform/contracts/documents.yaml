@@ -1,0 +1,1457 @@
+openapi: 3.1.0
+info:
+  title: miniWiki Documents API
+  description: |
+    Document CRUD, versioning, and management endpoints for miniWiki platform.
+    Supports hierarchical document structure, version history, and content search.
+  version: 1.0.0
+  contact:
+    name: miniWiki API Support
+    email: support@miniwiki.local
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.miniwiki.local/v1
+    description: Production server
+  - url: http://localhost:8080/v1
+    description: Development server
+
+tags:
+  - name: Spaces
+    description: Space management operations
+  - name: Documents
+    description: Document CRUD and hierarchy
+  - name: Document Versions
+    description: Version history and restore
+  - name: Comments
+    description: Document comments and threads
+  - name: Search
+    description: Full-text search operations
+
+paths:
+  # ============ SPACES ============
+  /spaces:
+    get:
+      tags:
+        - Spaces
+      summary: List user's spaces
+      description: Returns a list of all spaces the current user has access to.
+      operationId: listSpaces
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: List of spaces
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Spaces
+      summary: Create a new space
+      description: Creates a new space with the current user as owner.
+      operationId: createSpace
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpaceRequest'
+      responses:
+        '201':
+          description: Space created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /spaces/{spaceId}:
+    get:
+      tags:
+        - Spaces
+      summary: Get space details
+      description: Returns detailed information about a specific space.
+      operationId: getSpace
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Space details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDetailResponse'
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Space not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Spaces
+      summary: Update space
+      description: Updates space properties. Only owner can update.
+      operationId: updateSpace
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSpaceRequest'
+      responses:
+        '200':
+          description: Space updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponse'
+        '403':
+          description: Not owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Spaces
+      summary: Delete space
+      description: |
+        Soft deletes a space and all its contents.
+        Space can be recovered within 30 days.
+      operationId: deleteSpace
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Space deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '403':
+          description: Not owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /spaces/{spaceId}/members:
+    get:
+      tags:
+        - Spaces
+      summary: List space members
+      description: Returns all members of a space.
+      operationId: listSpaceMembers
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberListResponse'
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Spaces
+      summary: Add space member
+      description: Invites a user to join the space with specified role.
+      operationId: addSpaceMember
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMemberRequest'
+      responses:
+        '201':
+          description: Member added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '400':
+          description: Already a member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /spaces/{spaceId}/members/{userId}:
+    patch:
+      tags:
+        - Spaces
+      summary: Update member role
+      description: Updates a member's role in the space.
+      operationId: updateMemberRole
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMemberRoleRequest'
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+        '403':
+          description: Cannot modify owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Spaces
+      summary: Remove member
+      description: Removes a member from the space.
+      operationId: removeSpaceMember
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # ============ DOCUMENTS ============
+  /spaces/{spaceId}/documents:
+    get:
+      tags:
+        - Documents
+      summary: List documents in space
+      description: |
+        Returns root documents in a space.
+        Use parentId query parameter to get nested documents.
+      operationId: listDocuments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: parentId
+          in: query
+          schema:
+            type: string
+            format: uuid
+            description: Filter by parent document ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Documents
+      summary: Create document
+      description: Creates a new document in the specified space.
+      operationId: createDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: spaceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDocumentRequest'
+      responses:
+        '201':
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: No permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /documents/{documentId}:
+    get:
+      tags:
+        - Documents
+      summary: Get document
+      description: Returns document content and metadata.
+      operationId: getDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetailResponse'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Documents
+      summary: Update document
+      description: |
+        Updates document metadata (title, icon, parent).
+        For content updates, use the sync endpoints.
+      operationId: updateDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDocumentRequest'
+      responses:
+        '200':
+          description: Document updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '403':
+          description: No edit permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Documents
+      summary: Delete document
+      description: Soft deletes a document. Can be recovered within 30 days.
+      operationId: deleteDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /documents/{documentId}/restore:
+    post:
+      tags:
+        - Documents
+      summary: Restore deleted document
+      description: Restores a soft-deleted document within 30 days.
+      operationId: restoreDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+        '400':
+          description: Too old to restore
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /documents/{documentId}/versions:
+    get:
+      tags:
+        - Document Versions
+      summary: List document versions
+      description: Returns version history for a document.
+      operationId: listDocumentVersions
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of versions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionListResponse'
+
+  /documents/{documentId}/versions/{versionId}:
+    get:
+      tags:
+        - Document Versions
+      summary: Get specific version
+      description: Returns content of a specific document version.
+      operationId: getDocumentVersion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Version content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionResponse'
+
+  /documents/{documentId}/versions/{versionId}/restore:
+    post:
+      tags:
+        - Document Versions
+      summary: Restore document version
+      description: Creates a new version from the specified version.
+      operationId: restoreDocumentVersion
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '201':
+          description: Version restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResponse'
+
+  # ============ COMMENTS ============
+  /documents/{documentId}/comments:
+    get:
+      tags:
+        - Comments
+      summary: List document comments
+      description: Returns comments for a document, threaded by parent.
+      operationId: listComments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: resolved
+          in: query
+          schema:
+            type: boolean
+            description: Filter by resolved status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentListResponse'
+
+    post:
+      tags:
+        - Comments
+      summary: Create comment
+      description: Creates a new comment on a document.
+      operationId: createComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+
+  /comments/{commentId}:
+    patch:
+      tags:
+        - Comments
+      summary: Update comment
+      description: Updates comment content.
+      operationId: updateComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentRequest'
+      responses:
+        '200':
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+
+    delete:
+      tags:
+        - Comments
+      summary: Delete comment
+      description: Deletes a comment permanently.
+      operationId: deleteComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Comment deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /comments/{commentId}/resolve:
+    post:
+      tags:
+        - Comments
+      summary: Resolve comment
+      description: Marks a comment as resolved.
+      operationId: resolveComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Comment resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+
+  /comments/{commentId}/unresolve:
+    post:
+      tags:
+        - Comments
+      summary: Unresolve comment
+      description: Reopens a resolved comment.
+      operationId: unresolveComment
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Comment reopened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentResponse'
+
+  # ============ SHARE LINKS ============
+  /documents/{documentId}/share:
+    get:
+      tags:
+        - Documents
+      summary: List share links
+      description: Returns all active share links for a document.
+      operationId: listShareLinks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of share links
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkListResponse'
+
+    post:
+      tags:
+        - Documents
+      summary: Create share link
+      description: Creates a new share link for external access.
+      operationId: createShareLink
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShareLinkRequest'
+      responses:
+        '201':
+          description: Share link created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkResponse'
+
+  /documents/{documentId}/share/{token}:
+    delete:
+      tags:
+        - Documents
+      summary: Revoke share link
+      description: Deactivates a share link.
+      operationId: revokeShareLink
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Link revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  # ============ EXPORT ============
+  /documents/{documentId}/export:
+    get:
+      tags:
+        - Documents
+      summary: Export document
+      description: Exports document in specified format.
+      operationId: exportDocument
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - markdown
+              - pdf
+              - html
+              - json
+      responses:
+        '200':
+          description: Exported document
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Unsupported format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============ SEARCH ============
+  /search:
+    get:
+      tags:
+        - Search
+      summary: Full-text search
+      description: |
+        Searches across all accessible documents.
+        Supports query parsing with operators.
+      operationId: searchDocuments
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 500
+          description: Search query
+        - name: spaceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Limit to specific space
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Space schemas
+    CreateSpaceRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        icon:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 2000
+        isPublic:
+          type: boolean
+          default: false
+
+    UpdateSpaceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        icon:
+          type: string
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 2000
+        isPublic:
+          type: boolean
+
+    SpaceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        isPublic:
+          type: boolean
+        ownerId:
+          type: string
+          format: uuid
+        documentCount:
+          type: integer
+        memberCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SpaceDetailResponse:
+      type: object
+      properties:
+        space:
+          $ref: '#/components/schemas/SpaceResponse'
+        permissions:
+          type: string
+          enum:
+            - owner
+            - editor
+            - commenter
+            - viewer
+
+    SpaceListResponse:
+      type: object
+      properties:
+        spaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpaceResponse'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    # Member schemas
+    AddMemberRequest:
+      type: object
+      required:
+        - email
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - editor
+            - commenter
+            - viewer
+
+    UpdateMemberRoleRequest:
+      type: object
+      required:
+        - role
+      properties:
+        role:
+          type: string
+          enum:
+            - editor
+            - commenter
+            - viewer
+
+    MemberResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        role:
+          type: string
+        joinedAt:
+          type: string
+          format: date-time
+
+    MemberListResponse:
+      type: object
+      properties:
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberResponse'
+
+    # Document schemas
+    CreateDocumentRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        icon:
+          type: string
+          maxLength: 50
+        parentId:
+          type: string
+          format: uuid
+          description: Parent document ID for nesting
+        content:
+          type: object
+          description: Initial Yjs document state
+
+    UpdateDocumentRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        icon:
+          type: string
+          maxLength: 50
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+
+    DocumentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        title:
+          type: string
+        icon:
+          type: string
+          nullable: true
+        contentSize:
+          type: integer
+        createdBy:
+          type: string
+          format: uuid
+        lastEditedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DocumentDetailResponse:
+      type: object
+      properties:
+        document:
+          $ref: '#/components/schemas/DocumentResponse'
+        content:
+          type: object
+          description: Yjs document state
+        permissions:
+          type: string
+        childCount:
+          type: integer
+        commentCount:
+          type: integer
+        isResolvedCommentCount:
+          type: integer
+
+    DocumentListResponse:
+      type: object
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    # Version schemas
+    VersionListResponse:
+      type: object
+      properties:
+        versions:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionSummary'
+        total:
+          type: integer
+
+    VersionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        versionNumber:
+          type: integer
+        title:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdByName:
+          type: string
+        changeSummary:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    VersionResponse:
+      type: object
+      properties:
+        version:
+          $ref: '#/components/schemas/VersionSummary'
+        content:
+          type: object
+
+    # Comment schemas
+    CreateCommentRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+        parentId:
+          type: string
+          format: uuid
+          description: Parent comment ID for threading
+
+    UpdateCommentRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 5000
+
+    CommentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        authorId:
+          type: string
+          format: uuid
+        authorName:
+          type: string
+        authorAvatar:
+          type: string
+          nullable: true
+        content:
+          type: string
+        isResolved:
+          type: boolean
+        resolvedBy:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CommentListResponse:
+      type: object
+      properties:
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentResponse'
+        total:
+          type: integer
+
+    # Share link schemas
+    CreateShareLinkRequest:
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+          description: Optional expiry date
+        accessCode:
+          type: string
+          minLength: 4
+          maxLength: 10
+          description: Optional password protection
+        permission:
+          type: string
+          enum:
+            - view
+            - comment
+          default: view
+        maxAccess:
+          type: integer
+          description: Maximum number of accesses
+
+    ShareLinkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        token:
+          type: string
+        url:
+          type: string
+        permission:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        accessCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    ShareLinkListResponse:
+      type: object
+      properties:
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShareLinkResponse'
+
+    # Search schemas
+    SearchResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResult'
+        total:
+          type: integer
+        took:
+          type: integer
+          description: Time in milliseconds
+
+    SearchResult:
+      type: object
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        spaceId:
+          type: string
+          format: uuid
+        spaceName:
+          type: string
+        title:
+          type: string
+        snippet:
+          type: string
+          description: Highlighted matching text
+        score:
+          type: number
+
+    # Common schemas
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+security:
+  - BearerAuth: []
