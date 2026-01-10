@@ -1,0 +1,863 @@
+openapi: 3.1.0
+info:
+  title: miniWiki Sync API
+  description: |
+    CRDT synchronization and real-time collaboration endpoints for miniWiki platform.
+    Uses Yjs for conflict-free document synchronization with automatic merge.
+  version: 1.0.0
+  contact:
+    name: miniWiki API Support
+    email: support@miniwiki.local
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.miniwiki.local/v1/sync
+    description: Production server
+  - url: http://localhost:8080/v1/sync
+    description: Development server
+
+tags:
+  - name: Document Sync
+    description: CRDT document synchronization
+  - name: Presence
+    description: Real-time presence and cursors
+  - name: Offline Sync
+    description: Offline synchronization queue
+
+paths:
+  # ============ DOCUMENT SYNC ============
+  /documents/{documentId}/sync:
+    get:
+      tags:
+        - Document Sync
+      summary: Get document sync state
+      description: |
+        Returns the current document state vector and server update.
+        Used to initialize a Yjs document from server state.
+      operationId: getDocumentSyncState
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document sync state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStateResponse'
+        '403':
+          description: No access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Document Sync
+      summary: Sync document updates
+      description: |
+        Sends client updates to server and returns server updates.
+        Handles the Yjs sync protocol step 1 (client sends state vector).
+      operationId: syncDocumentUpdates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncUpdateRequest'
+            example:
+              stateVector: "<base64-encoded state vector>"
+              updates: []
+      responses:
+        '200':
+          description: Sync response with updates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncUpdateResponse'
+        '403':
+          description: No access
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /documents/{documentId}/updates:
+    post:
+      tags:
+        - Document Sync
+      summary: Send document updates
+      description: |
+        Sends Yjs updates from client to server.
+        Used for sync protocol step 2 (client has update, sends to server).
+      operationId: sendDocumentUpdates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+              description: Yjs update binary data
+      responses:
+        '200':
+          description: Updates accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncAckResponse'
+        '400':
+          description: Invalid update
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - server state ahead
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncConflictResponse'
+
+  /documents/{documentId}/diff:
+    post:
+      tags:
+        - Document Sync
+      summary: Get sync diff
+      description: |
+        Returns updates needed to bring client state up to date.
+        Takes client's state vector and returns only missing updates.
+      operationId: getSyncDiff
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncDiffRequest'
+            example:
+              stateVector: "<base64-encoded state vector>"
+      responses:
+        '200':
+          description: Missing updates
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+                description: Yjs update binary data
+        '404':
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============ WEBSOCKET FOR REAL-TIME ============
+  /ws/documents/{documentId}:
+    get:
+      tags:
+        - Document Sync
+        - Presence
+      summary: WebSocket connection for real-time sync
+      description: |
+        WebSocket connection for real-time document synchronization.
+        Uses Yjs sync protocol over WebSocket for live collaboration.
+      operationId: connectDocumentWebSocket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '101':
+          description: Switching protocols to WebSocket
+
+  # ============ PRESENCE ============
+  /documents/{documentId}/presence:
+    get:
+      tags:
+        - Presence
+      summary: Get active users
+      description: |
+        Returns list of currently active users in the document.
+        Includes cursor positions and selection ranges.
+      operationId: getDocumentPresence
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Active users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresenceResponse'
+
+    post:
+      tags:
+        - Presence
+      summary: Update presence
+      description: |
+        Updates the current user's presence (cursor position, selection).
+        Sent periodically while user is active in document.
+      operationId: updatePresence
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresenceUpdateRequest'
+            example:
+              cursor:
+                position: 123
+              selection:
+                anchor: 100
+                head: 150
+      responses:
+        '200':
+          description: Presence updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /documents/{documentId}/awareness:
+    get:
+      tags:
+        - Presence
+      summary: Get awareness states
+      description: |
+        Returns all awareness states for active users.
+        Includes user info, cursor, and selection data.
+      operationId: getAwarenessStates
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Awareness states
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AwarenessResponse'
+
+  # ============ OFFLINE SYNC ============
+  /offline/queue:
+    get:
+      tags:
+        - Offline Sync
+      summary: Get pending sync queue
+      description: |
+        Returns list of pending sync operations from offline mode.
+        Used to upload queued changes when coming back online.
+      operationId: getSyncQueue
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+      responses:
+        '200':
+          description: Pending operations
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncQueueResponse'
+
+    post:
+      tags:
+        - Offline Sync
+      summary: Push sync queue
+      description: |
+        Uploads a batch of queued operations from offline mode.
+        Operations are processed atomically.
+      operationId: pushSyncQueue
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncQueuePushRequest'
+      responses:
+        '200':
+          description: Operations processed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncQueueResultResponse'
+        '207':
+          description: Partial success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncQueueResultResponse'
+
+  /offline/queue/{operationId}:
+    delete:
+      tags:
+        - Offline Sync
+      summary: Remove queued operation
+      description: |
+        Removes a specific operation from the sync queue.
+        Used after successful sync or to discard failed operations.
+      operationId: removeQueuedOperation
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Operation removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+  /offline/status:
+    get:
+      tags:
+        - Offline Sync
+      summary: Get sync status
+      description: |
+        Returns synchronization status including pending changes,
+        last sync time, and any conflicts.
+      operationId: getSyncStatus
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncStatusResponse'
+
+  /offline/sync:
+    post:
+      tags:
+        - Offline Sync
+      summary: Trigger full sync
+      description: |
+        Triggers a full synchronization cycle.
+        Downloads updates and uploads pending changes.
+      operationId: triggerFullSync
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Sync completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullSyncResponse'
+
+  # ============ CONFLICT RESOLUTION ============
+  /documents/{documentId}/conflicts:
+    get:
+      tags:
+        - Document Sync
+      summary: List unresolved conflicts
+      description: |
+        Returns list of unresolved conflicts for a document.
+        Conflicts arise from concurrent offline edits.
+      operationId: listConflicts
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of conflicts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConflictListResponse'
+
+  /documents/{documentId}/conflicts/{conflictId}/resolve:
+    post:
+      tags:
+        - Document Sync
+      summary: Resolve conflict
+      description: |
+        Resolves a conflict by choosing one version or merging.
+        Yjs CRDT typically auto-resolves, manual resolution rare.
+      operationId: resolveConflict
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: conflictId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConflictResolutionRequest'
+      responses:
+        '200':
+          description: Conflict resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # Sync state schemas
+    SyncStateResponse:
+      type: object
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        stateVector:
+          type: string
+          description: Base64-encoded Yjs state vector
+        update:
+          type: string
+          description: Base64-encoded Yjs update with full document state
+        version:
+          type: integer
+          description: Server document version
+        updatedAt:
+          type: string
+          format: date-time
+
+    SyncUpdateRequest:
+      type: object
+      required:
+        - stateVector
+      properties:
+        stateVector:
+          type: string
+          description: Base64-encoded client state vector
+        updates:
+          type: array
+          items:
+            type: string
+            description: Base64-encoded Yjs updates from client
+          description: Updates to merge into document
+
+    SyncUpdateResponse:
+      type: object
+      properties:
+        stateVector:
+          type: string
+          description: Updated state vector
+        updates:
+          type: array
+          items:
+            type: string
+            description: Base64-encoded Yjs updates from server
+        version:
+          type: integer
+          description: New server version
+        hasMore:
+          type: boolean
+          description: Whether more updates are pending
+
+    SyncAckResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        version:
+          type: integer
+        mergedUpdate:
+          type: string
+          description: Base64-encoded merged update broadcast to others
+
+    SyncConflictResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: SYNC_CONFLICT
+        message:
+          type: string
+        serverStateVector:
+          type: string
+        clientStateVector:
+          type: string
+
+    SyncDiffRequest:
+      type: object
+      required:
+        - stateVector
+      properties:
+        stateVector:
+          type: string
+          description: Base64-encoded client state vector
+
+    # Presence schemas
+    PresenceResponse:
+      type: object
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActiveUser'
+        total:
+          type: integer
+
+    ActiveUser:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        avatarUrl:
+          type: string
+          nullable: true
+        clientId:
+          type: string
+          description: Yjs client ID
+        cursor:
+          $ref: '#/components/schemas/CursorPosition'
+        selection:
+          $ref: '#/components/schemas/SelectionRange'
+        lastActiveAt:
+          type: string
+          format: date-time
+
+    CursorPosition:
+      type: object
+      properties:
+        position:
+          type: integer
+          description: Character position in document
+        line:
+          type: integer
+          description: Line number
+        column:
+          type: integer
+          description: Column number
+
+    SelectionRange:
+      type: object
+      properties:
+        anchor:
+          type: integer
+          description: Selection anchor position
+        head:
+          type: integer
+          description: Selection head position
+
+    PresenceUpdateRequest:
+      type: object
+      properties:
+        cursor:
+          $ref: '#/components/schemas/CursorPosition'
+        selection:
+          $ref: '#/components/schemas/SelectionRange'
+
+    AwarenessResponse:
+      type: object
+      properties:
+        states:
+          type: array
+          items:
+            $ref: '#/components/schemas/AwarenessState'
+
+    AwarenessState:
+      type: object
+      properties:
+        clientId:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            displayName:
+              type: string
+            avatarUrl:
+              type: string
+              nullable: true
+        cursor:
+          $ref: '#/components/schemas/CursorPosition'
+        selection:
+          $ref: '#/components/schemas/SelectionRange'
+
+    # Sync queue schemas
+    SyncQueueResponse:
+      type: object
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncQueueItem'
+        total:
+          type: integer
+        pendingBytes:
+          type: integer
+          description: Total size of pending operations
+
+    SyncQueueItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        entityType:
+          type: string
+          enum:
+            - document
+            - comment
+            - file
+        entityId:
+          type: string
+          format: uuid
+        operation:
+          type: string
+          enum:
+            - create
+            - update
+            - delete
+        data:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        retryCount:
+          type: integer
+
+    SyncQueuePushRequest:
+      type: object
+      required:
+        - operations
+      properties:
+        operations:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncQueueItem'
+
+    SyncQueueResultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        processed:
+          type: integer
+        failed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncQueueResult'
+
+    SyncQueueResult:
+      type: object
+      properties:
+        operationId:
+          type: string
+          format: uuid
+        success:
+          type: boolean
+        error:
+          type: string
+          nullable: true
+        serverVersion:
+          type: integer
+          nullable: true
+
+    SyncStatusResponse:
+      type: object
+      properties:
+        pendingOperations:
+          type: integer
+        pendingBytes:
+          type: integer
+        lastSyncAt:
+          type: string
+          format: date-time
+          nullable: true
+        conflicts:
+          type: integer
+        isOnline:
+          type: boolean
+
+    FullSyncResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        uploaded:
+          type: integer
+        downloaded:
+          type: integer
+        durationMs:
+          type: integer
+        conflicts:
+          type: integer
+
+    # Conflict resolution schemas
+    ConflictListResponse:
+      type: object
+      properties:
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+        total:
+          type: integer
+
+    Conflict:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        documentId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+            - update
+            - delete
+        localUpdate:
+          type: object
+        remoteUpdate:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+
+    ConflictResolutionRequest:
+      type: object
+      required:
+        - resolution
+      properties:
+        resolution:
+          type: string
+          enum:
+            - keep_local
+            - keep_remote
+            - merge
+        mergedData:
+          type: object
+          description: Required if resolution is 'merge'
+
+    # Common schemas
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+security:
+  - BearerAuth: []
