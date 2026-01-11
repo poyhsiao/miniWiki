@@ -1,0 +1,59 @@
+# rustfmt configuration for miniWiki backend
+# Generated: 2026-01-11
+
+# Maximum line width
+max_width = 120
+
+# Tab width (spaces per tab)
+tab_spaces = 4
+
+# Hard tabs
+hard_tabs = false
+
+# Array layout
+array_layout = "Vertical"
+
+# Function call arguments layout
+fn_call_layout = "Vertical"
+
+# Chain method calls across multiple lines
+chain_width = 80
+
+# Indentation of comments
+comment_indent_width = 4
+
+# Wrap long comments
+wrap_comments = true
+
+# Normalize doc comments
+normalize_doc_attributes = true
+
+# Reorder imports
+reorder_imports = true
+
+# Reorder modules
+reorder_modules = true
+
+# Sort imports within groups
+group_imports = "StdExternalCrate"
+
+# Remove unused imports
+unstable_features = true
+
+# Merge import groups
+merge_imports = true
+
+# Format configuration
+edition = "2021"
+
+# Newline settings
+newline_style = "Unix"
+
+# Heuristics
+format_strings = true
+match_block_trailing_comma = true
+trailing_comma = "Vertical"
+
+# Remove dead code
+warn_on_bad_line_format = true
+error_on_unformatted = false

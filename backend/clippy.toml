@@ -1,0 +1,148 @@
+# clippy configuration for miniWiki backend
+# Generated: 2026-01-11
+
+# Allow warnings in CI (can be overridden by --deny warnings)
+allow = [
+    # Performance lints
+    "clippy::unnecessary_to_owned",
+    "clippy::redundant_closure_for_method_calls",
+    
+    # Style lints
+    "clippy::module_name_repetitions",
+    "clippy::items_after_statements",
+    "clippy::pattern_type_mismatch",
+    
+    # Complexity lints
+    "clippy::redundant_pub_crate",
+    
+    # Nursery lints (allowed by default in recent clippy)
+    "clippy::clone_on_ref_ptr",
+    "clippy::deprecated_cfg_attr",
+    "clippy::empty_line_after_doc_comments",
+    "clippy::exhaustive_enums",
+    "exhaustive_structs",
+    "lossy_provenance_comjections",
+    "mixed_attributes_style",
+    "redundant_closure_call",
+    "semicolon_in_expressions_from_macros",
+    "unnecessary_wraps",
+]
+
+# Warn lints
+warn = [
+    # Correctness lints
+    "clippy::await_holding_refcell_ref",
+    "clippy::await_holding_lock",
+    "clippy:: Beckett_locks",
+    "clippy:: Beckett_send_sync",
+    
+    # Performance lints
+    "clippy::alloc_and_dealloc",
+    "clippy::big_endian_for_bytes",
+    "clippy::cstring_as_str",
+    "clippy::close_s_movement_by_value",
+    "clippy::copy_iterator",
+    "clippy::default_union_representation",
+    "clippy::deref_addrof",
+    "clippy::deref_addrof",
+    "clippy::drop_ref",
+    "clippy::duplicate_mod_attribute",
+    "clippy::enum_clike_unportable_variant",
+    "clippy::explicit_into_iter_loop",
+    "clippy::explicit_iter_loop",
+    "clippy::fallible_impl_from",
+    "clippy::float_cmp",
+    "clippy::fn_params_excessive_bools",
+    "clippy::for_loop_over_option",
+    "clippy::forget_ref",
+    "clippy::get_unwrap",
+    "clippy::if_let_redundant_pattern_matching",
+    "clippy::imprecise_floats",
+    "clippy::incompatible_clones",
+    "clippy::inefficient_to_string",
+    "clippy::inline_always",
+    "clippy::invalid_regex",
+    "clippy::iter_cloned_collect",
+    "clippy::iter_next_loop",
+    "clippy::large_include_file",
+    "clippy::large_types_ambiguous_output",
+    "clippy::let_underscore_must_use",
+    "clippy::linked_list_consistency",
+    "clippy::macro_braces",
+    "clippy::map_entry",
+    "clippy::match_as_ref",
+    "clippy::match_bool",
+    "clippy::match_same_arms",
+    "clippy::mismatched_type_api_usage",
+    "clippy::missing_const_for_fn",
+    "clippy::mut_mut",
+    "clippy::mutex_atomic",
+    "clippy::naive_bytecount",
+    "clippy::needless_collect",
+    "clippy::needless_for_each",
+    "clippy::needless_pass_by_value",
+    "clippy::nonminimal_bool",
+    "clippy::option_option",
+    "clippy::or_fun_call",
+    "clippy::overlapping_pattern_branches",
+    "clippy::path_buffer_push",
+    "clippy::precedence",
+    "clippy::pub_enum_variant_names",
+    "clippy::question_mark",
+    "clippy::read_line",
+    "clippy::redundant_closure",
+    "clippy::redundant_field_names",
+    "clippy::ref_in_deref",
+    "clippy::rename_copy",
+    "clippy::rename_any_value",
+    "clippy::rest_pat_in_fully_bound_structs",
+    "clippy::self_named_module",
+    "clippy::significant_drop_in_scrub",
+    "clippy::size_of_in_element_count",
+    "clippy::suspicious_else_formatting",
+    "clippy::suspicious_splitn",
+    "clippy::too_large_type",
+    "clippy::too_many_arguments",
+    "clippy::trivially_copy_pass_by_ref",
+    "clippy::type_complexity",
+    "clippy::undroppable_references",
+    "clippy::unicode_in_names",
+    "clippy::unnecessary_find_map",
+    "clippy::unnecessary_fold",
+    "clippy::unnecessary_join",
+    "clippy::unnecessary_to_owned",
+    "clippy::unreadable_literal",
+    "clippy::unsafe_derive_deserialize",
+    "clippy::unused_io_amount",
+    "clippy::unused_peekable",
+    "clippy::unused_ranking",
+    "clippy::vec_init_then_extend",
+    "clippy::verbose_bit_mask",
+    "clippy::zero_divided_by_zero",
+]
+
+# Deny lints (treated as errors)
+deny = [
+    "clippy::missing_docs_in_private_items",
+    "clippy::unreachable_pub",
+]
+
+# Suppress lints (used sparingly)
+suppress = [
+    "clippy::result_large_err",
+    "clippy::too_many_lines",
+]
+
+# Allow long-running lints in tests
+[test]
+allow = [
+    "clippy::blacklisted_name",
+    "clippy::print_stdout",
+    "clippy::use_debug",
+]
+
+# Cargo check specific
+[cargo-check]
+deny = [
+    "warnings",
+]

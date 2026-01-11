@@ -1,0 +1,459 @@
+# ===========================================
+# miniWiki - Git Ignore Configuration
+# ===========================================
+# Supports: Flutter (Dart), Rust, PostgreSQL, Docker
+# Generated for miniWiki Knowledge Management Platform
+
+# ===========================================
+# General / OS Files
+# ===========================================
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+*~
+.#*
+.#*#
+.#*
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+.project
+.classpath
+.settings/
+*.launch
+*.ntvs*
+*.njsproj
+*.sln
+*.suo
+*.user
+*.userosscache
+*.vcxproj
+
+# IDE - IntelliJ/Eclipse
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# IDE - PyCharm
+.idea/
+
+# IDE - VS Code
+.vs/
+
+# IDE - Vim
+*.swp
+*.swo
+*~
+
+# IDE - Emacs
+*~
+.#*
+
+# IDE - NetBeans
+nbproject/
+.nbproject/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# IDE - Android Studio
+*.iml
+.idea/
+.gradle/
+local.properties
+*.apk
+*.ap_
+*.aab
+*.dex
+
+# IDE - XCode
+*.xcuserstate
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+*.xcworkspacedata
+
+# IDE - Visual Studio
+*.suo
+*.user
+*.userosscache
+*.cache
+*.pdb
+*.ilk
+*.exp
+*.res
+*.aps
+*.ncb
+*.sdf
+*.opensdf
+*.tmp_proj
+*.log
+.vs/
+
+# IDE - RStudio
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+
+# ===========================================
+# Flutter / Dart
+# ===========================================
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+!build/ios/Classes/
+
+# Android
+android/.gradle/
+android/local.properties
+android/.idea/
+android/*.apk
+android/*.ap_
+android/*.dex
+android/*.dex
+android/.cxx/
+android/.fabric/
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Podfile.lock
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/app.flx
+ios/Flutter/app.zip
+ios/Flutter/flutter_assets/
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+
+# macOS
+macos/Flutter/GeneratedPluginRegistrant.*
+macos/Flutter/ephemeral/
+macos/.symlinks/
+macos/Pods/
+macos/Podfile.lock
+macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json
+macos/Runner/DebugProfile.entitlements
+macos/Runner/Release.entitlements
+
+# Linux
+linux/.symlinks/
+linux/Pods/
+linux/Podfile.lock
+linux/.fvm/
+linux/Flutter/GeneratedPluginRegistrant.*
+linux/Flutter/ephemeral/
+
+# Windows
+windows/.fvm/
+windows/Flutter/GeneratedPluginRegistrant.*
+windows/Flutter/ephemeral/
+windows/Packages/
+windows/Podfile.lock
+
+# Web
+web/flutter_assets/
+web/index.html
+
+# Firebase
+firebase/
+*.firebase
+.firebase/
+
+# Generated files
+*.pinpoint
+*.atoms
+
+# Version management
+.fvm/flutter_sdk
+.fvm/fvm_config.json
+
+# Analysis
+analysis_options.yaml
+!.analysis_options.yaml
+
+# Dart
+build/
+coverage/
+.pub/
+.dart_tool/
+
+# Melos
+.melos/
+
+# ===========================================
+# Rust
+# ===========================================
+target/
+Cargo.lock
+!**/Cargo.lock
+
+# Built files
+*.rlib
+*.rmeta
+*.so
+*.a
+*.o
+*.exe
+*.exe~
+*.dll
+*.dylib
+
+# Generated files
+ Cargo.lock
+target/
+
+# Build artifacts
+*.pdb
+*.dSYM/
+*.dylib
+
+# Rust analyzer
+.rustc_info.json
+rust-project.json
+
+# ===========================================
+# Backend / Server
+# ===========================================
+.env
+.env.*
+!.env.example
+!.env.template
+*.env
+!.env.example
+!.env.test
+!.env.development
+!.env.production
+
+# Logs
+*.log
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+htmlcov/
+.pytest_cache/
+.coverage
+.tox/
+.nox/
+*.coveragereport
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.venv/
+env/bin/
+.venv/lib/python3.*/
+site/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# ===========================================
+# Database
+# ===========================================
+*.sqlite
+*.sqlite3
+*.db
+*.mdb
+*.mdf
+*.ldf
+
+# PostgreSQL
+postgresql/
+*.sql
+!migrations/*.sql
+
+# MinIO / S3
+.minio/
+.local/
+storage/
+
+# ===========================================
+# Docker
+# ===========================================
+.docker/
+docker-compose.override.yml
+*.tar
+
+# Docker build
+Dockerfile*
+.dockerignore
+
+# Docker Compose
+docker-compose.override.yml
+docker-compose.*.override.yml
+
+# Minikube / Kubernetes
+*.kube/
+.kube/
+kubeconfig*
+
+# Helm
+*.tgz
+charts/
+*.lock
+
+# ===========================================
+# Documents & Configuration
+# ===========================================
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.ppt
+*.pptx
+*.odt
+*.ods
+*.odg
+*.pem
+*.pfx
+*.p12
+*.key
+*.crt
+*.cer
+*.mobileprovision
+*.ipa
+*.app
+
+# Configuration
+config/
+config.*
+*.conf
+*.config
+*.ini
+*.cfg
+
+# Secrets
+secrets/
+private/
+.key
+.secret
+.credentials
+
+# Credentials
+*.creds
+credentials.json
+service-account*.json
+
+# Terraform
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform/
+*.plan
+*.plan.txt
+*.out
+
+# Ansible
+*.retry
+*.orig
+.rej
+
+# Backup
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+*~
+\#*\#
+.#*
+
+# ===========================================
+# Temporary / Cache
+# ===========================================
+.cache/
+.temp/
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+
+# ===========================================
+# Mobile Apps
+# ===========================================
+*.apk
+*.aab
+*.ipa
+*.app
+*.framework
+*.dylib
+*.mobileprovision
+
+# Android
+*.dex
+*.ap_
+local.properties
+
+# iOS
+Pods/
+DerivedData/
+build/

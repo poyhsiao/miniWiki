@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:14-alpine
+    container_name: miniwiki-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-miniwiki}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-miniwiki_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-miniwiki}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-miniwiki}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - miniwiki-network
+    restart: unless-stopped
+
+  # Redis Cache & Sessions
+  redis:
+    image: redis:7-alpine
+    container_name: miniwiki-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - miniwiki-network
+    restart: unless-stopped
+
+  # MinIO Object Storage
+  minio:
+    image: minio/minio:latest
+    container_name: miniwiki-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-miniwiki_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniwiki_secret_key}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-http://localhost:9001}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - miniwiki-network
+    restart: unless-stopped
+
+  # Rust Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: miniwiki-backend
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-miniwiki}:${POSTGRES_PASSWORD:-miniwiki_secret}@postgres:5432/${POSTGRES_DB:-miniwiki}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-miniwiki_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniwiki_secret_key}
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      BCRYPT_COST: 12
+      RUST_LOG: ${RUST_LOG:-info}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - miniwiki-network
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app:ro
+      - cargo_cache:/root/.cargo
+
+  # Flutter Web App
+  web:
+    build:
+      context: ./flutter_app
+      dockerfile: Dockerfile.web
+    container_name: miniwiki-web
+    environment:
+      API_BASE_URL: http://backend:8080/api/v1
+      WS_URL: ws://backend:8080/ws
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - miniwiki-network
+    restart: unless-stopped
+    volumes:
+      - ./flutter_app:/app:ro
+
+  # Nginx Reverse Proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: miniwiki-nginx
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "${NGINX_PORT:-80}:80"
+      - "${NGINX_SSL_PORT:-443}:443"
+    depends_on:
+      - backend
+      - web
+    networks:
+      - miniwiki-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  cargo_cache:
+    driver: local
+
+networks:
+  miniwiki-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
