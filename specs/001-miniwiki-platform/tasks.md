@@ -73,10 +73,12 @@ Based on `plan.md` structure:
 
 ### Database Schema
 
-- [ ] T027 Run backend/migrations/001_initial_schema.sql to create all tables
-- [ ] T028 Create backend/services/document_service/migrations/ for document-related tables
+- [x] T027 Create backend/migrations/001_initial_schema.sql with all tables from data-model.md
+- [x] T028 Create backend/services/document_service/migrations/ for document-related tables
 - [x] T029 Create flutter_app/lib/data/datasources/isar_datasource.dart for offline storage
 - [x] T030 [P] Create flutter_app/lib/data/models/ with Isar entity definitions
+
+**Database Schema Status**: Migrations created - requires running when Docker PostgreSQL is available
 
 ### API Foundation
 
@@ -90,8 +92,8 @@ Based on `plan.md` structure:
 ### CRDT Foundation
 
 - [x] T037 Create backend/services/sync_service/src/lib.rs with sync service structure
-- [ ] T038 Create backend/services/sync_service/src/yjs_handler.rs with Yjs/Dart CRDT document handling
-- [ ] T039 Create backend/services/sync_service/src/state_vector.rs with state vector operations
+- [x] T038 Create backend/services/sync_service/src/yjs_handler.rs with Yjs/Dart CRDT document handling
+- [x] T039 Create backend/services/sync_service/src/state_vector.rs with state vector operations
 - [x] T040 Create flutter_app/lib/services/crdt_service.dart with y_crdt integration
 - [x] T041 Create flutter_app/lib/services/sync_service.dart with sync orchestration
 

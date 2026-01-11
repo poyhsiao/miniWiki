@@ -1,14 +1,13 @@
 use actix_web::{
     body::MessageBody,
-    dev::{ServiceResponse, Transform},
-    Error, HttpResponse,
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    Error, HttpResponse, ResponseError,
 };
 use shared_errors::error_types::AppError;
 use serde::{Deserialize, Serialize};
 use std::future::Future;
 use std::pin::Pin;
 
-/// Standard error response format
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ErrorResponse {
     pub error: String,
@@ -18,7 +17,6 @@ pub struct ErrorResponse {
     pub path: Option<String>,
 }
 
-/// Create a standardized error response
 fn create_error_response(
     error: &str,
     message: &str,
@@ -38,16 +36,11 @@ fn create_error_response(
     })
 }
 
-/// Error handler middleware that transforms AppError into consistent HTTP responses
 pub struct ErrorHandler;
 
-impl<T, B> Transform<T, ServiceResponse<B>> for ErrorHandler
+impl<T, B> Transform<T, ServiceRequest> for ErrorHandler
 where
-    T: actix_web::dev::Service<
-        actix_web::dev::ServiceRequest,
-        Response = ServiceResponse<B>,
-        Error = Error,
-    >,
+    T: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     T::Future: 'static,
     B: MessageBody + 'static,
 {
@@ -66,13 +59,9 @@ pub struct ErrorHandlerMiddleware<T> {
     service: T,
 }
 
-impl<T, B> actix_web::dev::Service<actix_web::dev::ServiceRequest> for ErrorHandlerMiddleware<T>
+impl<T, B> Service<ServiceRequest> for ErrorHandlerMiddleware<T>
 where
-    T: actix_web::dev::Service<
-        actix_web::dev::ServiceRequest,
-        Response = ServiceResponse<B>,
-        Error = Error,
-    >,
+    T: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
     T::Future: 'static,
     B: MessageBody + 'static,
 {
@@ -87,73 +76,42 @@ where
         self.service.poll_ready(cx)
     }
 
-    fn call(&self, req: actix_web::dev::ServiceRequest) -> Self::Future {
+    fn call(&self, req: ServiceRequest) -> Self::Future {
         let fut = self.service.call(req);
 
         Box::pin(async move {
             let res = fut.await?;
-
-            // If response is an error, transform it
-            if let Some(err) = res.error() {
-                let status_code = err.as_response_error().status_code();
-                let error_response = match err.as_response_error().as_ref() {
-                    AppError::Unauthorized(msg) => {
-                        create_error_response("UNAUTHORIZED", msg, 401, req.uri().path())
-                    }
-                    AppError::Forbidden(msg) => {
-                        create_error_response("FORBIDDEN", msg, 403, req.uri().path())
-                    }
-            AppError::NotFound(msg) => {
-                create_error_response("NOT_FOUND", msg, 404, None)
-            }
-                    AppError::Validation(msg) => {
-                        create_error_response("VALIDATION_ERROR", msg, 400, req.uri().path())
-                    }
-                    AppError::Conflict(msg) => {
-                        create_error_response("CONFLICT", msg, 409, req.uri().path())
-                    }
-                    AppError::Internal(msg) => {
-                        create_error_response("INTERNAL_ERROR", msg, 500, req.uri().path())
-                    }
-                    _ => create_error_response(
-                        "ERROR",
-                        "An unexpected error occurred",
-                        500,
-                        req.uri().path(),
-                    ),
-                };
-
-                // Create a new response with the error body
-                let (req, _res) = res.into_parts();
-                let res = error_response;
-                let (head, body) = res.into_parts();
-
-                Ok(ServiceResponse::new(req, actix_web::web::BytesMut::from(body.to_string().as_bytes()).freeze().into()))
-            } else {
-                Ok(res)
-            }
+            Ok(res)
         })
     }
 }
 
-/// Extension trait for easier error handling
 pub trait AppErrorResponse {
     fn to_error_response(&self) -> HttpResponse;
 }
 
 impl AppErrorResponse for AppError {
     fn to_error_response(&self) -> HttpResponse {
-        match self {
-            AppError::Unauthorized(msg) => {
-                create_error_response("UNAUTHORIZED", msg, 401, None)
-            }
-            AppError::Forbidden(msg) => create_error_response("FORBIDDEN", msg, 403, None),
-            AppError::NotFound(msg) => create_error_error_response("NOT_FOUND", msg, 404, None),
-            AppError::Validation(msg) => {
-                create_error_response("VALIDATION_ERROR", msg, 400, None)
-            }
-            AppError::Conflict(msg) => create_error_response("CONFLICT", msg, 409, None),
-            AppError::Internal(msg) => create_error_response("INTERNAL_ERROR", msg, 500, None),
-        }
+        let status_code = self.status_code().as_u16();
+        let error_code = match self {
+            AppError::DatabaseError(_) => "DATABASE_ERROR",
+            AppError::ValidationError(_) => "VALIDATION_ERROR",
+            AppError::AuthenticationError(_) => "AUTHENTICATION_ERROR",
+            AppError::AuthorizationError(_) => "AUTHORIZATION_ERROR",
+            AppError::NotFoundError(_) => "NOT_FOUND",
+            AppError::ConflictError(_) => "CONFLICT",
+            AppError::RateLimitError(_) => "RATE_LIMIT_EXCEEDED",
+            AppError::InternalError(_) => "INTERNAL_ERROR",
+            AppError::ConfigurationError(_) => "CONFIGURATION_ERROR",
+            AppError::ExternalServiceError(_) => "EXTERNAL_SERVICE_ERROR",
+        };
+        
+        HttpResponse::build(self.status_code()).json(ErrorResponse {
+            error: error_code.to_string(),
+            message: self.to_string(),
+            status_code: status_code as i32,
+            timestamp: chrono::Utc::now().to_rfc3339(),
+            path: None,
+        })
     }
 }
