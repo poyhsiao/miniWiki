@@ -1,0 +1,110 @@
+name: miniwiki
+description: miniWiki Knowledge Management Platform - Self-hosted Notion Alternative
+
+publish_to: 'none'
+
+version: 0.1.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  riverpod: ^2.5.0
+  riverpod_annotation: ^2.3.0
+  flutter_riverpod: ^2.5.0
+  hooks_riverpod: ^2.5.0
+
+  # Networking
+  dio: ^5.4.0
+  dio_http2_adapter: ^2.5.0
+  http_interceptor: ^2.0.0
+
+  # Local Storage (Offline-first)
+  isar: ^3.1.0
+  isar_flutter_libs: ^3.1.0
+  shared_preferences: ^2.2.0
+
+  # CRDT for sync
+  y_crdt: ^0.0.1
+
+  # Editor
+  flutter_quill: ^11.5.0
+
+  # Authentication
+  flutter_secure_storage: ^10.0.0
+  jwt_decoder: ^2.0.0
+
+  # File handling
+  file_picker: ^10.3.8
+  path_provider: ^2.1.0
+  image_picker: ^1.0.0
+
+  # Utilities
+  uuid: ^4.2.0
+  intl: ^0.20.2
+  json_annotation: ^4.9.0
+  mime: ^2.0.0
+
+  # Icons
+  cupertino_icons: ^1.0.0
+
+  # Theming
+  flex_color_scheme: ^8.4.0
+  google_fonts: ^7.0.0
+
+  # Markdown support
+  markdown: ^7.2.0
+
+  # URL handling
+  url_launcher: ^6.2.0
+
+  # Device info
+  device_info_plus: ^12.3.0
+
+  # Connectivity
+  connectivity_plus: ^7.0.0
+
+  # Markdown rendering
+  flutter_markdown: ^0.7.0
+
+  # Diff for version comparison
+  diff_match_patch: ^0.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  build_runner: ^2.4.0
+  riverpod_generator: ^2.3.0
+  isar_generator: ^3.1.0
+  json_serializable: ^6.8.0
+  mocktail: ^1.0.0
+  golden_toolkit: ^0.15.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/fonts/
+
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700

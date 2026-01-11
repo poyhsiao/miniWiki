@@ -1,0 +1,133 @@
+[workspace]
+members = [
+    "services/auth_service",
+    "services/document_service",
+    "services/sync_service",
+    "services/file_service",
+    "services/websocket_service",
+    "shared/database",
+    "shared/models",
+    "shared/errors",
+]
+resolver = "2"
+
+# Package metadata
+[package]
+name = "miniwiki-backend"
+version = "0.1.0"
+edition = "2021"
+description = "miniWiki Knowledge Management Platform - Rust Backend Services"
+authors = ["miniWiki Team"]
+
+# Workspace-wide dependencies
+[dependencies]
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+async-trait = "0.1"
+futures-util = "0.3"
+
+# Web framework
+actix-web = "4.5"
+actix-cors = "0.7"
+actix-files = "0.6"
+
+# WebSocket support
+actix-web-actors = "4.3"
+websocket = "0.24"
+
+# Database
+sqlx = { version = "0.7", features = [
+    "postgres",
+    "runtime-tokio-native-tls",
+    "uuid",
+    "chrono",
+    "json",
+] }
+bb8 = "0.8"
+
+# Redis
+redis = { version = "0.25", features = ["tokio-native-tls-comp"] }
+
+# Authentication & Security
+jsonwebtoken = "9.3"
+bcrypt = "0.15"
+password-hash = "0.6.0-rc.7"
+rand = "0.8"
+ring = "0.17"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_bytes = "0.11"
+
+# Validation
+validator = { version = "0.18", features = ["derive"] }
+email_address = "0.2"
+
+# Configuration
+config = "0.14"
+dotenv = "0.15"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-actix-web = "0.7"
+log = "0.4"
+
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# UUID
+uuid = { version = "1.7", features = ["v4", "serde"] }
+
+# DateTime
+chrono = { version = "0.4", features = ["serde"] }
+
+# HTTP client (for external services)
+reqwest = { version = "0.11", features = ["json", "native-tls"] }
+
+# Rate limiting
+governor = "0.6"
+
+# Encryption
+aes-gcm = "0.10"
+
+# MinIO / S3
+aws-config = "1.1"
+aws-sdk-s3 = "1.35"
+aws-types = "1.1"
+
+# URL parsing
+url = "2.5"
+
+# MIME types
+mime = "0.3"
+
+# Internal shared crates
+shared_errors = { path = "./shared/errors" }
+shared_models = { path = "./shared/models" }
+shared_database = { path = "./shared/database" }
+
+[dev-dependencies]
+sqlx-cli = { version = "0.7", features = ["postgres"] }
+actix-rt = "2.9"
+tokio-test = "0.4"
+rstest = "0.18"
+fake = "2.9"
+quickcheck = "1.0"
+quickcheck_macros = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+debug = true
+split-debuginfo = "unpack"
+
+[patch.crates-io]
+# Patches if needed

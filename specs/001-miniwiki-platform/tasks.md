@@ -30,16 +30,16 @@ Based on `plan.md` structure:
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Initialize Rust workspace in backend/ with Cargo.toml and members
-- [ ] T002 Create backend/services/ structure: auth_service/, document_service/, sync_service/, file_service/, websocket_service/
-- [ ] T003 Create flutter_app/ structure per plan.md (main.dart, core/, domain/, data/, presentation/, services/)
-- [ ] T004 Configure backend/Cargo.toml with actix-web, sqlx, tokio, serde dependencies
-- [ ] T005 [P] Configure rustfmt and clippy for backend code quality
-- [ ] T006 [P] Configure flutter_app/pubspec.yaml with riverpod, dio, isar, yjs, flutter_quill dependencies
-- [ ] T007 [P] Configure flutter_lints and analysis_options.yaml for Dart code quality
-- [ ] T008 Create docker-compose.yml with postgres:14, redis:6, minio:latest services
-- [ ] T009 Create backend/migrations/001_initial_schema.sql with all tables from data-model.md
-- [ ] T010 Create .env.example with all required environment variables per quickstart.md
+- [x] T001 Initialize Rust workspace in backend/ with Cargo.toml and members
+- [x] T002 Create backend/services/ structure: auth_service/, document_service/, sync_service/, file_service/, websocket_service/
+- [x] T003 Create flutter_app/ structure per plan.md (main.dart, core/, domain/, data/, presentation/, services/)
+- [x] T004 Configure backend/Cargo.toml with actix-web, sqlx, tokio, serde dependencies
+- [x] T005 [P] Configure rustfmt and clippy for backend code quality
+- [x] T006 [P] Configure flutter_app/pubspec.yaml with riverpod, dio, isar, y_crdt, flutter_quill dependencies
+- [x] T007 [P] Configure flutter_lints and analysis_options.yaml for Dart code quality
+- [x] T008 Create docker-compose.yml with postgres:14, redis:6, minio:latest services
+- [x] T009 Create backend/migrations/001_initial_schema.sql with all tables from data-model.md
+- [x] T010 Create .env.example with all required environment variables per quickstart.md
 
 ---
 
@@ -51,49 +51,49 @@ Based on `plan.md` structure:
 
 ### Shared Infrastructure
 
-- [ ] T011 Create backend/shared/errors/error_types.rs with custom error types
-- [ ] T012 Create backend/shared/errors/mod.rs with error handling macros
-- [ ] T013 [P] Create backend/shared/database/db.rs with sqlx connection pool
-- [ ] T014 [P] Create backend/shared/database/migrations.rs with migration runner
-- [ ] T015 Create backend/shared/models/mod.rs with shared model types
-- [ ] T016 [P] Create backend/shared/config/mod.rs with environment configuration loading
+- [x] T011 Create backend/shared/errors/error_types.rs with custom error types
+- [x] T012 Create backend/shared/errors/mod.rs with error handling macros
+- [x] T013 [P] Create backend/shared/database/db.rs with sqlx connection pool
+- [x] T014 [P] Create backend/shared/database/migrations.rs with migration runner
+- [x] T015 Create backend/shared/models/mod.rs with shared model types
+- [x] T016 [P] Create backend/shared/config/mod.rs with environment configuration loading
 
 ### Authentication Framework
 
-- [ ] T017 Create backend/services/auth_service/src/lib.rs with service structure
-- [ ] T018 Create backend/services/auth_service/src/handlers.rs with auth HTTP handlers
-- [ ] T019 Create backend/services/auth_service/src/jwt.rs with JWT token generation/validation
-- [ ] T020 Create backend/services/auth_service/src/password.rs with bcrypt password hashing
-- [ ] T021 Create backend/services/auth_service/src/models.rs with auth-related models
-- [ ] T022 [P] Create backend/services/auth_service/src/repository.rs with database operations
-- [ ] T023 Create flutter_app/lib/core/config/ with environment configuration providers
-- [ ] T024 Create flutter_app/lib/services/auth_service.dart with authentication logic
-- [ ] T025 [P] Create flutter_app/lib/domain/repositories/auth_repository.dart interface
-- [ ] T026 Create flutter_app/lib/data/repositories/auth_repository_impl.dart with API implementation
+- [x] T017 Create backend/services/auth_service/src/lib.rs with service structure
+- [x] T018 Create backend/services/auth_service/src/handlers.rs with auth HTTP handlers
+- [x] T019 Create backend/services/auth_service/src/jwt.rs with JWT token generation/validation
+- [x] T020 Create backend/services/auth_service/src/password.rs with bcrypt password hashing
+- [x] T021 Create backend/services/auth_service/src/models.rs with auth-related models
+- [x] T022 [P] Create backend/services/auth_service/src/repository.rs with database operations
+- [x] T023 Create flutter_app/lib/core/config/ with environment configuration providers
+- [x] T024 Create flutter_app/lib/services/auth_service.dart with authentication logic
+- [x] T025 [P] Create flutter_app/lib/domain/repositories/auth_repository.dart interface
+- [x] T026 Create flutter_app/lib/data/repositories/auth_repository_impl.dart with API implementation
 
 ### Database Schema
 
 - [ ] T027 Run backend/migrations/001_initial_schema.sql to create all tables
 - [ ] T028 Create backend/services/document_service/migrations/ for document-related tables
-- [ ] T029 Create flutter_app/lib/data/datasources/isar_datasource.dart for offline storage
-- [ ] T030 [P] Create flutter_app/lib/data/models/ with Isar entity definitions
+- [x] T029 Create flutter_app/lib/data/datasources/isar_datasource.dart for offline storage
+- [x] T030 [P] Create flutter_app/lib/data/models/ with Isar entity definitions
 
 ### API Foundation
 
-- [ ] T031 Create backend/src/main.rs with Actix-web application factory
-- [ ] T032 Create backend/src/routes/mod.rs with API route structure
-- [ ] T033 Create backend/src/middleware/auth_middleware.rs with JWT verification
-- [ ] T034 Create backend/src/middleware/error_handler.rs with consistent error responses
-- [ ] T035 Create flutter_app/lib/core/network/api_client.dart with Dio configuration
-- [ ] T036 [P] Create flutter_app/lib/core/network/network_error.dart with error handling
+- [x] T031 Create backend/src/main.rs with Actix-web application factory
+- [x] T032 Create backend/src/routes/mod.rs with API route structure
+- [x] T033 Create backend/src/middleware/auth_middleware.rs with JWT verification
+- [x] T034 Create backend/src/middleware/error_handler.rs with consistent error responses
+- [x] T035 Create flutter_app/lib/core/network/api_client.dart with Dio configuration
+- [x] T036 [P] Create flutter_app/lib/core/network/network_error.dart with error handling
 
 ### CRDT Foundation
 
-- [ ] T037 Create backend/services/sync_service/src/lib.rs with sync service structure
-- [ ] T038 Create backend/services/sync_service/src/yjs_handler.rs with Yjs document handling
+- [x] T037 Create backend/services/sync_service/src/lib.rs with sync service structure
+- [ ] T038 Create backend/services/sync_service/src/yjs_handler.rs with Yjs/Dart CRDT document handling
 - [ ] T039 Create backend/services/sync_service/src/state_vector.rs with state vector operations
-- [ ] T040 Create flutter_app/lib/services/crdt_service.dart with Yjs integration
-- [ ] T041 Create flutter_app/lib/services/sync_service.dart with sync orchestration
+- [x] T040 Create flutter_app/lib/services/crdt_service.dart with y_crdt integration
+- [x] T041 Create flutter_app/lib/services/sync_service.dart with sync orchestration
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -194,7 +194,7 @@ Based on `plan.md` structure:
 ### Integration for User Story 1
 
 - [ ] T095 [US1] Verify document CRUD endpoints work with PostgreSQL
-- [ ] T096 [US1] Verify Yjs state is correctly stored and retrieved
+- [ ] T096 [US1] Verify Yjs state (via y_crdt) is correctly stored and retrieved
 - [ ] T097 [US1] Test document creation → editing → save → retrieve flow
 - [ ] T098 [US1] Verify flutter_app editor integrates with document_service correctly
 
@@ -316,7 +316,7 @@ Based on `plan.md` structure:
 - [ ] T155 [US4] Create backend/services/websocket_service/src/handlers.rs with WebSocket handlers
 - [ ] T156 [US4] Create backend/services/websocket_service/src/presence.rs with presence tracking
 - [ ] T157 [US4] Implement WebSocket endpoint at /ws/documents/{documentId}
-- [ ] T158 [US4] Implement Yjs sync protocol over WebSocket
+- [ ] T158 [US4] Implement Yjs sync protocol over WebSocket (using y_crdt)
 - [ ] T159 [US4] Implement cursor position broadcasting
 - [ ] T160 [US4] Implement Redis pub/sub for multi-instance presence
 

@@ -5,14 +5,14 @@
 
 ## Summary
 
-miniWiki is a self-hosted, Notion-like knowledge management platform built with Flutter for cross-platform support (Web, Desktop, Mobile) and Rust backend services. The system follows an offline-first architecture with CRDT-based synchronization using Yjs, enabling real-time collaboration with automatic conflict resolution. The platform supports document creation, organization, offline access, real-time collaboration, version history, authentication, RBAC, document export, and full-text search.
+miniWiki is a self-hosted, Notion-like knowledge management platform built with Flutter for cross-platform support (Web, Desktop, Mobile) and Rust backend services. The system follows an offline-first architecture with CRDT-based synchronization using y_crdt (Yjs Dart port), enabling real-time collaboration with automatic conflict resolution. The platform supports document creation, organization, offline access, real-time collaboration, version history, authentication, RBAC, document export, and full-text search.
 
-**Technical Approach**: Flutter frontend with Isar for offline storage and Yjs CRDT for sync. Rust backend with Actix-web for API services. PostgreSQL for persistent storage, Redis for caching and sessions, MinIO for file storage. All services containerized with Docker Compose (MVP) and Kubernetes (production).
+**Technical Approach**: Flutter frontend with Isar for offline storage and y_crdt (Yjs Dart port) for CRDT sync. Rust backend with Actix-web for API services. PostgreSQL for persistent storage, Redis for caching and sessions, MinIO for file storage. All services containerized with Docker Compose (MVP) and Kubernetes (production).
 
 ## Technical Context
 
 **Language/Version**: Dart 3.x (Flutter 3.22+), Rust 1.75+  
-**Primary Dependencies**: Riverpod (state management), Isar (offline DB), Dio (HTTP), Actix-web (backend), sqlx (Rust DB), Yjs (CRDT sync), Flutter Quill (editor)  
+**Primary Dependencies**: Riverpod (state management), Isar (offline DB), Dio (HTTP), Actix-web (backend), sqlx (Rust DB), y_crdt (Dart CRDT sync), Flutter Quill (editor)  
 **Storage**: PostgreSQL 14+ (primary DB), Isar (Flutter offline), Redis 6+ (cache/sessions), MinIO (file storage)  
 **Testing**: flutter_test, cargo test, Playwright (E2E)  
 **Target Platform**: Web, Desktop (Windows/macOS/Linux), Mobile (iOS/Android)  
@@ -27,7 +27,7 @@ miniWiki is a self-hosted, Notion-like knowledge management platform built with 
 
 | Gate | Status | Notes |
 |------|--------|-------|
-| Offline-First Design | ✅ PASS | CRDT with Yjs, Isar offline storage |
+| Offline-First Design | ✅ PASS | CRDT with y_crdt (Yjs), Isar offline storage |
 | TDD Mandatory | ✅ PASS | Tests required for all features (>80% coverage) |
 | Clean Code (<50 line functions) | ✅ PASS | Architecture enforces modular design |
 | Security-First (JWT, RBAC, encryption) | ✅ PASS | JWT auth, RBAC, TLS 1.3, AES-256 |
@@ -100,7 +100,7 @@ backend/
 ├── services/
 │   ├── auth_service/               # Authentication service
 │   ├── document_service/           # Document CRUD
-│   ├── sync_service/               # Yjs sync service
+│   ├── sync_service/               # CRDT sync service (y_crdt)
 │   ├── file_service/              # File storage service
 │   └── websocket_service/          # WebSocket for presence
 ├── shared/
@@ -143,7 +143,7 @@ nginx/
 - Alternatives: Go (less type safety), Node.js (performance concerns), Python (too slow)
 
 **Yjs CRDT for Sync**:
-- Decision: Yjs for document sync and conflict resolution
+- Decision: y_crdt (Yjs Dart port) for document sync and conflict resolution
 - Rationale: Automatic conflict resolution, offline-first, sub-millisecond latency, proven by Notion
 - Alternatives: OT (complex), Last-write-wins (data loss), Manual merge (blocking)
 

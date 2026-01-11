@@ -1,0 +1,1 @@
+cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/Users/kimhsiao/Templates/git/kimhsiao/miniWiki/backend/target/debug/build/mime_guess-dcc1eb6415714629/out/mime_types_generated.rs
