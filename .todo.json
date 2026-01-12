@@ -1,0 +1,31 @@
+{
+  "todos": [
+    {"id": "T042", "content": "[US6] Create backend/tests/auth/register_test.rs for registration endpoint", "status": "completed", "priority": "high"},
+    {"id": "T043", "content": "[US6] Create backend/tests/auth/login_test.rs for login endpoint", "status": "completed", "priority": "high"},
+    {"id": "T044", "content": "[US6] Create backend/tests/auth/password_reset_test.rs for password reset", "status": "completed", "priority": "high"},
+    {"id": "T045", "content": "[US6] Create flutter_app/test/auth_service_test.dart for auth service unit tests", "status": "completed", "priority": "high"},
+    {"id": "T046", "content": "[US6] Create flutter_app/test/auth_repository_test.dart for repository integration tests", "status": "completed", "priority": "high"},
+    {"id": "T047", "content": "[US6] Create users table migration in backend/migrations/002_users.sql", "status": "completed", "priority": "high"},
+    {"id": "T048", "content": "[US6] Create backend/services/auth_service/src/register.rs with registration handler", "status": "completed", "priority": "high"},
+    {"id": "T049", "content": "[US6] Create backend/services/auth_service/src/login.rs with login handler", "status": "completed", "priority": "high"},
+    {"id": "T050", "content": "[US6] Create backend/services/auth_service/src/logout.rs with logout handler", "status": "completed", "priority": "high"},
+    {"id": "T051", "content": "[US6] Create backend/services/auth_service/src/password_reset.rs with password reset handlers", "status": "completed", "priority": "high"},
+    {"id": "T052", "content": "[US6] Create backend/services/auth_service/src/email_verification.rs with email verification", "id": "T052", "priority": "high", "status": "completed", "pending"},
+    {"id": "T053", "content": "[US6] Add refresh token endpoints in backend/services/auth_service/src/refresh.rs", "id": "T053", "priority": "high", "status": "pending"},
+    {"id": "T054", "content": "[US6] Add session management endpoints in backend/services/auth_service/src/sessions.rs", "id": "T054", "priority": "high", "status": "pending"},
+    {"id": "T055", "content": "[US6] Add rate limiting middleware for auth endpoints", "id": "T055", "priority": "high", "status": "pending"},
+    {"id": "T056", "content": "[US6] Create flutter_app/lib/presentation/pages/auth/login_page.dart", "id": "T056", "priority": "high", "status": "pending"},
+    {"id": "T057", "content": "[US6] Create flutter_app/lib/presentation/pages/auth/register_page.dart", "id": "T057", "priority": "high", "status": "pending"},
+    {"id": "T058", "content": "[US6] Create flutter_app/lib/presentation/pages/auth/password_reset_page.dart", "id": "T058", "priority": "high", "status": "pending"},
+    {"id": "T059", "content": "[US6] Create flutter_app/lib/presentation/providers/auth_provider.dart with Riverpod state", "id": "T059", "priority": "high", "status": "pending"},
+    {"id": "T060", "content": "[US6] Create flutter_app/lib/presentation/dialogs/email_verification_dialog.dart", "id": "T060", "priority": "high", "status": "pending"},
+    {"id": "T061", "content": "[US6] Implement login form validation and submission in login_page.dart", "id": "T061", "priority": "high", "status": "pending"},
+    {"id": "T062", "content": "[US6] Implement registration form validation and submission in register_page.dart", "id": "T062", "priority": "high", "status": "pending"},
+    {"id": "T063", "content": "[US6] Connect auth_provider to auth_service for authentication flow", "id": "T063", "priority": "high", "status": "pending"},
+    {"id": "T064", "content": "[US6] Verify auth endpoints work with PostgreSQL via integration test", "id": "T064", "priority": "medium", "status": "pending"},
+    {"id": "T065", "content": "[US6] Verify JWT tokens are correctly generated and validated", "id": "T065", "priority": "medium", "status": "pending"},
+    {"id": "T066", "content": "[US6] Verify refresh token rotation works correctly", "id": "T066", "priority": "medium", "status": "pending"},
+    {"id": "T067", "content": "[US6] Test complete login → document list → logout flow", "id": "T067", "priority": "medium", "status": "pending"},
+    {"id": "T068", "content": "[US6] Verify flutter_app login page integrates with auth_service correctly", "id": "T068", "priority": "medium", "status": "pending"}
+  ]
+}

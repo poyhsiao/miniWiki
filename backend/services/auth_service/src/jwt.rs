@@ -43,7 +43,7 @@ impl JwtConfig {
 }
 
 pub struct JwtService {
-    config: JwtConfig,
+    pub config: JwtConfig,
 }
 
 impl JwtService {
