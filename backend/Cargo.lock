@@ -3062,6 +3062,7 @@ dependencies = [
  "bcrypt",
  "chrono",
  "config",
+ "document_service",
  "dotenv",
  "email_address",
  "fake",
