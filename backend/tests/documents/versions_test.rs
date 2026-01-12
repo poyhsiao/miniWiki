@@ -18,7 +18,6 @@ async fn test_create_version_success() {
     let document = create_test_document(&app, &space.id, None).await;
 
     let request = CreateVersionRequest {
-        document_id: document.id,
         content: serde_json::json!({
             "type": "Y.Doc",
             "update": "version1_update",
@@ -39,8 +38,10 @@ async fn test_create_version_success() {
 
     assert!(response.status().is_success());
     let version: serde_json::Value = response.json().await;
-    assert_eq!(version["version_number"], 1);
-    assert_eq!(version["change_summary"], "First edit");
+    assert_eq!(version["data"]["version_number"], 1);
+    assert_eq!(version["data"]["change_summary"], "First edit");
+    assert_eq!(version["success"], true);
+    assert!(version["error"].is_null());
 }
 
 #[tokio::test]
@@ -53,7 +54,6 @@ async fn test_create_version_auto_increments() {
     // Create multiple versions
     for i in 1..=3 {
         let request = CreateVersionRequest {
-            document_id: document.id,
             content: serde_json::json!({}),
             title: format!("Title v{}", i),
             change_summary: Some(format!("Version {}", i)),
@@ -67,7 +67,9 @@ async fn test_create_version_auto_increments() {
 
         assert!(response.status().is_success());
         let version: serde_json::Value = response.json().await;
-        assert_eq!(version["version_number"], i);
+        assert_eq!(version["data"]["version_number"], i);
+        assert_eq!(version["success"], true);
+        assert!(version["error"].is_null());
     }
 }
 
@@ -81,7 +83,6 @@ async fn test_list_document_versions() {
     // Create some versions
     for i in 1..=5 {
         let request = CreateVersionRequest {
-            document_id: document.id,
             content: serde_json::json!({}),
             title: format!("Version {}", i),
             change_summary: None,
@@ -101,8 +102,10 @@ async fn test_list_document_versions() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert!(result["versions"].is_array());
-    assert_eq!(result["versions"].as_array().unwrap().len(), 5);
+    assert!(result["data"]["versions"].is_array());
+    assert_eq!(result["data"]["versions"].as_array().unwrap().len(), 5);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -115,7 +118,6 @@ async fn test_get_specific_version() {
     // Create versions
     for i in 1..=3 {
         let request = CreateVersionRequest {
-            document_id: document.id,
             content: serde_json::json!({"version": i}),
             title: format!("Version {}", i),
             change_summary: None,
@@ -136,8 +138,10 @@ async fn test_get_specific_version() {
 
     assert!(response.status().is_success());
     let version: serde_json::Value = response.json().await;
-    assert_eq!(version["version_number"], 2);
-    assert_eq!(version["title"], "Version 2");
+    assert_eq!(version["data"]["version_number"], 2);
+    assert_eq!(version["data"]["title"], "Version 2");
+    assert_eq!(version["success"], true);
+    assert!(version["error"].is_null());
 }
 
 #[tokio::test]
@@ -164,7 +168,6 @@ async fn test_restore_version() {
 
     // Create initial version
     let request = CreateVersionRequest {
-        document_id: document.id,
         content: serde_json::json!({"content": "original"}),
         title: "Original Title".to_string(),
         change_summary: Some("Original".to_string()),
@@ -195,7 +198,9 @@ async fn test_restore_version() {
 
     assert!(restore_response.status().is_success());
     let restored: serde_json::Value = restore_response.json().await;
-    assert_eq!(restored["title"], "Original Title");
+    assert_eq!(restored["data"]["title"], "Original Title");
+    assert_eq!(restored["success"], true);
+    assert!(restored["error"].is_null());
 
     // Verify current document state
     let get_response = app
@@ -205,7 +210,7 @@ async fn test_restore_version() {
 
     assert!(get_response.status().is_success());
     let current: serde_json::Value = get_response.json().await;
-    assert_eq!(current["title"], "Original Title");
+    assert_eq!(current["data"]["title"], "Original Title");
 }
 
 #[tokio::test]
@@ -218,7 +223,6 @@ async fn test_version_pagination() {
     // Create 15 versions
     for i in 1..=15 {
         let request = CreateVersionRequest {
-            document_id: document.id,
             content: serde_json::json!({}),
             title: format!("Version {}", i),
             change_summary: None,
@@ -242,9 +246,11 @@ async fn test_version_pagination() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert_eq!(result["versions"].as_array().unwrap().len(), 5);
-    assert_eq!(result["total"], 15);
-    assert_eq!(result["limit"], 5);
+    assert_eq!(result["data"]["versions"].as_array().unwrap().len(), 5);
+    assert_eq!(result["data"]["total"], 15);
+    assert_eq!(result["data"]["limit"], 5);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -256,7 +262,6 @@ async fn test_version_diff() {
 
     // Create version 1
     let request1 = CreateVersionRequest {
-        document_id: document.id,
         content: serde_json::json!({"text": "Hello"}),
         title: "V1".to_string(),
         change_summary: None,
@@ -270,7 +275,6 @@ async fn test_version_diff() {
 
     // Create version 2
     let request2 = CreateVersionRequest {
-        document_id: document.id,
         content: serde_json::json!({"text": "Hello World"}),
         title: "V2".to_string(),
         change_summary: None,
@@ -306,7 +310,6 @@ async fn test_version_retention_enforced() {
     // Create many versions (more than retention limit)
     for i in 1..=50 {
         let request = CreateVersionRequest {
-            document_id: document.id,
             content: serde_json::json!({}),
             title: format!("Version {}", i),
             change_summary: None,
@@ -333,9 +336,11 @@ async fn test_version_retention_enforced() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    let count = result["versions"].as_array().unwrap().len();
+    let count = result["data"]["versions"].as_array().unwrap().len();
 
     // After retention, should have fewer versions (old ones cleaned up)
     // This is an eventually consistent check
     assert!(count <= 45); // Allow some buffer
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }

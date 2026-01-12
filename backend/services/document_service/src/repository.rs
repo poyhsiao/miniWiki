@@ -68,6 +68,7 @@ impl DocumentRepository {
         };
         let created_by_uuid = Uuid::parse_str(created_by).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let content_value = content.unwrap_or_else(|| serde_json::json!({}));
+        let content_size = content_value.to_string().len() as i32;
 
         let document = sqlx::query_as!(
             DocumentRow,
@@ -77,7 +78,7 @@ impl DocumentRepository {
                 content_size, is_archived, created_by, last_edited_by
             ) VALUES (
                 gen_random_uuid(), $1, $2, $3, $4, $5,
-                0, false, $6, $6
+                $6, false, $7, $7
             )
             RETURNING *
             "#,
@@ -86,6 +87,7 @@ impl DocumentRepository {
             title,
             icon,
             content_value,
+            content_size,
             created_by_uuid
         )
         .fetch_one(&self.pool)
@@ -356,6 +358,20 @@ impl DocumentRepository {
     ) -> Result<Option<DocumentRow>, sqlx::Error> {
         let doc_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let restorer_uuid = Uuid::parse_str(restored_by).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        // First, check if the version exists
+        let version_exists = sqlx::query_as!(
+            DocumentVersionRow,
+            r#"SELECT * FROM document_versions WHERE document_id = $1 AND version_number = $2 LIMIT 1"#,
+            doc_uuid,
+            version_number
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if version_exists.is_none() {
+            return Ok(None);
+        }
 
         // Call the SQL function for version restore
         sqlx::query!(

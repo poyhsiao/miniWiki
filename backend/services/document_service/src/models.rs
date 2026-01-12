@@ -38,8 +38,6 @@ pub struct ListDocumentsQuery {
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateVersionRequest {
-    pub document_id: String,
-
     pub content: serde_json::Value,
 
     #[validate(length(min = 1, max = 200))]

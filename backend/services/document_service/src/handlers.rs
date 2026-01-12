@@ -1,8 +1,43 @@
 use actix_web::{web, Responder, HttpResponse};
+use tracing::error;
 use crate::models::*;
 use crate::repository::DocumentRepository;
 use shared_errors::AppError;
 use validator::Validate;
+
+// Helper for access check with proper error handling
+// Returns Ok(true) if access granted, Ok(false) if denied, Err for DB errors
+async fn check_document_access(
+    repo: &DocumentRepository,
+    document_id: &str,
+    user_id: &str,
+) -> Result<bool, AppError> {
+    match repo.check_document_access(document_id, user_id).await {
+        Ok(true) => Ok(true),
+        Ok(false) => Ok(false),
+        Err(e) => {
+            error!("Database error checking document access: {:?}", e);
+            Err(AppError::DatabaseError(e))
+        }
+    }
+}
+
+// Helper for space access check with proper error handling
+// Returns Ok(true) if access granted, Ok(false) if denied, Err for DB errors
+async fn check_space_access(
+    repo: &DocumentRepository,
+    space_id: &str,
+    user_id: &str,
+) -> Result<bool, AppError> {
+    match repo.check_space_access(space_id, user_id).await {
+        Ok(true) => Ok(true),
+        Ok(false) => Ok(false),
+        Err(e) => {
+            error!("Database error checking space access: {:?}", e);
+            Err(AppError::DatabaseError(e))
+        }
+    }
+}
 
 // Helper to convert DocumentRow to DocumentResponse
 fn document_row_to_response(row: &crate::repository::DocumentRow) -> DocumentResponse {
@@ -67,9 +102,16 @@ pub async fn create_document(
     };
 
     // Check space access
-    if !repo.check_space_access(&space_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+    match check_space_access(&repo, &space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     // Create document
@@ -90,8 +132,9 @@ pub async fn create_document(
                 }))
         }
         Err(e) => {
+            error!("Database error creating document: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -110,9 +153,16 @@ pub async fn get_document(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     match repo.get_by_id(&document_id).await {
@@ -125,8 +175,9 @@ pub async fn get_document(
                 .json(ApiResponse::<()>::error("DOC_NOT_FOUND", "Document not found"))
         }
         Err(e) => {
+            error!("Database error getting document: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -151,9 +202,16 @@ pub async fn update_document(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     match repo.update(
@@ -172,8 +230,9 @@ pub async fn update_document(
                 .json(ApiResponse::<()>::error("DOC_NOT_FOUND", "Document not found or archived"))
         }
         Err(e) => {
+            error!("Database error updating document: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -192,9 +251,16 @@ pub async fn delete_document(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     match repo.delete(&document_id).await {
@@ -207,8 +273,9 @@ pub async fn delete_document(
                 .json(ApiResponse::<()>::error("DOC_NOT_FOUND", "Document not found or already archived"))
         }
         Err(e) => {
+            error!("Database error deleting document: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -228,9 +295,16 @@ pub async fn list_documents(
     };
 
     // Check space access
-    if !repo.check_space_access(&space_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+    match check_space_access(&repo, &space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
@@ -247,8 +321,9 @@ pub async fn list_documents(
                 }))
         }
         Err(e) => {
+            error!("Database error listing documents: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -267,9 +342,16 @@ pub async fn get_document_children(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     match repo.get_children(&document_id).await {
@@ -281,8 +363,9 @@ pub async fn get_document_children(
                 }))
         }
         Err(e) => {
+            error!("Database error getting document children: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -301,9 +384,16 @@ pub async fn get_document_path(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     match repo.get_document_path(&document_id).await {
@@ -320,8 +410,9 @@ pub async fn get_document_path(
                 }))
         }
         Err(e) => {
+            error!("Database error getting document path: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -346,9 +437,16 @@ pub async fn create_version(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     match repo.create_version(
@@ -368,8 +466,9 @@ pub async fn create_version(
                 }))
         }
         Err(e) => {
+            error!("Database error creating version: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -389,9 +488,16 @@ pub async fn list_versions(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden()
-            .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
     }
 
     let limit = query.limit.unwrap_or(20).clamp(1, 100);
@@ -408,8 +514,9 @@ pub async fn list_versions(
                 }))
         }
         Err(e) => {
+            error!("Database error listing versions: {:?}", e);
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -442,9 +549,9 @@ pub async fn get_version(
             HttpResponse::NotFound()
                 .json(ApiResponse::<()>::error("VERSION_NOT_FOUND", "Version not found"))
         }
-        Err(e) => {
+        Err(_) => {
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -481,9 +588,9 @@ pub async fn restore_version(
             HttpResponse::NotFound()
                 .json(ApiResponse::<()>::error("VERSION_NOT_FOUND", "Version not found"))
         }
-        Err(e) => {
+        Err(_) => {
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }
@@ -540,9 +647,9 @@ pub async fn get_version_diff(
             HttpResponse::NotFound()
                 .json(ApiResponse::<()>::error("VERSION_NOT_FOUND", "One or both versions not found"))
         }
-        Err(e) => {
+        Err(_) => {
             HttpResponse::InternalServerError()
-                .json(ApiResponse::<()>::error("DATABASE_ERROR", &e.to_string()))
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }
     }
 }

@@ -41,9 +41,11 @@ async fn test_create_document_success() {
 
     assert!(response.status().is_success());
     let document: serde_json::Value = response.json().await;
-    assert_eq!(document["title"], "Test Document");
-    assert_eq!(document["space_id"], space.id.to_string());
-    assert!(document["id"].is_string());
+    assert_eq!(document["data"]["title"], "Test Document");
+    assert_eq!(document["data"]["space_id"], space.id.to_string());
+    assert!(document["data"]["id"].is_string());
+    assert_eq!(document["success"], true);
+    assert!(document["error"].is_null());
 }
 
 #[tokio::test]
@@ -69,7 +71,9 @@ async fn test_create_document_with_parent() {
 
     assert!(response.status().is_success());
     let document: serde_json::Value = response.json().await;
-    assert_eq!(document["parent_id"], parent_doc.id.to_string());
+    assert_eq!(document["data"]["parent_id"], parent_doc.id.to_string());
+    assert_eq!(document["success"], true);
+    assert!(document["error"].is_null());
 }
 
 #[tokio::test]
@@ -109,8 +113,10 @@ async fn test_get_document_success() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert_eq!(result["id"], document.id.to_string());
-    assert_eq!(result["title"], document.title);
+    assert_eq!(result["data"]["id"], document.id.to_string());
+    assert_eq!(result["data"]["title"], document.title);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -147,7 +153,9 @@ async fn test_update_document_title() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert_eq!(result["title"], "Updated Title");
+    assert_eq!(result["data"]["title"], "Updated Title");
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -203,7 +211,9 @@ async fn test_delete_document_soft_delete() {
 
     assert!(get_response.status().is_success());
     let result: serde_json::Value = get_response.json().await;
-    assert_eq!(result["is_archived"], true);
+    assert_eq!(result["data"]["is_archived"], true);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -224,8 +234,10 @@ async fn test_list_documents_in_space() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert!(result["documents"].is_array());
-    assert_eq!(result["documents"].as_array().unwrap().len(), 3);
+    assert!(result["data"]["documents"].is_array());
+    assert_eq!(result["data"]["documents"].as_array().unwrap().len(), 3);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -246,10 +258,12 @@ async fn test_list_documents_with_pagination() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert_eq!(result["documents"].as_array().unwrap().len(), 5);
-    assert_eq!(result["total"], 10);
-    assert_eq!(result["limit"], 5);
-    assert_eq!(result["offset"], 0);
+    assert_eq!(result["data"]["documents"].as_array().unwrap().len(), 5);
+    assert_eq!(result["data"]["total"], 10);
+    assert_eq!(result["data"]["limit"], 5);
+    assert_eq!(result["data"]["offset"], 0);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }
 
 #[tokio::test]
@@ -271,5 +285,7 @@ async fn test_document_hierarchy_nested() {
 
     assert!(response.status().is_success());
     let result: serde_json::Value = response.json().await;
-    assert_eq!(result["documents"].as_array().unwrap().len(), 1);
+    assert_eq!(result["data"]["documents"].as_array().unwrap().len(), 1);
+    assert_eq!(result["success"], true);
+    assert!(result["error"].is_null());
 }

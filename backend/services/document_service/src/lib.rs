@@ -18,7 +18,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             // Document-scoped endpoints
             .service(
                 web::scope("/documents")
-                    .route("", web::get().to(get_document)) // GET /documents/{documentId} - requires path modification
                     .route("/{documentId}", web::get().to(get_document))
                     .route("/{documentId}", web::patch().to(update_document))
                     .route("/{documentId}", web::delete().to(delete_document))
