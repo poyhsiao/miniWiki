@@ -18,6 +18,7 @@ class DocumentEntity {
 
   String? icon;
 
+  @ignore
   Map<String, dynamic> content = {};
 
   int contentSize = 0;

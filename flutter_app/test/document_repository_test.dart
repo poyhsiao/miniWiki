@@ -16,7 +16,7 @@ void main() {
   group('DocumentRepository Tests', () {
     late ApiClient apiClient;
     late IsarDatabase isarDatabase;
-    late DocumentRepository documentRepository;
+    late DocumentRepositoryImpl documentRepository;
 
     setUp(() {
       apiClient = MockApiClient();

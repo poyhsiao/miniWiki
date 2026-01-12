@@ -14,6 +14,7 @@ class SyncQueueItem {
 
   String operation = '';
 
+  @ignore
   Map<String, dynamic> data = {};
 
   int retryCount = 0;
