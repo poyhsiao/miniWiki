@@ -126,7 +126,7 @@ xcuserdata/
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
-.pub/
+pub-cache.lock
 build/
 !build/ios/Classes/
 pubspec.lock
