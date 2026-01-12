@@ -111,42 +111,42 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 6
 
-- [ ] T042 [P] [US6] Create backend/tests/auth/register_test.rs for registration endpoint
-- [ ] T043 [P] [US6] Create backend/tests/auth/login_test.rs for login endpoint
-- [ ] T044 [P] [US6] Create backend/tests/auth/password_reset_test.rs for password reset
-- [ ] T045 [P] [US6] Create flutter_app/test/auth_service_test.dart for auth service unit tests
-- [ ] T046 [P] [US6] Create flutter_app/test/auth_repository_test.dart for repository integration tests
+- [x] T042 [P] [US6] Create backend/tests/auth/register_test.rs for registration endpoint
+- [x] T043 [P] [US6] Create backend/tests/auth/login_test.rs for login endpoint
+- [x] T044 [P] [US6] Create backend/tests/auth/password_reset_test.rs for password reset
+- [x] T045 [P] [US6] Create flutter_app/test/auth_service_test.dart for auth service unit tests
+- [x] T046 [P] [US6] Create flutter_app/test/auth_repository_test.dart for repository integration tests
 
 ### Backend Implementation for User Story 6
 
-- [ ] T047 [US6] Create users table migration in backend/migrations/002_users.sql
-- [ ] T048 [US6] Create backend/services/auth_service/src/register.rs with registration handler
-- [ ] T049 [US6] Create backend/services/auth_service/src/login.rs with login handler
-- [ ] T050 [US6] Create backend/services/auth_service/src/logout.rs with logout handler
-- [ ] T051 [US6] Create backend/services/auth_service/src/password_reset.rs with password reset handlers
-- [ ] T052 [US6] Create backend/services/auth_service/src/email_verification.rs with email verification
-- [ ] T053 [US6] Add refresh token endpoints in backend/services/auth_service/src/refresh.rs
-- [ ] T054 [US6] Add session management endpoints in backend/services/auth_service/src/sessions.rs
-- [ ] T055 [US6] Add rate limiting middleware for auth endpoints
+- [x] T047 [US6] Create users table migration in backend/migrations/002_users.sql
+- [x] T048 [US6] Create backend/services/auth_service/src/register.rs with registration handler
+- [x] T049 [US6] Create backend/services/auth_service/src/login.rs with login handler
+- [x] T050 [US6] Create backend/services/auth_service/src/logout.rs with logout handler
+- [x] T051 [US6] Create backend/services/auth_service/src/password_reset.rs with password reset handlers
+- [x] T052 [US6] Create backend/services/auth_service/src/email_verification.rs with email verification
+- [x] T053 [US6] Add refresh token endpoints in backend/services/auth_service/src/refresh.rs
+- [x] T054 [US6] Add session management endpoints in backend/services/auth_service/src/sessions.rs
+- [x] T055 [US6] Add rate limiting middleware for auth endpoints
 
 ### Frontend Implementation for User Story 6
 
-- [ ] T056 [US6] Create flutter_app/lib/presentation/pages/auth/login_page.dart
-- [ ] T057 [US6] Create flutter_app/lib/presentation/pages/auth/register_page.dart
-- [ ] T058 [US6] Create flutter_app/lib/presentation/pages/auth/password_reset_page.dart
-- [ ] T059 [US6] Create flutter_app/lib/presentation/providers/auth_provider.dart with Riverpod state
-- [ ] T060 [US6] Create flutter_app/lib/presentation/dialogs/email_verification_dialog.dart
-- [ ] T061 [US6] Implement login form validation and submission in login_page.dart
-- [ ] T062 [US6] Implement registration form validation and submission in register_page.dart
-- [ ] T063 [US6] Connect auth_provider to auth_service for authentication flow
+- [x] T056 [US6] Create flutter_app/lib/presentation/pages/auth/login_page.dart
+- [x] T057 [US6] Create flutter_app/lib/presentation/pages/auth/register_page.dart
+- [x] T058 [US6] Create flutter_app/lib/presentation/pages/auth/password_reset_page.dart
+- [x] T059 [US6] Create flutter_app/lib/presentation/providers/auth_provider.dart with Riverpod state
+- [x] T060 [US6] Create flutter_app/lib/presentation/dialogs/email_verification_dialog.dart
+- [x] T061 [US6] Implement login form validation and submission in login_page.dart
+- [x] T062 [US6] Implement registration form validation and submission in register_page.dart
+- [x] T063 [US6] Connect auth_provider to auth_service for authentication flow
 
 ### Integration for User Story 6
 
-- [ ] T064 [US6] Verify auth endpoints work with PostgreSQL via integration test
-- [ ] T065 [US6] Verify JWT tokens are correctly generated and validated
-- [ ] T066 [US6] Verify refresh token rotation works correctly
-- [ ] T067 [US6] Test complete login → document list → logout flow
-- [ ] T068 [US6] Verify flutter_app login page integrates with auth_service correctly
+- [x] T064 [US6] Verify auth endpoints work with PostgreSQL via integration test
+- [x] T065 [US6] Verify JWT tokens are correctly generated and validated
+- [x] T066 [US6] Verify refresh token rotation works correctly
+- [x] T067 [US6] Test complete login → document list → logout flow
+- [x] T068 [US6] Verify flutter_app login page integrates with auth_service correctly
 
 **Checkpoint**: User Story 6 complete - authentication system is fully functional
 
@@ -160,10 +160,10 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 1
 
-- [ ] T069 [P] [US1] Create backend/tests/documents/crud_test.rs for document CRUD operations
-- [ ] T070 [P] [US1] Create backend/tests/documents/versions_test.rs for version operations
-- [ ] T071 [P] [US1] Create flutter_app/test/document_service_test.dart for service unit tests
-- [ ] T072 [P] [US1] Create flutter_app/test/document_repository_test.dart for repository tests
+- [x] T069 [P] [US1] Create backend/tests/documents/crud_test.rs for document CRUD operations
+- [x] T070 [P] [US1] Create backend/tests/documents/versions_test.rs for version operations
+- [x] T071 [P] [US1] Create flutter_app/test/document_service_test.dart for service unit tests
+- [x] T072 [P] [US1] Create flutter_app/test/document_repository_test.dart for repository tests
 
 ### Backend Implementation for User Story 1
 
