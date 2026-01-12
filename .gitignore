@@ -126,7 +126,7 @@ xcuserdata/
 .flutter-plugins-dependencies
 .packages
 .pub-cache/
-.pub/
+pub-cache.lock
 build/
 !build/ios/Classes/
 pubspec.lock
@@ -469,3 +469,9 @@ local.properties
 Pods/
 DerivedData/
 build/
+
+# Generated files from build_runner
+*.g.dart
+
+# AI Agent cache
+.sisyphus/
