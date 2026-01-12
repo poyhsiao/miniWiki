@@ -9,15 +9,5 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         }))
     }));
     
-    // Document routes
-    cfg.service(document_service::config);
-    
-    // Auth routes will be mounted here
-    // cfg.service(web::scope("/auth").configure(auth_routes::config));
-    
-    // Space routes will be mounted here
-    // cfg.service(web::scope("/spaces").configure(space_routes::config));
-    
-    // Sync routes will be mounted here
-    // cfg.service(web::scope("/sync").configure(sync_routes::config));
+    cfg.configure(document_service::config);
 }

@@ -1,6 +1,7 @@
 pub mod handlers;
 pub mod models;
 pub mod repository;
+pub mod validation;
 
 use actix_web::web;
 use crate::handlers::*;
