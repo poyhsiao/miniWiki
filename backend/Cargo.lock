@@ -3099,6 +3099,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "miniwiki-backend-tests"
+version = "0.1.0"
+dependencies = [
+ "actix-rt",
+ "actix-web",
+ "anyhow",
+ "chrono",
+ "futures-util",
+ "miniwiki-backend",
+ "serde",
+ "serde_json",
+ "shared_database",
+ "shared_errors",
+ "shared_models",
+ "thiserror 2.0.17",
+ "tokio",
+ "tokio-test",
+ "uuid",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
