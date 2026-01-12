@@ -1,5 +1,6 @@
 use crate::models::{CreateDocumentRequest, UpdateDocumentRequest, CreateVersionRequest};
 use validator::Validate;
+use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DocumentValidationError {
@@ -83,32 +84,9 @@ pub fn validate_create_version(req: &CreateVersionRequest) -> Result<(), Documen
 }
 
 pub fn validate_uuid(uuid: &str) -> Result<(), DocumentValidationError> {
-    if uuid.trim().is_empty() {
-        return Err(DocumentValidationError::InvalidUuid);
-    }
-
-    let uuid_bytes = uuid.as_bytes();
-    if uuid_bytes.len() != 36 {
-        return Err(DocumentValidationError::InvalidUuid);
-    }
-
-    let hyphens = [8, 13, 18, 23];
-    for &pos in &hyphens {
-        if uuid_bytes[pos] != b'-' {
-            return Err(DocumentValidationError::InvalidUuid);
-        }
-    }
-
-    for (i, c) in uuid.bytes().enumerate() {
-        if [8, 13, 18, 23].contains(&(i as u8)) {
-            continue;
-        }
-        if !c.is_ascii_hexdigit() {
-            return Err(DocumentValidationError::InvalidUuid);
-        }
-    }
-
-    Ok(())
+    Uuid::parse_str(uuid)
+        .map(|_| ())
+        .map_err(|_| DocumentValidationError::InvalidUuid)
 }
 
 pub fn validate_version_number(version: i32) -> Result<(), DocumentValidationError> {
