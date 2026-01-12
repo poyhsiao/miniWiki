@@ -9,11 +9,11 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         }))
     }));
     
+    // Document routes
+    cfg.service(document_service::config);
+    
     // Auth routes will be mounted here
     // cfg.service(web::scope("/auth").configure(auth_routes::config));
-    
-    // Document routes will be mounted here
-    // cfg.service(web::scope("/documents").configure(document_routes::config));
     
     // Space routes will be mounted here
     // cfg.service(web::scope("/spaces").configure(space_routes::config));

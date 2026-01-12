@@ -129,6 +129,9 @@ xcuserdata/
 .pub/
 build/
 !build/ios/Classes/
+pubspec.lock
+*.log
+.env*
 
 # Android
 android/.gradle/
@@ -214,6 +217,8 @@ coverage/
 # Rust
 # ===========================================
 target/
+debug/
+release/
 Cargo.lock
 !**/Cargo.lock
 
@@ -229,8 +234,8 @@ Cargo.lock
 *.dylib
 
 # Generated files
- Cargo.lock
-target/
+  Cargo.lock
+  target/
 
 # Build artifacts
 *.pdb
@@ -240,6 +245,12 @@ target/
 # Rust analyzer
 .rustc_info.json
 rust-project.json
+
+# Rust backup & profiling
+*.rs.bk
+*.rlib
+*.prof*
+*.perf*
 
 # ===========================================
 # Backend / Server
