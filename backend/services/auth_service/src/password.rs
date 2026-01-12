@@ -47,7 +47,7 @@ pub fn generate_reset_token(length: usize) -> String {
         .collect()
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, serde::Serialize)]
 pub enum PasswordError {
     #[error("Password hashing error: {0}")]
     HashError(String),

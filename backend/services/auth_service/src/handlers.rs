@@ -46,30 +46,45 @@ pub async fn register(
     repo: web::Data<AuthRepository>,
     jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
-    // Validate request
-    if let Err(e) = req.validate() {
-        return HttpResponse::BadRequest()
-            .json(serde_json::json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
-    }
+    // Hash password and create user
+    let password_hash = match hash_password(&req.password) {
+        Ok(hash) => hash,
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({ "error": "VALIDATION_ERROR", "message": e }));
+        }
+    };
     
     // Check if user already exists
-    if let Ok(Some(_)) = repo.find_by_email(&req.email).await {
-        return HttpResponse::Conflict()
-            .json(serde_json::json!({ "error": "CONFLICT", "message": "Email already registered" }));
+    match repo.find_by_email(&req.email).await {
+        Ok(Some(_)) => {
+            return HttpResponse::Conflict()
+                .json(serde_json::json!({ "error": "CONFLICT", "message": "Email already registered" }));
+        }
+        Ok(None) => {}
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+        }
     }
     
     // Validate password strength
-    if let Err(e) = validate_password_strength(&req.password) {
-        return HttpResponse::BadRequest()
-            .json(serde_json::json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
+    match validate_password_strength(&req.password) {
+        Ok(()) => {}
+        Err(e) => {
+            return HttpResponse::BadRequest()
+                .json(serde_json::json!({ "error": "VALIDATION_ERROR", "message": e }));
+        }
     }
     
-    // Hash password and create user
-    let password_hash = hash_password(&req.password)
-        .map_err(|e| AppError::ValidationError(e.to_string()))?;
-    
-    let user = repo.create(&req.email, &password_hash, &req.display_name).await
-        .map_err(|e| AppError::DatabaseError(e))?;
+    // Create user
+    let user = match repo.create(&req.email, &password_hash, &req.display_name).await {
+        Ok(user) => user,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+        }
+    };
     
     HttpResponse::Created()
         .json(RegisterResponse {
@@ -109,14 +124,25 @@ pub async fn login(
     }
     
     // Generate tokens
-    let access_token = jwt_service.generate_access_token(
+    let access_token = match jwt_service.generate_access_token(
         &user.id.to_string(),
         &user.email,
         "user",
-    ).map_err(|e| AppError::InternalError(e.to_string()))?;
+    ) {
+        Ok(token) => token,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+        }
+    };
     
-    let refresh_token = jwt_service.generate_refresh_token(&user.id.to_string())
-        .map_err(|e| AppError::InternalError(e.to_string()))?;
+    let refresh_token = match jwt_service.generate_refresh_token(&user.id.to_string()) {
+        Ok(token) => token,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+        }
+    };
     
     // Update last login
     repo.update_last_login(&user.id).await.ok();
@@ -145,14 +171,25 @@ pub async fn refresh(
     req: web::Json<RefreshRequest>,
     jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
-    let claims = jwt_service.validate_token(&req.refresh_token)
-        .map_err(|e| AppError::AuthenticationError(e.to_string()))?;
+    let claims = match jwt_service.validate_token(&req.refresh_token) {
+        Ok(claims) => claims,
+        Err(e) => {
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": e.to_string() }));
+        }
+    };
     
-    let new_access_token = jwt_service.generate_access_token(
+    let new_access_token = match jwt_service.generate_access_token(
         &claims.user_id,
         &claims.email,
         &claims.role,
-    ).map_err(|e| AppError::InternalError(e.to_string()))?;
+    ) {
+        Ok(token) => token,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+        }
+    };
     
     HttpResponse::Ok()
         .json(RefreshResponse {

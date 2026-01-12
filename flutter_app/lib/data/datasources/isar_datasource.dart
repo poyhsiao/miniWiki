@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/data/models/user_entity.dart';
 import 'package:miniwiki/data/models/space_entity.dart';
@@ -9,6 +8,8 @@ final isarProvider = Provider<IsarDatabase>((ref) {
 });
 
 class IsarDatabase {
+  // Isar instance - will be initialized in main.dart
+  // ignore: unused_field
   final dynamic _isar;
 
   IsarDatabase(this._isar);
