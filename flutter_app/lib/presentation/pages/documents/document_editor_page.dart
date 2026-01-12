@@ -278,7 +278,9 @@ class _VersionHistorySheet extends ConsumerWidget {
                   trailing: TextButton(
                     onPressed: () async {
                       Navigator.pop(context);
-                      await _showRestoreConfirmDialog(context, ref, version.versionNumber);
+                      await Future.microtask(
+                        () => _showRestoreConfirmDialog(context, ref, version.versionNumber),
+                      );
                     },
                     child: const Text('Restore'),
                   ),
