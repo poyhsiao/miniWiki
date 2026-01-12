@@ -8,6 +8,7 @@ members = [
     "shared/database",
     "shared/models",
     "shared/errors",
+    "tests",
 ]
 resolver = "2"
 

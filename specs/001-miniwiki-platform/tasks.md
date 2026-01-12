@@ -160,10 +160,10 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 1
 
-- [ ] T069 [P] [US1] Create backend/tests/documents/crud_test.rs for document CRUD operations
-- [ ] T070 [P] [US1] Create backend/tests/documents/versions_test.rs for version operations
-- [ ] T071 [P] [US1] Create flutter_app/test/document_service_test.dart for service unit tests
-- [ ] T072 [P] [US1] Create flutter_app/test/document_repository_test.dart for repository tests
+- [x] T069 [P] [US1] Create backend/tests/documents/crud_test.rs for document CRUD operations
+- [x] T070 [P] [US1] Create backend/tests/documents/versions_test.rs for version operations
+- [x] T071 [P] [US1] Create flutter_app/test/document_service_test.dart for service unit tests
+- [x] T072 [P] [US1] Create flutter_app/test/document_repository_test.dart for repository tests
 
 ### Backend Implementation for User Story 1
 
