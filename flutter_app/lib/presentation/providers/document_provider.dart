@@ -72,7 +72,7 @@ class DocumentEditState {
     bool? isLoading,
     bool? isSaving,
     bool? hasUnsavedChanges,
-    String? error,
+    Object? error,
     List<DocumentVersion>? versions,
     int? selectedVersion,
   }) {
@@ -82,7 +82,7 @@ class DocumentEditState {
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
       hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
-      error: error ?? this.error,
+      error: error == null ? null : (error is String ? error as String : this.error),
       versions: versions ?? this.versions,
       selectedVersion: selectedVersion ?? this.selectedVersion,
     );

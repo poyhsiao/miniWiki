@@ -66,7 +66,12 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => _maybePop(context),
+          onPressed: () async {
+            final canPop = await _maybePop(context);
+            if (canPop && mounted) {
+              Navigator.pop(context);
+            }
+          },
         ),
         title: _buildTitleField(context, editState),
         actions: _buildActions(context, editState),
@@ -215,7 +220,13 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
     }
   }
 
-  void _showVersionHistory(BuildContext context) {
+  Future<void> _showVersionHistory(BuildContext context) async {
+    try {
+      await ref.read(documentEditProvider.notifier).loadVersions();
+    } catch (_) {
+      // Silently ignore errors when preloading versions for history sheet
+    }
+    if (!mounted) return;
     showModalBottomSheet(
       context: context,
       builder: (context) => _VersionHistorySheet(documentId: widget.documentId!),

@@ -194,8 +194,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
           .map((entity) => _entityToDocument(entity))
           .toList();
 
-      final start = offset.clamp(0, documents.length);
-      final end = (offset + limit).clamp(0, documents.length);
+      final start = offset.clamp(0, documents.length).toInt();
+      final end = (offset + limit).clamp(0, documents.length).toInt();
 
       return DocumentListResult(
         documents: documents.sublist(start, end),
@@ -217,6 +217,11 @@ class DocumentRepositoryImpl implements DocumentRepository {
       final documents = documentsJson
           .map((doc) => Document.fromJson(doc as Map<String, dynamic>))
           .toList();
+
+      // Save to local storage for offline access
+      for (final doc in documents) {
+        await _saveDocumentLocally(doc);
+      }
 
       return DocumentListResult(
         documents: documents,

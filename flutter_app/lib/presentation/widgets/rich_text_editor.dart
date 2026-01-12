@@ -25,6 +25,14 @@ class _RichTextEditorState extends State<RichTextEditor> {
     _initializeContent();
   }
 
+  @override
+  void didUpdateWidget(covariant RichTextEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialContent != widget.initialContent) {
+      _controller.text = _extractText(widget.initialContent);
+    }
+  }
+
   void _initializeContent() {
     if (widget.initialContent.isNotEmpty) {
       final text = _extractText(widget.initialContent);
