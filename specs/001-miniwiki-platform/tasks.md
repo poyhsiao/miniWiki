@@ -68,7 +68,7 @@ Based on `plan.md` structure:
 - [x] T022 [P] Create backend/services/auth_service/src/repository.rs with database operations
 - [x] T023 Create flutter_app/lib/core/config/ with environment configuration providers
 - [x] T024 Create flutter_app/lib/services/auth_service.dart with authentication logic
-- [x] T025 [P] Create flutter_app/lib/domain/repositories/auth_repository.dart interface
+- [x] T025 [P] Create flutter_app/lib/services/repositories/auth_repository.dart interface
 - [x] T026 Create flutter_app/lib/data/repositories/auth_repository_impl.dart with API implementation
 
 ### Database Schema
@@ -167,16 +167,16 @@ Based on `plan.md` structure:
 
 ### Backend Implementation for User Story 1
 
-- [ ] T073 [US1] Create documents table migration in backend/migrations/003_documents.sql
-- [ ] T074 [US1] Create backend/services/document_service/src/lib.rs with service structure
-- [ ] T075 [US1] Create backend/services/document_service/src/handlers.rs with CRUD handlers
-- [ ] T076 [US1] Create backend/services/document_service/src/repository.rs with database operations
-- [ ] T077 [US1] Create backend/services/document_service/src/validation.rs with document validation
-- [ ] T078 [US1] Implement POST /spaces/{spaceId}/documents endpoint
-- [ ] T079 [US1] Implement GET /documents/{documentId} endpoint
-- [ ] T080 [US1] Implement PATCH /documents/{documentId} endpoint for metadata updates
-- [ ] T081 [US1] Implement DELETE /documents/{documentId} endpoint (soft delete)
-- [ ] T082 [US1] Implement POST /documents/{documentId}/versions for version creation
+- [x] T073 [US1] Create documents table migration in backend/migrations/003_documents.sql
+- [x] T074 [US1] Create backend/services/document_service/src/lib.rs with service structure
+- [x] T075 [US1] Create backend/services/document_service/src/handlers.rs with CRUD handlers
+- [x] T076 [US1] Create backend/services/document_service/src/repository.rs with database operations
+- [x] T077 [US1] Create backend/services/document_service/src/validation.rs with document validation
+- [x] T078 [US1] Implement POST /spaces/{spaceId}/documents endpoint
+- [x] T079 [US1] Implement GET /documents/{documentId} endpoint
+- [x] T080 [US1] Implement PATCH /documents/{documentId} endpoint for metadata updates
+- [x] T081 [US1] Implement DELETE /documents/{documentId} endpoint (soft delete)
+- [x] T082 [US1] Implement POST /documents/{documentId}/versions for version creation
 
 ### Frontend Implementation for User Story 1
 
@@ -700,6 +700,7 @@ Task T084: "Create Space entity in flutter_app/lib/domain/entities/space.dart"
 Developer A: User Story 6 (Authentication)
 Developer B: User Story 1 (Document Creation)
 Developer C: User Story 2 (Organization)
+Developer D: User Story 3 (Offline)
 ```
 
 ---
