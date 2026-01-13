@@ -242,16 +242,16 @@ Based on `plan.md` structure:
 - [x] T120 [US2] Create flutter_app/lib/presentation/pages/spaces/space_settings_page.dart
 - [x] T121 [US2] Create flutter_app/lib/presentation/pages/spaces/member_management_page.dart
 - [x] T122 [US2] Create flutter_app/lib/data/repositories/space_repository_impl.dart with API implementation
-- [ ] T123 [US2] Create flutter_app/lib/presentation/widgets/sidebar_navigation.dart with hierarchical view
-- [ ] T124 [US2] Implement space creation flow in space_list_page.dart
-- [ ] T125 [US2] Implement member invitation flow in member_management_page.dart
+- [x] T123 [US2] Create flutter_app/lib/presentation/widgets/sidebar_navigation.dart with hierarchical view
+- [x] T124 [US2] Implement space creation flow in space_list_page.dart
+- [x] T125 [US2] Implement member invitation flow in member_management_page.dart
 
 ### Integration for User Story 2
 
-- [ ] T126 [US2] Verify space CRUD endpoints work with PostgreSQL
-- [ ] T127 [US2] Verify hierarchical document queries work correctly
-- [ ] T128 [US2] Test space creation → member invitation → document organization flow
-- [ ] T129 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly
+- [ ] T126 [US2] Verify space CRUD endpoints work with PostgreSQL (blocked by test helpers structure)
+- [ ] T127 [US2] Verify hierarchical document queries work correctly (blocked by test helpers structure)
+- [ ] T128 [US2] Test space creation → member invitation → document organization flow (blocked by test helpers structure)
+- [x] T129 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly (flutter tests pass: 18/18)
 
 **Checkpoint**: User Story 2 complete - document organization and space management is fully functional
 

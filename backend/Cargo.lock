@@ -3060,6 +3060,7 @@ dependencies = [
  "aws-types",
  "bb8",
  "bcrypt",
+ "bytes 1.11.0",
  "chrono",
  "config",
  "document_service",

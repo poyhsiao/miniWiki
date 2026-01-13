@@ -123,6 +123,7 @@ fake = "2.9"
 quickcheck = "1.0"
 quickcheck_macros = "1.0"
 hyper = { version = "1.0", features = ["client", "http1", "http2"] }
+bytes = { version = "1.5" }
 
 [profile.release]
 opt-level = 3
