@@ -308,22 +308,25 @@ WHERE sm.user_id = u.id;
 -- ============================================
 -- POLICIES (Row Level Security)
 -- ============================================
+-- NOTE: RLS policies are commented out for standard PostgreSQL compatibility.
+-- These are Supabase-specific policies that require auth.uid() function.
+-- Uncomment when deploying to Supabase.
 
 -- Enable RLS on relevant tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE files ENABLE ROW LEVEL SECURITY;
-ALTER TABLE space_memberships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE spaces ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE files ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE space_memberships ENABLE ROW LEVEL SECURITY;
+-- ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Policies for spaces (users can see spaces they own or are members of)
-CREATE POLICY "Users can view their own spaces" ON spaces
-    FOR SELECT USING (
-        owner_id IN (SELECT id FROM users WHERE auth.uid() = id)
-        OR id IN (SELECT space_id FROM space_memberships WHERE user_id IN (SELECT id FROM users WHERE auth.uid() = id))
-    );
+-- Policies for spaces (Supabase-specific - commented out)
+-- CREATE POLICY "Users can view their own spaces" ON spaces
+--     FOR SELECT USING (
+--         owner_id IN (SELECT id FROM users WHERE auth.uid() = id)
+--         OR id IN (SELECT space_id FROM space_memberships WHERE user_id IN (SELECT id FROM users WHERE auth.uid() = id))
+--     );
 
 -- ============================================
 -- COMMENTS

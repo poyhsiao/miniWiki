@@ -531,7 +531,7 @@ impl DocumentRepository {
             r#"
             INSERT INTO spaces (id, owner_id, name, icon, description, is_public)
             VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
-            RETURNING *
+            RETURNING id, owner_id, name, icon, description, is_public, created_at, updated_at, NULL::text as user_role
             "#,
             owner_uuid,
             name,
@@ -562,7 +562,11 @@ impl DocumentRepository {
 
         let space = sqlx::query_as!(
             SpaceRow,
-            r#"SELECT * FROM spaces WHERE id = $1"#,
+            r#"
+            SELECT id, owner_id, name, icon, description, is_public, created_at, updated_at, NULL::text as user_role
+            FROM spaces
+            WHERE id = $1
+            "#,
             space_uuid
         )
         .fetch_optional(&self.pool)
@@ -592,7 +596,7 @@ impl DocumentRepository {
                 is_public = COALESCE($5, is_public),
                 updated_at = NOW()
             WHERE id = $1
-            RETURNING *
+            RETURNING id, owner_id, name, icon, description, is_public, created_at, updated_at, NULL::text as user_role
             "#,
             space_uuid,
             name,
@@ -623,16 +627,20 @@ impl DocumentRepository {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query_as!(
+        let space = sqlx::query_as!(
             SpaceRow,
-            r#"SELECT * FROM spaces WHERE id = $1 AND owner_id = $2"#,
+            r#"
+            SELECT id, owner_id, name, icon, description, is_public, created_at, updated_at, NULL::text as user_role
+            FROM spaces
+            WHERE id = $1 AND owner_id = $2
+            "#,
             space_uuid,
             user_uuid
         )
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(result.is_some())
+        Ok(space.is_some())
     }
 
     pub async fn get_user_space_role(&self, space_id: &str, user_id: &str) -> Result<Option<String>, sqlx::Error> {

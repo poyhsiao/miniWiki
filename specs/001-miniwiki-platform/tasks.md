@@ -242,16 +242,16 @@ Based on `plan.md` structure:
 - [x] T120 [US2] Create flutter_app/lib/presentation/pages/spaces/space_settings_page.dart
 - [x] T121 [US2] Create flutter_app/lib/presentation/pages/spaces/member_management_page.dart
 - [x] T122 [US2] Create flutter_app/lib/data/repositories/space_repository_impl.dart with API implementation
-- [ ] T123 [US2] Create flutter_app/lib/presentation/widgets/sidebar_navigation.dart with hierarchical view
-- [ ] T124 [US2] Implement space creation flow in space_list_page.dart
-- [ ] T125 [US2] Implement member invitation flow in member_management_page.dart
+- [x] T123 [US2] Create flutter_app/lib/presentation/widgets/sidebar_navigation.dart with hierarchical view
+- [x] T124 [US2] Implement space creation flow in space_list_page.dart
+- [x] T125 [US2] Implement member invitation flow in member_management_page.dart
 
 ### Integration for User Story 2
 
-- [ ] T125 [US2] Verify space CRUD endpoints work with PostgreSQL
-- [ ] T126 [US2] Verify hierarchical document queries work correctly
-- [ ] T127 [US2] Test space creation → member invitation → document organization flow
-- [ ] T128 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly
+- [ ] T126 [US2] Verify space CRUD endpoints work with PostgreSQL (blocked by test helpers structure)
+- [ ] T127 [US2] Verify hierarchical document queries work correctly (blocked by test helpers structure)
+- [ ] T128 [US2] Test space creation → member invitation → document organization flow (blocked by test helpers structure)
+- [x] T129 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly (flutter tests pass: 18/18)
 
 **Checkpoint**: User Story 2 complete - document organization and space management is fully functional
 
@@ -265,26 +265,26 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 3
 
-- [ ] T130 [P] [US3] Create backend/tests/sync/sync_test.rs for sync endpoints
-- [ ] T131 [P] [US3] Create backend/tests/sync/conflict_resolution_test.rs for conflict handling
-- [ ] T132 [P] [US3] Create flutter_app/test/offline_service_test.dart for offline functionality
-- [ ] T133 [P] [US3] Create flutter_app/test/sync_service_test.dart for sync service tests
+- [x] T130 [P] [US3] Create backend/tests/sync/sync_test.rs for sync endpoints
+- [x] T131 [P] [US3] Create backend/tests/sync/conflict_resolution_test.rs for conflict handling
+- [x] T132 [P] [US3] Create flutter_app/test/offline_service_test.dart for offline functionality
+- [x] T133 [P] [US3] Create flutter_app/test/sync_service_test.dart for sync service tests
 
 ### Backend Implementation for User Story 3
 
-- [ ] T134 [US3] Create backend/services/sync_service/src/sync_handler.rs with sync endpoints
-- [ ] T135 [US3] Create backend/services/sync_service/src/conflict_resolver.rs with CRDT conflict resolution
-- [ ] T136 [US3] Implement GET /sync/documents/{documentId} endpoint for sync state
-- [ ] T137 [US3] Implement POST /sync/documents/{documentId} endpoint for updates
-- [ ] T138 [US3] Implement GET /sync/offline/status endpoint for sync status
-- [ ] T139 [US3] Implement POST /sync/offline/sync endpoint for full sync trigger
+- [x] T134 [US3] Create backend/services/sync_service/src/sync_handler.rs with sync endpoints
+- [x] T135 [US3] Create backend/services/sync_service/src/conflict_resolver.rs with CRDT conflict resolution
+- [x] T136 [US3] Implement GET /sync/documents/{documentId} endpoint for sync state
+- [x] T137 [US3] Implement POST /sync/documents/{documentId} endpoint for updates
+- [x] T138 [US3] Implement GET /sync/offline/status endpoint for sync status
+- [x] T139 [US3] Implement POST /sync/offline/sync endpoint for full sync trigger
 
 ### Frontend Implementation for User Story 3
 
-- [ ] T140 [US3] Create flutter_app/lib/services/offline_service.dart with offline queue management
-- [ ] T141 [US3] Create flutter_app/lib/services/sync_service.dart with sync orchestration
-- [ ] T142 [US3] Create flutter_app/lib/data/datasources/pending_sync_datasource.dart for sync queue
-- [ ] T143 [US3] Create flutter_app/lib/presentation/providers/sync_provider.dart with sync state
+- [x] T140 [US3] Create flutter_app/lib/services/offline_service.dart with offline queue management
+- [x] T141 [US3] Create flutter_app/lib/services/sync_service.dart with sync orchestration
+- [x] T142 [US3] Create flutter_app/lib/data/datasources/pending_sync_datasource.dart for sync queue
+- [x] T143 [US3] Create flutter_app/lib/presentation/providers/sync_provider.dart with sync state
 - [ ] T144 [US3] Implement offline document caching with Isar in offline_service.dart
 - [ ] T145 [US3] Implement sync queue with retry logic in pending_sync_datasource.dart
 - [ ] T146 [US3] Implement background sync when connectivity changes
