@@ -251,9 +251,19 @@ class DocumentRepositoryImpl implements DocumentRepository {
       final data = response.data['data'] as Map<String, dynamic>;
       final pathJson = data['path'] as List;
 
-      return pathJson
-          .map((item) => Document.fromJson(item as Map<String, dynamic>))
-          .toList();
+      final result = <Document>[];
+      for (final item in pathJson) {
+        final jsonMap = <String, dynamic>{};
+        (item as Map).forEach((key, value) {
+          if (value is Map) {
+            jsonMap[key.toString()] = Map<String, dynamic>.from(value);
+          } else {
+            jsonMap[key.toString()] = value;
+          }
+        });
+        result.add(Document.fromJson(jsonMap));
+      }
+      return result;
     } catch (e) {
       // Fallback - return just the document itself
       final entity = await _isar.getDocumentById(documentId);

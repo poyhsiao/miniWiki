@@ -275,19 +275,14 @@ void main() {
           },
         });
         when(() => apiClient.get(any(), queryParams: any(named: 'queryParams')))
-            .thenAnswer((invocation) {
-          final path = invocation.positionalArguments[0] as String;
-          if (path == '/documents/child-doc/path') {
-            return Future.value(response);
-          }
-          throw Exception('Unexpected path: $path');
-        });
+            .thenAnswer((_) async => response);
 
         final result = await documentRepository.getDocumentPath('child-doc');
 
         expect(result.length, 2);
         expect(result.first.id, 'root-doc');
         expect(result.last.id, 'child-doc');
+        verify(() => apiClient.get('/documents/child-doc/path')).called(1);
       });
 
       test('getDocumentPath returns empty list when document not found', () async {
