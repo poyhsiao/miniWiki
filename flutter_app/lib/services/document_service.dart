@@ -98,7 +98,7 @@ class DocumentService {
     );
 
     if (autoSave && _syncService != null) {
-      await _syncService!.queueForSync(id);
+      await _syncService!.queueDocumentForSync(id);
     }
 
     return document;
@@ -128,7 +128,7 @@ class DocumentService {
     );
 
     if (autoSave && _syncService != null && content != null) {
-      await _syncService!.queueForSync(id);
+      await _syncService!.queueDocumentForSync(id);
     }
 
     return document;

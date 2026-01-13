@@ -285,17 +285,17 @@ Based on `plan.md` structure:
 - [x] T141 [US3] Create flutter_app/lib/services/sync_service.dart with sync orchestration
 - [x] T142 [US3] Create flutter_app/lib/data/datasources/pending_sync_datasource.dart for sync queue
 - [x] T143 [US3] Create flutter_app/lib/presentation/providers/sync_provider.dart with sync state
-- [ ] T144 [US3] Implement offline document caching with Isar in offline_service.dart
-- [ ] T145 [US3] Implement sync queue with retry logic in pending_sync_datasource.dart
-- [ ] T146 [US3] Implement background sync when connectivity changes
-- [ ] T147 [US3] Implement sync status indicator in UI
+- [x] T144 [US3] Implement offline document caching with Isar in offline_service.dart
+- [x] T145 [US3] Implement sync queue with retry logic in pending_sync_datasource.dart
+- [x] T146 [US3] Implement background sync when connectivity changes
+- [x] T147 [US3] Implement sync status indicator in UI
 
 ### Integration for User Story 3
 
-- [ ] T148 [US3] Verify CRDT sync works end-to-end
-- [ ] T149 [US3] Verify offline changes are queued and synced correctly
-- [ ] T150 [US3] Test conflict resolution with concurrent edits
-- [ ] T151 [US3] Verify flutter_app works offline and syncs correctly
+- [x] T148 [US3] Verify CRDT sync works end-to-end
+- [x] T149 [US3] Verify offline changes are queued and synced correctly
+- [x] T150 [US3] Test conflict resolution with concurrent edits
+- [x] T151 [US3] Verify flutter_app works offline and syncs correctly
 
 **Checkpoint**: User Story 3 complete - offline-first access with sync is fully functional
 
