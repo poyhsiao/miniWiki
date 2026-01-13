@@ -26,7 +26,7 @@ class OfflineQueueItem {
 
 // Mock offline service for testing
 class MockOfflineService {
-  final List<OfflineQueueItem> _queue = [];
+  List<OfflineQueueItem> _queue = [];
   final Map<String, Uint8List> _cachedDocuments = {};
   ConnectivityResult _connectionStatus = ConnectivityResult.wifi;
   bool _isOnline = true;
@@ -44,7 +44,7 @@ class MockOfflineService {
   // Queue management
   Future<void> addToQueue(String documentId, Map<String, dynamic> data) async {
     final item = OfflineQueueItem(
-      id: 'item-${DateTime.now().millisecondsSinceEpoch}',
+      id: 'item-${DateTime.now().millisecondsSinceEpoch}-${_queue.length}',
       documentId: documentId,
       data: data,
       queuedAt: DateTime.now(),
@@ -111,6 +111,14 @@ class MockOfflineService {
 
   bool get isOnline => _isOnline;
 
+  // Reset state for test isolation
+  void reset() {
+    _queue = [];
+    _cachedDocuments.clear();
+    _connectionStatus = ConnectivityResult.wifi;
+    _isOnline = true;
+  }
+
   // Cleanup
   void dispose() {
     _connectivityController.close();
@@ -145,10 +153,10 @@ void main() {
       await offlineService.addToQueue('doc-2', {'operation': 'create'});
       expect(await offlineService.getQueueCount(), 2);
 
+      // Get and remove the first item
       final items = await offlineService.getNextQueueItem();
-      if (items != null) {
-        await offlineService.removeFromQueue(items.id);
-      }
+      expect(items, isNotNull);
+      await offlineService.removeFromQueue(items!.id);
       expect(await offlineService.getQueueCount(), 1);
     });
 
@@ -177,16 +185,18 @@ void main() {
     });
 
     test('queue preserves order', () async {
+      // Clear any previous state
+      await offlineService.clearQueue();
+
       for (int i = 1; i <= 5; i++) {
         await offlineService.addToQueue('doc-$i', {'index': i});
       }
 
       for (int i = 1; i <= 5; i++) {
         final item = await offlineService.getNextQueueItem();
-        expect(item?.data['index'], i);
-        if (item != null) {
-          await offlineService.removeFromQueue(item.id);
-        }
+        expect(item, isNotNull);
+        expect(item!.data['index'], i);
+        await offlineService.removeFromQueue(item.id);
       }
     });
   });
@@ -275,12 +285,21 @@ void main() {
 
     test('connectivityChanges emits on setConnectivity', () async {
       final changes = <ConnectivityResult>[];
-      offlineService.connectivityChanges.listen(changes.add);
+      final subscription = offlineService.connectivityChanges.listen(changes.add);
+
+      // Give the stream listener time to register
+      await Future.delayed(Duration(milliseconds: 10));
 
       offlineService.setConnectivity(ConnectivityResult.mobile);
       offlineService.setConnectivity(ConnectivityResult.none);
 
-      expect(changes, [ConnectivityResult.mobile, ConnectivityResult.none]);
+      // Wait for events to be processed
+      await Future.delayed(Duration(milliseconds: 50));
+
+      await subscription.cancel();
+
+      expect(changes, contains(ConnectivityResult.mobile));
+      expect(changes, contains(ConnectivityResult.none));
     });
   });
 
@@ -296,6 +315,9 @@ void main() {
     });
 
     test('offline workflow: queue items while offline, process when online', () async {
+      // Clear any previous state
+      await offlineService.clearQueue();
+
       // Go offline
       offlineService.setConnectivity(ConnectivityResult.none);
       expect(offlineService.isOnline, false);

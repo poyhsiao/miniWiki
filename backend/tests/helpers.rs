@@ -46,6 +46,16 @@ impl TestApp {
             .post(&format!("http://localhost:{}{}", self.port, path))
     }
 
+    pub fn patch(&self, path: &str) -> reqwest::RequestBuilder {
+        self.client
+            .patch(&format!("http://localhost:{}{}", self.port, path))
+    }
+
+    pub fn delete(&self, path: &str) -> reqwest::RequestBuilder {
+        self.client
+            .delete(&format!("http://localhost:{}{}", self.port, path))
+    }
+
     pub async fn get_response(&self, path: &str) -> reqwest::Response {
         self.get(path).send().await.expect("GET request failed")
     }

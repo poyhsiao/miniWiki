@@ -1,5 +1,3 @@
-pub mod handlers;
-pub mod models;
 pub mod yjs_handler;
 pub mod state_vector;
 pub mod sync_handler;
