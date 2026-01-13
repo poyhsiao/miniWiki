@@ -3068,6 +3068,7 @@ dependencies = [
  "fake",
  "futures-util",
  "governor",
+ "hyper 1.8.1",
  "jsonwebtoken",
  "log 0.4.29",
  "mime 0.3.17",
