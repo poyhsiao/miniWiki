@@ -2,13 +2,14 @@
 members = [
     "services/auth_service",
     "services/document_service",
+    "services/space_service",
     "services/sync_service",
     "services/file_service",
     "services/websocket_service",
     "shared/database",
     "shared/models",
     "shared/errors",
-    "tests",
+    "tests"
 ]
 resolver = "2"
 
@@ -25,6 +26,7 @@ authors = ["miniWiki Team"]
 
 # Internal workspace dependencies (services in this workspace)
 document_service = { path = "./services/document_service" }
+space_service = { path = "./services/space_service" }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }

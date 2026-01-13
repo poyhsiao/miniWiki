@@ -1,17 +1,23 @@
 use crate::models::*;
 use crate::helpers::*;
 use actix_web::test;
-use backend::services::auth_service::jwt::generate_jwt_token;
+use actix_web::web;
+use auth_service::jwt::generate_jwt_token;
+use sqlx::PgPool;
+use std::sync::Arc;
 use uuid::Uuid;
-
-mod helpers;
 
 #[actix_rt::test]
 async fn test_list_spaces_empty() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let req = test::TestRequest::get()
         .uri("/api/v1/spaces")
@@ -19,16 +25,23 @@ async fn test_list_spaces_empty() {
         .to_request();
     
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), 200);
-    
+    let status = resp.status();
     let body = test::read_body(resp).await;
+    eprintln!("Status: {} (expected 200), Body: {}", status, String::from_utf8_lossy(&body));
+    assert_eq!(status, 200);
+    
     let spaces: Vec<Space> = serde_json::from_slice(&body).unwrap();
     assert!(spaces.is_empty());
 }
 
 #[actix_rt::test]
-async fn test_list_spaces_unauthorized() {
-    let app = test::init_service(test_app().await).await;
+async fn test_get_spaces_unauthorized() {
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
     let req = test::TestRequest::get()
         .uri("/api/v1/spaces")
@@ -40,10 +53,15 @@ async fn test_list_spaces_unauthorized() {
 
 #[actix_rt::test]
 async fn test_create_space() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let create_req = CreateSpaceRequest {
         name: "My Workspace".to_string(),
@@ -59,21 +77,28 @@ async fn test_create_space() {
         .to_request();
     
     let resp = test::call_service(&app, req).await;
-    assert_eq!(resp.status(), 201);
-    
+    let status = resp.status();
     let body = test::read_body(resp).await;
+    eprintln!("Status: {} (expected 201), Body: {}", status, String::from_utf8_lossy(&body));
+    assert_eq!(status, 201);
+    
     let space: Space = serde_json::from_slice(&body).unwrap();
     assert_eq!(space.name, "My Workspace");
-    assert_eq!(space.owner_id, user_id.to_string());
-    assert!(!space.id.is_empty());
+    assert_eq!(space.owner_id.to_string(), test_user.id.to_string());
+    assert!(!space.id.to_string().is_empty());
 }
 
 #[actix_rt::test]
 async fn test_create_space_validation_empty_name() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let create_req = CreateSpaceRequest {
         name: "".to_string(),
@@ -94,10 +119,15 @@ async fn test_create_space_validation_empty_name() {
 
 #[actix_rt::test]
 async fn test_create_space_validation_name_too_long() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let create_req = CreateSpaceRequest {
         name: "a".repeat(201),
@@ -118,10 +148,15 @@ async fn test_create_space_validation_name_too_long() {
 
 #[actix_rt::test]
 async fn test_get_space() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let create_req = CreateSpaceRequest {
         name: "Test Space".to_string(),
@@ -157,10 +192,15 @@ async fn test_get_space() {
 
 #[actix_rt::test]
 async fn test_get_space_not_found() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let space_id = Uuid::new_v4().to_string();
     let req = test::TestRequest::get()
@@ -174,10 +214,15 @@ async fn test_get_space_not_found() {
 
 #[actix_rt::test]
 async fn test_update_space() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let create_req = CreateSpaceRequest {
         name: "Original Name".to_string(),
@@ -223,10 +268,15 @@ async fn test_update_space() {
 
 #[actix_rt::test]
 async fn test_delete_space() {
-    let app = test::init_service(test_app().await).await;
+    let test_app = TestApp::create().await;
+    let app = test::init_service(
+        actix_web::App::new()
+            .app_data(web::Data::new(test_app.pool.clone()))
+            .configure(miniwiki_backend::routes::config)
+    ).await;
     
-    let user_id = Uuid::new_v4();
-    let token = generate_jwt_token(user_id, "test@example.com").unwrap();
+    let test_user = test_app.create_test_user().await;
+    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
     
     let create_req = CreateSpaceRequest {
         name: "Space to Delete".to_string(),

@@ -3,17 +3,32 @@ name = "miniwiki-backend-tests"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+path = "lib.rs"
+
 [dependencies]
 # Testing framework
 tokio = { version = "1.35", features = ["full"] }
 actix-web = "4.5"
 actix-rt = "2.9"
 
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres"] }
+
+# HTTP client for tests
+reqwest = { version = "0.11", features = ["json"] }
+
 # Dependencies from workspace
 miniwiki-backend = { path = "../" }
 shared_errors = { path = "../shared/errors" }
 shared_models = { path = "../shared/models" }
 shared_database = { path = "../shared/database" }
+document_service = { path = "../services/document_service" }
+auth_service = { path = "../services/auth_service" }
+space_service = { path = "../services/space_service" }
+
+# JWT
+jsonwebtoken = "9.3"
 
 # Async utilities
 futures-util = "0.3"

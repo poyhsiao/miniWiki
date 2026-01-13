@@ -6,8 +6,8 @@
 //! Run with: cargo test -p miniwiki-backend-tests documents::versions_test
 
 use chrono::Utc;
-use miniwiki_backend::services::document_service::{CreateDocumentRequest, CreateVersionRequest};
-use miniwiki_backend::tests::helpers::{create_test_app, create_test_document, create_test_space, create_test_user, TestApp};
+use document_service::models::{CreateDocumentRequest, CreateVersionRequest};
+use crate::helpers::{create_test_app, create_test_document, create_test_space, create_test_user, TestApp};
 use uuid::Uuid;
 
 #[tokio::test]
