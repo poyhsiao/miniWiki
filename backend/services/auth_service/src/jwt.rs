@@ -2,6 +2,7 @@ use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, DecodingKey, E
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum JwtError {
@@ -115,4 +116,16 @@ impl JwtService {
             None
         }
     }
+}
+
+/// Generate a JWT token for testing purposes.
+/// Uses a hardcoded test secret for simplicity in tests.
+pub fn generate_jwt_token(user_id: Uuid, email: &str) -> Result<String, JwtError> {
+    let config = JwtConfig::new(
+        "test-secret-key-for-testing-only-do-not-use-in-production".to_string(),
+        3600,
+        86400,
+    );
+    let service = JwtService::new(config);
+    service.generate_access_token(&user_id.to_string(), email, "user")
 }

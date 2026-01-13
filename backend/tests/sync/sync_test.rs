@@ -8,6 +8,7 @@
 use actix_web::web;
 use chrono::Utc;
 use uuid::Uuid;
+use crate::helpers::TestApp;
 
 /// Test sync state retrieval for a document
 #[tokio::test]
@@ -20,10 +21,11 @@ async fn test_get_sync_state_success() {
     let response = app
         .get(&format!("/api/v1/sync/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("json parsing failed");
     assert_eq!(result["success"], true);
     assert!(result["data"]["state_vector"].is_object() || result["data"]["state_vector"].is_null());
     assert!(result["data"]["document_id"].is_string());
@@ -37,9 +39,10 @@ async fn test_get_sync_state_not_found() {
     let fake_id = Uuid::new_v4();
 
     let response = app
-        .get(&format!("/api/v1/sync/documents/{}", fake_id))
+        .get(&format!("/api/v1/sync/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("GET request failed");
 
     assert_eq!(response.status(), 404);
 }
@@ -64,10 +67,11 @@ async fn test_post_sync_update_success() {
         .post(&format!("/api/v1/sync/documents/{}", document.id))
         .json(&update_payload)
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("json parsing failed");
     assert_eq!(result["success"], true);
     assert_eq!(result["data"]["merged"], true);
     assert!(result["error"].is_null());
@@ -90,7 +94,8 @@ async fn test_post_sync_update_invalid_format() {
         .post(&format!("/api/v1/sync/documents/{}", document.id))
         .json(&invalid_payload)
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert_eq!(response.status(), 400);
 }
@@ -104,10 +109,11 @@ async fn test_get_sync_status_success() {
     let response = app
         .get("/api/v1/sync/offline/status")
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("json parsing failed");
     assert_eq!(result["success"], true);
     assert!(result["data"]["pending_documents"].is_number());
     assert!(result["data"]["last_sync_time"].is_string() || result["data"]["last_sync_time"].is_null());
@@ -123,10 +129,11 @@ async fn test_post_full_sync_trigger() {
     let response = app
         .post("/api/v1/sync/offline/sync")
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("json parsing failed");
     assert_eq!(result["success"], true);
     assert!(result["data"]["synced_documents"].is_number());
     assert!(result["data"]["failed_documents"].is_number());
@@ -142,10 +149,10 @@ async fn test_sync_requires_authentication() {
     // Create unauthenticated request
     let response = app
         .client
-        .post(&format!("http://localhost:{}", app.port))
-        .uri(&format!("/api/v1/sync/documents/{}", fake_id))
+        .post(&format!("http://localhost:{}/api/v1/sync/documents/{}", app.port, fake_id))
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert_eq!(response.status(), 401);
 }
@@ -169,7 +176,8 @@ async fn test_sync_update_unauthorized_document() {
         .post_as_user(&format!("/api/v1/sync/documents/{}", document.id), &user2.id)
         .json(&update_payload)
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert_eq!(response.status(), 403);
 }
@@ -208,7 +216,8 @@ async fn test_concurrent_sync_updates() {
 
     // All updates should succeed
     for result in results {
-        assert!(result.status().is_success());
+        let response = result.expect("request failed");
+        assert!(response.status().is_success());
     }
 }
 
@@ -229,7 +238,8 @@ async fn test_sync_with_empty_update() {
         .post(&format!("/api/v1/sync/documents/{}", document.id))
         .json(&empty_payload)
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     // Empty update should be handled gracefully
     assert!(response.status().is_success() || response.status() == 400);
@@ -246,10 +256,11 @@ async fn test_sync_state_includes_metadata() {
     let response = app
         .get(&format!("/api/v1/sync/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("json parsing failed");
     assert_eq!(result["success"], true);
     assert_eq!(result["data"]["document_id"], document.id.to_string());
     assert_eq!(result["data"]["title"], document.title);
@@ -265,8 +276,7 @@ trait TestAppExt {
 impl TestAppExt for TestApp {
     fn post_as_user(&self, path: &str, user_id: &Uuid) -> reqwest::RequestBuilder {
         self.client
-            .post(&format!("http://localhost:{}", self.port))
-            .uri(path)
+            .post(&format!("http://localhost:{}{}", self.port, path))
             .header("X-User-Id", user_id.to_string())
     }
 }

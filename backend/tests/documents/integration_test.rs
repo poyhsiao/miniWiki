@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo test -p miniwiki-backend-tests documents::integration
 
-use miniwiki_backend::tests::helpers::{TestApp, TestUser, TestSpace, TestDocument};
-use miniwiki_backend::services::document_service::{CreateDocumentRequest, UpdateDocumentRequest};
+use crate::helpers::{TestApp, TestUser, TestSpace, TestDocument};
+use document_service::models::{CreateDocumentRequest, UpdateDocumentRequest};
 use uuid::Uuid;
 
 #[tokio::test]

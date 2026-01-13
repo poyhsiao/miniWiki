@@ -1,13 +1,16 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
+lazy_static::lazy_static! {
+    static ref PASSWORD_REGEX: regex::Regex = regex::Regex::new(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$").unwrap();
+}
+
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct RegisterRequest {
     #[validate(email)]
     pub email: String,
     
-    #[validate(length(min = 8, max = 100))]
-    #[validate(regex = "PASSWORD_REGEX")]
+    #[validate(length(min = 8, max = 100, code = "Password must be 8-100 characters"))]
     pub password: String,
     
     #[validate(length(min = 1, max = 100))]
@@ -53,8 +56,4 @@ pub struct RefreshRequest {
 pub struct RefreshResponse {
     pub access_token: String,
     pub expires_in: i64,
-}
-
-lazy_static::lazy_static! {
-    static ref PASSWORD_REGEX: regex::Regex = regex::Regex::new(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$").unwrap();
 }

@@ -7,9 +7,9 @@
 
 use actix_web::web;
 use chrono::Utc;
-use miniwiki_backend::services::document_service::{CreateDocumentRequest, UpdateDocumentRequest};
-use miniwiki_backend::tests::helpers::{TestApp, TestUser, TestSpace, TestDocument};
-use shared_errors::error::ApiError;
+use document_service::models::{CreateDocumentRequest, UpdateDocumentRequest};
+use crate::helpers::{TestApp, TestUser, TestSpace, TestDocument};
+use shared_errors::AppError;
 use uuid::Uuid;
 
 #[tokio::test]

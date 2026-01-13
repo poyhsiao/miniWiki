@@ -8,6 +8,7 @@ use jsonwebtoken::{decode, DecodingKey, Validation};
 use std::future::{ready, Ready};
 use std::task::{Context, Poll};
 use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct AuthUser {
@@ -74,7 +75,10 @@ where
             let res = fut.await?;
             
             if let Some(user) = auth_user {
-                res.request().extensions_mut().insert(user);
+                res.request().extensions_mut().insert(user.clone());
+                if let Ok(uuid) = Uuid::parse_str(&user.user_id) {
+                    res.request().extensions_mut().insert(uuid);
+                }
             }
             
             Ok(res)
