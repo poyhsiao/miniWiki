@@ -5,8 +5,6 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/services/sync_service.dart' as ss;
 import 'package:miniwiki/services/offline_service.dart';
-import 'package:miniwiki/services/crdt_service.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 
 /// Sync state for Riverpod
 class SyncState {
@@ -144,6 +142,10 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
           recentEvents: events,
         );
         break;
+      case ss.SyncEventType.queueProcessed:
+        // Queue was processed, state remains unchanged
+        state = state.copyWith(recentEvents: events);
+        break;
     }
   }
 
@@ -247,13 +249,8 @@ final syncErrorProvider = Provider<String?>((ref) {
 
 /// Sync state provider (for full state access)
 final syncStateProvider = StateNotifierProvider<SyncStateNotifier, SyncState>((ref) {
-  // Services should be initialized elsewhere and provided
-  // This is a placeholder for dependency injection
-  final syncService = ss.SyncService(CrdtService());
-  final offlineService = OfflineService(
-    syncDatasource: throw UnimplementedError('SyncDatasource not provided'),
-    connectivity: Connectivity(),
-  );
+  final syncService = ref.watch(ss.syncServiceProvider);
+  final offlineService = ref.watch(offlineServiceProvider);
 
   return SyncStateNotifier(
     syncService: syncService,

@@ -246,16 +246,16 @@ void main() {
       syncService = MockSyncService(mockCrdtService);
     });
 
-    test('getPendingSyncCount returns count of dirty documents', () {
+    test('getPendingSyncCount returns count of dirty documents', () async {
       mockCrdtService.markDirty('doc1');
       mockCrdtService.markDirty('doc2');
       mockCrdtService.markDirty('doc3');
 
-      expect(syncService.getPendingSyncCount(), 3);
+      expect(await syncService.getPendingSyncCount(), 3);
     });
 
-    test('getPendingSyncCount returns 0 when no dirty documents', () {
-      expect(syncService.getPendingSyncCount(), 0);
+    test('getPendingSyncCount returns 0 when no dirty documents', () async {
+      expect(await syncService.getPendingSyncCount(), 0);
     });
   });
 
@@ -330,7 +330,7 @@ void main() {
       expect(summary.failedCount, 0);
 
       // All documents should be synced
-      expect(syncService.getPendingSyncCount(), 0);
+      expect(await syncService.getPendingSyncCount(), 0);
     });
 
     test('simulate partial sync failure', () async {
