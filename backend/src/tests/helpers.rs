@@ -64,10 +64,7 @@ impl TestRequest {
         self
     }
 
-    pub async fn send(
-        self,
-        app: &TestApp,
-    ) -> actix_web::test::TestResponse {
+    pub async fn send(self, app: &TestApp) -> TestResponse {
         let mut test_app = test::init_service(
             App::new()
                 .app_data(web::Data::new(app.repository.clone()))
@@ -87,15 +84,16 @@ impl TestRequest {
             );
         }
 
-        if let Some(_body) = self.body {
+        if let Some(body) = self.body {
             req.headers_mut().insert(
                 actix_web::http::header::CONTENT_TYPE,
                 actix_web::http::HeaderValue::from_static("application/json"),
             );
+            req.set_payload(body);
         }
 
         let response = test_app.call(req).await.unwrap();
-        test::TestResponse::from(response)
+        TestResponse::from(response)
     }
 }
 
@@ -171,12 +169,12 @@ pub struct TestUser {
     pub display_name: String,
 }
 
-pub async fn create_test_user(app: &TestApp) -> TestUser {
+pub async fn create_test_user(app: &TestApp) -> sqlx::Result<TestUser> {
     let id = Uuid::new_v4();
     let email = format!("test_{}@example.com", id.to_string().replace('-', ""));
     let display_name = format!("Test User {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
 
-    let _ = sqlx::query(
+    sqlx::query(
         "INSERT INTO users (id, email, password_hash, display_name, is_active, is_email_verified, timezone, language) VALUES ($1, $2, $3, $4, true, false, 'UTC', 'en') ON CONFLICT (id) DO NOTHING"
     )
     .bind(id)
@@ -184,9 +182,9 @@ pub async fn create_test_user(app: &TestApp) -> TestUser {
     .bind("$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4aYJGYxMnC6C5.Oy")
     .bind(display_name.clone())
     .execute(&app.pool)
-    .await;
+    .await?;
 
-    TestUser { id, email, display_name }
+    Ok(TestUser { id, email, display_name })
 }
 
 pub struct TestSpace {
@@ -195,29 +193,29 @@ pub struct TestSpace {
     pub name: String,
 }
 
-pub async fn create_test_space(app: &TestApp, owner_id: &Uuid) -> TestSpace {
+pub async fn create_test_space(app: &TestApp, owner_id: &Uuid) -> sqlx::Result<TestSpace> {
     let id = Uuid::new_v4();
     let name = format!("Test Space {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
 
-    let _ = sqlx::query(
+    sqlx::query(
         "INSERT INTO spaces (id, owner_id, name, is_public) VALUES ($1, $2, $3, false) ON CONFLICT (id) DO NOTHING"
     )
     .bind(id)
     .bind(owner_id)
     .bind(name.clone())
     .execute(&app.pool)
-    .await;
+    .await?;
 
-    let _ = sqlx::query(
+    sqlx::query(
         "INSERT INTO space_memberships (id, space_id, user_id, role, invited_by) VALUES ($1, $2, $3, 'owner', $3) ON CONFLICT DO NOTHING"
     )
     .bind(Uuid::new_v4())
     .bind(id)
     .bind(owner_id)
     .execute(&app.pool)
-    .await;
+    .await?;
 
-    TestSpace { id, owner_id: *owner_id, name }
+    Ok(TestSpace { id, owner_id: *owner_id, name })
 }
 
 pub struct TestDocument {
@@ -226,7 +224,7 @@ pub struct TestDocument {
     pub title: String,
 }
 
-pub async fn create_test_document(app: &TestApp, space_id: &Uuid, parent_id: Option<&Uuid>) -> TestDocument {
+pub async fn create_test_document(app: &TestApp, space_id: &Uuid, parent_id: Option<&Uuid>) -> sqlx::Result<TestDocument> {
     let id = Uuid::new_v4();
     let title = format!("Test Document {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
 
@@ -239,28 +237,27 @@ pub async fn create_test_document(app: &TestApp, space_id: &Uuid, parent_id: Opt
         }
     });
 
-    let owner_result = sqlx::query_as::<_, (Uuid,)>(
+    let owner = sqlx::query_as::<_, (Uuid,)>(
         "SELECT owner_id FROM spaces WHERE id = $1"
     )
     .bind(space_id)
     .fetch_optional(&app.pool)
-    .await;
+    .await?
+    .ok_or_else(|| sqlx::Error::RowNotFound)?;
 
-    if let Ok(Some(owner)) = owner_result {
-        let _ = sqlx::query(
-            "INSERT INTO documents (id, space_id, parent_id, title, icon, content, content_size, is_archived, created_by, last_edited_by) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $8) ON CONFLICT (id) DO NOTHING"
-        )
-        .bind(id)
-        .bind(space_id)
-        .bind(parent_id)
-        .bind(title.clone())
-        .bind(Some("📝".to_string()))
-        .bind(content)
-        .bind(content.to_string().len() as i32)
-        .bind(owner.0)
-        .execute(&app.pool)
-        .await;
-    }
+    sqlx::query(
+        "INSERT INTO documents (id, space_id, parent_id, title, icon, content, content_size, is_archived, created_by, last_edited_by) VALUES ($1, $2, $3, $4, $5, $6, $7, false, $8, $8) ON CONFLICT (id) DO NOTHING"
+    )
+    .bind(id)
+    .bind(space_id)
+    .bind(parent_id)
+    .bind(title.clone())
+    .bind(Some("📝".to_string()))
+    .bind(content)
+    .bind(content.to_string().len() as i32)
+    .bind(owner.0)
+    .execute(&app.pool)
+    .await?;
 
-    TestDocument { id, space_id: *space_id, title }
+    Ok(TestDocument { id, space_id: *space_id, title })
 }
