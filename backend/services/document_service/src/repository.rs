@@ -32,6 +32,29 @@ pub struct DocumentVersionRow {
 }
 
 #[derive(Debug, Clone, FromRow)]
+pub struct SpaceRow {
+    pub id: Uuid,
+    pub owner_id: Uuid,
+    pub name: String,
+    pub icon: Option<String>,
+    pub description: Option<String>,
+    pub is_public: bool,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+    pub user_role: Option<String>,
+}
+
+#[derive(Debug, Clone, FromRow)]
+pub struct SpaceMembershipRow {
+    pub id: Uuid,
+    pub space_id: Uuid,
+    pub user_id: Uuid,
+    pub role: String,
+    pub joined_at: NaiveDateTime,
+    pub invited_by: Uuid,
+}
+
+#[derive(Debug, Clone, FromRow)]
 struct ContentRow {
     content: serde_json::Value,
 }
@@ -466,5 +489,251 @@ impl DocumentRepository {
         .await?;
 
         Ok(result.is_some())
+    }
+
+    // Space operations
+
+    pub async fn list_spaces(&self, user_id: &str) -> Result<Vec<SpaceRow>, sqlx::Error> {
+        let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let spaces = sqlx::query_as!(
+            SpaceRow,
+            r#"
+            SELECT 
+                s.id, s.owner_id, s.name, s.icon, s.description, 
+                s.is_public, s.created_at, s.updated_at,
+                sm.role as user_role
+            FROM spaces s
+            LEFT JOIN space_memberships sm ON s.id = sm.space_id AND sm.user_id = $1
+            WHERE s.owner_id = $1 OR sm.user_id = $1 OR s.is_public = true
+            ORDER BY s.updated_at DESC
+            "#,
+            user_uuid
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(spaces)
+    }
+
+    pub async fn create_space(
+        &self,
+        owner_id: &str,
+        name: &str,
+        icon: Option<&str>,
+        description: Option<&str>,
+        is_public: bool,
+    ) -> Result<SpaceRow, sqlx::Error> {
+        let owner_uuid = Uuid::parse_str(owner_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let space = sqlx::query_as!(
+            SpaceRow,
+            r#"
+            INSERT INTO spaces (id, owner_id, name, icon, description, is_public)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+            owner_uuid,
+            name,
+            icon,
+            description,
+            is_public
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        // Add owner as member
+        sqlx::query!(
+            r#"
+            INSERT INTO space_memberships (id, space_id, user_id, role, invited_by)
+            VALUES (gen_random_uuid(), $1, $2, 'owner', $2)
+            "#,
+            space.id,
+            owner_uuid
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(space)
+    }
+
+    pub async fn get_space(&self, space_id: &str) -> Result<Option<SpaceRow>, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let space = sqlx::query_as!(
+            SpaceRow,
+            r#"SELECT * FROM spaces WHERE id = $1"#,
+            space_uuid
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(space)
+    }
+
+    pub async fn update_space(
+        &self,
+        space_id: &str,
+        name: Option<&str>,
+        icon: Option<&str>,
+        description: Option<&str>,
+        is_public: Option<bool>,
+    ) -> Result<Option<SpaceRow>, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let space = sqlx::query_as!(
+            SpaceRow,
+            r#"
+            UPDATE spaces
+            SET 
+                name = COALESCE($2, name),
+                icon = COALESCE($3, icon),
+                description = COALESCE($4, description),
+                is_public = COALESCE($5, is_public),
+                updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+            space_uuid,
+            name,
+            icon,
+            description,
+            is_public
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(space)
+    }
+
+    pub async fn delete_space(&self, space_id: &str) -> Result<bool, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let result = sqlx::query!(
+            r#"DELETE FROM spaces WHERE id = $1"#,
+            space_uuid
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    pub async fn is_space_owner(&self, space_id: &str, user_id: &str) -> Result<bool, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let result = sqlx::query_as!(
+            SpaceRow,
+            r#"SELECT * FROM spaces WHERE id = $1 AND owner_id = $2"#,
+            space_uuid,
+            user_uuid
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(result.is_some())
+    }
+
+    pub async fn get_user_space_role(&self, space_id: &str, user_id: &str) -> Result<Option<String>, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let result = sqlx::query_as!(
+            SpaceMembershipRow,
+            r#"SELECT * FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
+            space_uuid,
+            user_uuid
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(result.map(|r| r.role))
+    }
+
+    pub async fn list_space_members(&self, space_id: &str) -> Result<Vec<SpaceMembershipRow>, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let members = sqlx::query_as!(
+            SpaceMembershipRow,
+            r#"SELECT * FROM space_memberships WHERE space_id = $1 ORDER BY joined_at"#,
+            space_uuid
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(members)
+    }
+
+    pub async fn add_space_member(
+        &self,
+        space_id: &str,
+        user_id: &str,
+        role: &str,
+        invited_by: &str,
+    ) -> Result<SpaceMembershipRow, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let inviter_uuid = Uuid::parse_str(invited_by).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let membership = sqlx::query_as!(
+            SpaceMembershipRow,
+            r#"
+            INSERT INTO space_memberships (id, space_id, user_id, role, invited_by)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4)
+            ON CONFLICT (space_id, user_id) DO UPDATE SET role = EXCLUDED.role
+            RETURNING *
+            "#,
+            space_uuid,
+            user_uuid,
+            role,
+            inviter_uuid
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(membership)
+    }
+
+    pub async fn update_space_member(
+        &self,
+        space_id: &str,
+        user_id: &str,
+        role: &str,
+    ) -> Result<Option<SpaceMembershipRow>, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let membership = sqlx::query_as!(
+            SpaceMembershipRow,
+            r#"
+            UPDATE space_memberships
+            SET role = $3
+            WHERE space_id = $1 AND user_id = $2
+            RETURNING *
+            "#,
+            space_uuid,
+            user_uuid,
+            role
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(membership)
+    }
+
+    pub async fn remove_space_member(&self, space_id: &str, user_id: &str) -> Result<bool, sqlx::Error> {
+        let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let result = sqlx::query!(
+            r#"DELETE FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
+            space_uuid,
+            user_uuid
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
     }
 }

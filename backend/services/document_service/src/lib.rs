@@ -7,6 +7,20 @@ use actix_web::web;
 use crate::handlers::*;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
+    // Space endpoints
+    cfg.service(
+        web::scope("/api/v1/spaces")
+            .route("", web::get().to(list_spaces))
+            .route("", web::post().to(create_space))
+            .route("/{spaceId}", web::get().to(get_space))
+            .route("/{spaceId}", web::patch().to(update_space))
+            .route("/{spaceId}", web::delete().to(delete_space))
+            .route("/{spaceId}/members", web::get().to(list_space_members))
+            .route("/{spaceId}/members", web::post().to(add_space_member))
+            .route("/{spaceId}/members/{userId}", web::patch().to(update_space_member))
+            .route("/{spaceId}/members/{userId}", web::delete().to(remove_space_member))
+    );
+
     // Document CRUD endpoints
     cfg.service(
         web::scope("/api/v1")
