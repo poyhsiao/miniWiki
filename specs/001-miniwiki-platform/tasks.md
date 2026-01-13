@@ -180,18 +180,18 @@ Based on `plan.md` structure:
 
 ### Frontend Implementation for User Story 1
 
-- [ ] T083 [US1] Create flutter_app/lib/domain/entities/document.dart with Document entity
-- [ ] T084 [US1] Create flutter_app/lib/domain/entities/space.dart with Space entity
-- [ ] T085 [US1] Create flutter_app/lib/domain/repositories/document_repository.dart interface
-- [ ] T086 [US1] Create flutter_app/lib/data/repositories/document_repository_impl.dart with API implementation
-- [ ] T087 [US1] Create flutter_app/lib/services/document_service.dart with CRUD operations
-- [ ] T088 [US1] Create flutter_app/lib/presentation/providers/document_provider.dart with Riverpod state
-- [ ] T089 [US1] Create flutter_app/lib/presentation/pages/documents/document_list_page.dart
-- [ ] T090 [US1] Create flutter_app/lib/presentation/pages/documents/document_editor_page.dart
-- [ ] T091 [US1] Create flutter_app/lib/presentation/widgets/rich_text_editor.dart with Flutter Quill integration
-- [ ] T092 [US1] Implement document creation flow in document_list_page.dart
-- [ ] T093 [US1] Implement rich text editing with Flutter Quill in document_editor_page.dart
-- [ ] T094 [US1] Implement auto-save with sync_service integration
+- [x] T083 [US1] Create flutter_app/lib/domain/entities/document.dart with Document entity
+- [x] T084 [US1] Create flutter_app/lib/domain/entities/space.dart with Space entity
+- [x] T085 [US1] Create flutter_app/lib/domain/repositories/document_repository.dart interface
+- [x] T086 [US1] Create flutter_app/lib/data/repositories/document_repository_impl.dart with API implementation
+- [x] T087 [US1] Create flutter_app/lib/services/document_service.dart with CRUD operations
+- [x] T088 [US1] Create flutter_app/lib/presentation/providers/document_provider.dart with Riverpod state
+- [x] T089 [US1] Create flutter_app/lib/presentation/pages/documents/document_list_page.dart
+- [x] T090 [US1] Create flutter_app/lib/presentation/pages/documents/document_editor_page.dart
+- [x] T091 [US1] Create flutter_app/lib/presentation/widgets/rich_text_editor.dart with Flutter Quill integration
+- [x] T092 [US1] Implement document creation flow in document_list_page.dart
+- [x] T093 [US1] Implement rich text editing with Flutter Quill in document_editor_page.dart
+- [x] T094 [US1] Implement auto-save with sync_service integration
 
 ### Integration for User Story 1
 
