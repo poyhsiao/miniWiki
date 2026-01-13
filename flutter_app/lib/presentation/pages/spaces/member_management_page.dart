@@ -185,62 +185,84 @@ class MemberManagementPage extends ConsumerWidget {
   void _showAddMemberDialog(BuildContext context, WidgetRef ref) {
     final userIdController = TextEditingController();
     String selectedRole = 'viewer';
+    bool isLoading = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Invite Member'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: userIdController,
-                decoration: const InputDecoration(
-                  labelText: 'User ID or Email',
-                  border: OutlineInputBorder(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Invite Member'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: userIdController,
+                  decoration: const InputDecoration(
+                    labelText: 'User ID or Email',
+                    border: OutlineInputBorder(),
+                  ),
+                  autofocus: true,
                 ),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: selectedRole,
-                decoration: const InputDecoration(
-                  labelText: 'Role',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: SpaceService.validRoles
+                      .where((role) => role != 'owner')
+                      .map((role) => DropdownMenuItem(
+                            value: role,
+                            child: Text(
+                              role[0].toUpperCase() + role.substring(1),
+                            ),
+                          ))
+                      .toList(),
+                  onChanged: (value) => setState(() => selectedRole = value ?? 'viewer'),
                 ),
-                items: SpaceService.validRoles
-                    .where((role) => role != 'owner')
-                    .map((role) => DropdownMenuItem(
-                          value: role,
-                          child: Text(
-                            role[0].toUpperCase() + role.substring(1),
-                          ),
-                        ))
-                    .toList(),
-                onChanged: (value) => selectedRole = value ?? 'viewer',
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading || userIdController.text.isEmpty
+                  ? null
+                  : () async {
+                      setState(() => isLoading = true);
+                      try {
+                        await ref.read(spaceProvider.notifier).addMember(
+                              spaceId,
+                              userIdController.text,
+                              selectedRole,
+                            );
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      } catch (e) {
+                        setState(() => isLoading = false);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to add member: $e')),
+                          );
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Invite'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (userIdController.text.isNotEmpty) {
-                ref.read(spaceProvider.notifier).addMember(
-                      spaceId,
-                      userIdController.text,
-                      selectedRole,
-                    );
-                Navigator.pop(context);
-              }
-            },
-            child: const Text('Invite'),
-          ),
-        ],
       ),
     );
   }

@@ -248,10 +248,10 @@ Based on `plan.md` structure:
 
 ### Integration for User Story 2
 
-- [ ] T125 [US2] Verify space CRUD endpoints work with PostgreSQL
-- [ ] T126 [US2] Verify hierarchical document queries work correctly
-- [ ] T127 [US2] Test space creation → member invitation → document organization flow
-- [ ] T128 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly
+- [ ] T126 [US2] Verify space CRUD endpoints work with PostgreSQL
+- [ ] T127 [US2] Verify hierarchical document queries work correctly
+- [ ] T128 [US2] Test space creation → member invitation → document organization flow
+- [ ] T129 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly
 
 **Checkpoint**: User Story 2 complete - document organization and space management is fully functional
 
