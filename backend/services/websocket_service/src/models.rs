@@ -33,6 +33,7 @@ pub struct ServerMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncMessage {
     pub state_vector: Option<Vec<u8>>,
     pub update: Option<Vec<u8>>,
@@ -108,14 +109,8 @@ impl DocumentAwareness {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct YjsUpdate {
-    pub update: Vec<u8>,
-    pub vector: Option<Vec<u8>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DocumentState {
+    #[derive(Debug, Clone, Serialize, Deserialize)]
+    pub struct DocumentState {
     pub document_id: Uuid,
     pub state: Vec<u8>,
     pub vector: Vec<u8>,

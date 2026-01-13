@@ -142,7 +142,6 @@ async fn handle_sync(
         .map_err(|e| format!("Invalid sync message: {}", e))?;
 
     let sync_state = SYNC_MANAGER.get_or_create_sync_state(session.document_id).await;
-    let mut state_guard = sync_state.lock().await;
 
     tracing::debug!(
         "Received sync message for document {} from user {}",
@@ -346,7 +345,7 @@ pub fn broadcast_to_document(
     for session_arc in sessions {
         let session = session_arc.lock().unwrap();
         if let Some(exclude) = exclude_session {
-            if session.id == exclude {
+            if session.user_id == exclude {
                 continue;
             }
         }

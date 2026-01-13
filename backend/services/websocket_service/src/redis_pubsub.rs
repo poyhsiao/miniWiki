@@ -170,8 +170,8 @@ impl RedisPubSubManager {
                 };
                 
                 if let Ok(redis_msg) = RedisMessage::from_json(&payload) {
-                    let guard = futures::executor::block_on(sender.lock());
-                    if let Some(tx) = guard.as_ref() {
+                    let guard = sender.try_lock();
+                    if let Some(tx) = guard {
                         let _ = tx.send(redis_msg);
                     }
                 }
@@ -290,15 +290,14 @@ impl RedisPubSubManager {
 
     pub async fn handle_redis_message(&self, message: RedisMessage) {
         match message {
-            RedisMessage::UserJoin { document_id: _, user_id, display_name, color } => {
-                let presence = UserPresence {
+            RedisMessage::UserJoin { document_id, user_id, display_name, color } => {
+                let entry = crate::presence::PresenceEntry::new(
                     user_id,
                     display_name,
                     color,
-                    cursor: None,
-                    last_active: Utc::now(),
-                };
-                PRESENCE_STORE.set_presence(presence);
+                    document_id,
+                );
+                PRESENCE_STORE.set_presence(entry);
             }
             RedisMessage::UserLeave { document_id: _, user_id } => {
                 PRESENCE_STORE.remove_presence(user_id);
@@ -306,15 +305,15 @@ impl RedisPubSubManager {
             RedisMessage::CursorUpdate { document_id: _, user_id, cursor } => {
                 PRESENCE_STORE.update_cursor(user_id, cursor);
             }
-            RedisMessage::PresenceUpdate { document_id: _, user_id, display_name, color, cursor } => {
-                let presence = UserPresence {
+            RedisMessage::PresenceUpdate { document_id, user_id, display_name, color, cursor } => {
+                let mut entry = crate::presence::PresenceEntry::new(
                     user_id,
                     display_name,
                     color,
-                    cursor,
-                    last_active: Utc::now(),
-                };
-                PRESENCE_STORE.set_presence(presence);
+                    document_id,
+                );
+                entry.cursor = cursor;
+                PRESENCE_STORE.set_presence(entry);
             }
             RedisMessage::DocumentUpdate { document_id: _, user_id: _, update: _ } => {
                 // Document update handling would trigger sync with connected clients
@@ -397,11 +396,11 @@ mod tests {
         let decoded = RedisMessage::from_json(&json).expect("Failed to deserialize");
 
         match decoded {
-            RedisMessage::UserJoin { document_id, user_id, display_name, color } => {
-                assert_eq!(document_id, doc_id);
-                assert_eq!(user_id, user_id);
-                assert_eq!(display_name, "Test User");
-                assert_eq!(color, "#FF0000");
+            RedisMessage::UserJoin { document_id: decoded_doc_id, user_id: decoded_user_id, display_name: decoded_display_name, color: decoded_color } => {
+                assert_eq!(decoded_doc_id, doc_id);
+                assert_eq!(decoded_user_id, user_id);
+                assert_eq!(decoded_display_name, "Test User");
+                assert_eq!(decoded_color, "#FF0000");
             }
             _ => panic!("Wrong message type"),
         }

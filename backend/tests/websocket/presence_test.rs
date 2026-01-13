@@ -292,11 +292,8 @@ mod presence_test {
             payload: json!({"display_name": "New User"}),
         };
 
-        // Send message
-        tx.send(message.clone()).expect("Failed to send");
-
-        // Receive message
         let mut rx = tx.subscribe();
+        tx.send(message.clone()).expect("Failed to send");
         let received = rx.recv().await.expect("Failed to receive");
 
         assert_eq!(message.type_, received.type_);
@@ -314,11 +311,9 @@ mod presence_test {
             payload: json!({"update": [1, 2, 3]}),
         };
 
-        tx.send(message.clone()).expect("Failed to send");
-
-        // Multiple subscribers should all receive
         let mut rx1 = tx.subscribe();
         let mut rx2 = tx.subscribe();
+        tx.send(message.clone()).expect("Failed to send");
 
         let received1 = rx1.recv().await.expect("Subscriber 1 failed");
         let received2 = rx2.recv().await.expect("Subscriber 2 failed");
