@@ -8,15 +8,15 @@
 use actix_web::web;
 use chrono::Utc;
 use miniwiki_backend::services::document_service::{CreateDocumentRequest, UpdateDocumentRequest};
-use miniwiki_backend::tests::helpers::{create_test_app, create_test_document, create_test_space, create_test_user, TestApp};
+use miniwiki_backend::tests::helpers::{TestApp, TestUser, TestSpace, TestDocument};
 use shared_errors::error::ApiError;
 use uuid::Uuid;
 
 #[tokio::test]
 async fn test_create_document_success() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
 
     let request = CreateDocumentRequest {
         space_id: space.id,
@@ -50,10 +50,10 @@ async fn test_create_document_success() {
 
 #[tokio::test]
 async fn test_create_document_with_parent() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let parent_doc = create_test_document(&app, &space.id, None).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
+    let parent_doc = app.create_test_document(&space.id, None).await;
 
     let request = CreateDocumentRequest {
         space_id: space.id,
@@ -78,9 +78,9 @@ async fn test_create_document_with_parent() {
 
 #[tokio::test]
 async fn test_create_document_empty_title_fails() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
 
     let request = CreateDocumentRequest {
         space_id: space.id,
@@ -101,10 +101,10 @@ async fn test_create_document_empty_title_fails() {
 
 #[tokio::test]
 async fn test_get_document_success() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
+    let document = app.create_test_document(&space.id, None).await;
 
     let response = app
         .get(&format!("/api/v1/documents/{}", document.id))
@@ -121,7 +121,7 @@ async fn test_get_document_success() {
 
 #[tokio::test]
 async fn test_get_document_not_found() {
-    let app = create_test_app().await;
+    let app = TestApp::create().await;
     let fake_id = Uuid::new_v4();
 
     let response = app
@@ -134,10 +134,10 @@ async fn test_get_document_not_found() {
 
 #[tokio::test]
 async fn test_update_document_title() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
+    let document = app.create_test_document(&space.id, None).await;
 
     let request = UpdateDocumentRequest {
         title: Some("Updated Title".to_string()),
@@ -160,10 +160,10 @@ async fn test_update_document_title() {
 
 #[tokio::test]
 async fn test_update_document_content() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
+    let document = app.create_test_document(&space.id, None).await;
 
     let new_content = serde_json::json!({
         "type": "Y.Doc",
@@ -191,10 +191,10 @@ async fn test_update_document_content() {
 
 #[tokio::test]
 async fn test_delete_document_soft_delete() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
+    let document = app.create_test_document(&space.id, None).await;
 
     let response = app
         .delete(&format!("/api/v1/documents/{}", document.id))
@@ -218,14 +218,14 @@ async fn test_delete_document_soft_delete() {
 
 #[tokio::test]
 async fn test_list_documents_in_space() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
 
     // Create multiple documents
-    create_test_document(&app, &space.id, None).await;
-    create_test_document(&app, &space.id, None).await;
-    create_test_document(&app, &space.id, None).await;
+    app.create_test_document(&space.id, None).await;
+    app.create_test_document(&space.id, None).await;
+    app.create_test_document(&space.id, None).await;
 
     let response = app
         .get(&format!("/api/v1/spaces/{}/documents", space.id))
@@ -242,13 +242,13 @@ async fn test_list_documents_in_space() {
 
 #[tokio::test]
 async fn test_list_documents_with_pagination() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
 
     // Create documents
     for i in 0..10 {
-        create_test_document(&app, &space.id, None).await;
+        app.create_test_document(&space.id, None).await;
     }
 
     let response = app
@@ -268,14 +268,14 @@ async fn test_list_documents_with_pagination() {
 
 #[tokio::test]
 async fn test_document_hierarchy_nested() {
-    let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let app = TestApp::create().await;
+    let user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&user.id).await;
 
     // Create nested hierarchy: parent -> child -> grandchild
-    let parent = create_test_document(&app, &space.id, None).await;
-    let child = create_test_document(&app, &space.id, Some(parent.id)).await;
-    let _grandchild = create_test_document(&app, &space.id, Some(child.id)).await;
+    let parent = app.create_test_document(&space.id, None).await;
+    let child = app.create_test_document(&space.id, Some(&parent.id)).await;
+    app.create_test_document(&space.id, Some(&child.id)).await;
 
     // Get children of parent
     let response = app

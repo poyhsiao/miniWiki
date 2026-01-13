@@ -1,0 +1,30 @@
+# Flutter App specific gitignore
+# This file extends the root .gitignore with Flutter-specific patterns
+
+.dart_tool/
+.pub-cache/
+.pub/
+build/
+pubspec.lock
+*.log
+
+# Firebase
+*.firebase
+.firebase/
+
+# Generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+
+# Test coverage
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env*
+!.env.example
