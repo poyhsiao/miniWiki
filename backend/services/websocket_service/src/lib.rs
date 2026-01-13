@@ -8,11 +8,13 @@ pub mod handlers;
 pub mod models;
 pub mod presence;
 pub mod connection_manager;
+pub mod actor;
 
 pub use handlers::*;
 pub use models::*;
 pub use presence::*;
 pub use connection_manager::*;
+pub use actor::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CursorPosition {

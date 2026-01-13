@@ -15,6 +15,7 @@ tokio = { version = "1.35", features = ["full"] }
 # Web framework
 actix-web = "4.5"
 actix-web-actors = "4.3"
+actix = "0.13"
 
 # WebSocket
 websocket = "0.24"
