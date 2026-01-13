@@ -195,3 +195,88 @@ impl<T> ApiResponse<T> {
         }
     }
 }
+
+// ============================================
+// Space Request Types
+// ============================================
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct CreateSpaceRequest {
+    #[validate(length(min = 1, max = 200))]
+    pub name: String,
+
+    #[validate(length(max = 50))]
+    pub icon: Option<String>,
+
+    pub description: Option<String>,
+
+    pub is_public: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct UpdateSpaceRequest {
+    #[validate(length(min = 1, max = 200))]
+    pub name: Option<String>,
+
+    #[validate(length(max = 50))]
+    pub icon: Option<String>,
+
+    pub description: Option<String>,
+
+    pub is_public: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct AddMemberRequest {
+    pub user_id: String,
+
+    #[validate(length(min = 1, max = 20))]
+    #[serde(rename = "role")]
+    pub role: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct UpdateMemberRequest {
+    #[validate(length(min = 1, max = 20))]
+    #[serde(rename = "role")]
+    pub role: String,
+}
+
+// ============================================
+// Space Response Types
+// ============================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SpaceResponse {
+    pub id: String,
+    pub owner_id: String,
+    pub name: String,
+    pub icon: Option<String>,
+    pub description: Option<String>,
+    pub is_public: bool,
+    pub created_at: String,
+    pub updated_at: String,
+    pub user_role: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SpaceListResponse {
+    pub spaces: Vec<SpaceResponse>,
+    pub total: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MemberResponse {
+    pub id: String,
+    pub space_id: String,
+    pub user_id: String,
+    pub role: String,
+    pub joined_at: String,
+    pub invited_by: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MemberListResponse {
+    pub members: Vec<MemberResponse>,
+    pub total: i32,
+}

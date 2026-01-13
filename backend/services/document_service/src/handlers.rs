@@ -653,3 +653,403 @@ pub async fn get_version_diff(
         }
     }
 }
+
+// Space handlers
+pub async fn list_spaces(
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    match repo.list_spaces(&user_id).await {
+        Ok(spaces) => {
+            let total = spaces.len() as i32;
+            HttpResponse::Ok()
+                .json(ApiResponse::<SpaceListResponse>::success(SpaceListResponse {
+                    spaces: spaces.into_iter().map(|s| space_row_to_response(&s)).collect(),
+                    total,
+                }))
+        }
+        Err(e) => {
+            error!("Database error listing spaces: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn create_space(
+    req: web::Json<CreateSpaceRequest>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    if let Err(validation_errors) = (&*req).validate() {
+        return HttpResponse::BadRequest()
+            .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
+    }
+
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    match repo.create_space(&user_id, &req.name, req.icon.as_deref(), req.description.as_deref(), req.is_public).await {
+        Ok(space) => {
+            HttpResponse::Created()
+                .json(ApiResponse::<SpaceResponse>::success(space_row_to_response(&space)))
+        }
+        Err(e) => {
+            error!("Database error creating space: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn get_space(
+    space_id: web::Path<String>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let space_id = space_id.into_inner();
+    
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check access (public spaces accessible by anyone, private spaces require membership)
+    match repo.check_space_access(&space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    match repo.get_space(&space_id).await {
+        Ok(Some(space)) => {
+            HttpResponse::Ok()
+                .json(ApiResponse::<SpaceResponse>::success(space_row_to_response(&space)))
+        }
+        Ok(None) => {
+            HttpResponse::NotFound()
+                .json(ApiResponse::<()>::error("SPACE_NOT_FOUND", "Space not found"))
+        }
+        Err(e) => {
+            error!("Database error getting space: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn update_space(
+    space_id: web::Path<String>,
+    req: web::Json<UpdateSpaceRequest>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let space_id = space_id.into_inner();
+    
+    if let Err(validation_errors) = (&*req).validate() {
+        return HttpResponse::BadRequest()
+            .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
+    }
+
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check if user is owner
+    match repo.is_space_owner(&space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "Only space owner can update space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    match repo.update_space(&space_id, req.name.as_deref(), req.icon.as_deref(), req.description.as_deref(), req.is_public).await {
+        Ok(Some(space)) => {
+            HttpResponse::Ok()
+                .json(ApiResponse::<SpaceResponse>::success(space_row_to_response(&space)))
+        }
+        Ok(None) => {
+            HttpResponse::NotFound()
+                .json(ApiResponse::<()>::error("SPACE_NOT_FOUND", "Space not found"))
+        }
+        Err(e) => {
+            error!("Database error updating space: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn delete_space(
+    space_id: web::Path<String>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let space_id = space_id.into_inner();
+    
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check if user is owner
+    match repo.is_space_owner(&space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "Only space owner can delete space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    match repo.delete_space(&space_id).await {
+        Ok(true) => {
+            HttpResponse::NoContent().finish()
+        }
+        Ok(false) => {
+            HttpResponse::NotFound()
+                .json(ApiResponse::<()>::error("SPACE_NOT_FOUND", "Space not found"))
+        }
+        Err(e) => {
+            error!("Database error deleting space: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+// Space membership handlers
+pub async fn list_space_members(
+    space_id: web::Path<String>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let space_id = space_id.into_inner();
+    
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check access
+    match repo.check_space_access(&space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    match repo.list_space_members(&space_id).await {
+        Ok(members) => {
+            let total = members.len() as i32;
+            HttpResponse::Ok()
+                .json(ApiResponse::<MemberListResponse>::success(MemberListResponse {
+                    members: members.into_iter().map(|m| membership_row_to_response(&m)).collect(),
+                    total,
+                }))
+        }
+        Err(e) => {
+            error!("Database error listing members: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn add_space_member(
+    space_id: web::Path<String>,
+    req: web::Json<AddMemberRequest>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let space_id = space_id.into_inner();
+    
+    if let Err(validation_errors) = (&*req).validate() {
+        return HttpResponse::BadRequest()
+            .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
+    }
+
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check if user is owner or editor
+    match repo.get_user_space_role(&space_id, &user_id).await {
+        Ok(Some(role)) if role == "owner" || role == "editor" => {}
+        Ok(Some(_)) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "Insufficient permissions to add members"));
+        }
+        Ok(None) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    match repo.add_space_member(&space_id, &req.user_id, &req.role, &user_id).await {
+        Ok(membership) => {
+            HttpResponse::Created()
+                .json(ApiResponse::<MemberResponse>::success(membership_row_to_response(&membership)))
+        }
+        Err(e) => {
+            error!("Database error adding member: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn update_space_member(
+    path: actix_web::web::Path<(String, String)>,
+    req: web::Json<UpdateMemberRequest>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let (space_id, member_user_id) = path.into_inner();
+    
+    if let Err(validation_errors) = (&*req).validate() {
+        return HttpResponse::BadRequest()
+            .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
+    }
+
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check if current user is owner
+    match repo.is_space_owner(&space_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "Only space owner can update member roles"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    // Cannot change owner role
+    if let Ok(true) = repo.is_space_owner(&space_id, &member_user_id).await {
+        return HttpResponse::BadRequest()
+            .json(ApiResponse::<()>::error("INVALID_OPERATION", "Cannot change owner role"));
+    }
+
+    match repo.update_space_member(&space_id, &member_user_id, &req.role).await {
+        Ok(Some(membership)) => {
+            HttpResponse::Ok()
+                .json(ApiResponse::<MemberResponse>::success(membership_row_to_response(&membership)))
+        }
+        Ok(None) => {
+            HttpResponse::NotFound()
+                .json(ApiResponse::<()>::error("MEMBER_NOT_FOUND", "Member not found"))
+        }
+        Err(e) => {
+            error!("Database error updating member: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+pub async fn remove_space_member(
+    path: actix_web::web::Path<(String, String)>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let (space_id, member_user_id) = path.into_inner();
+    
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check permissions: owner can remove anyone, member can remove themselves
+    let is_owner = repo.is_space_owner(&space_id, &user_id).await.unwrap_or(false);
+    let is_self = member_user_id == user_id;
+    
+    if !is_owner && !is_self {
+        return HttpResponse::Forbidden()
+            .json(ApiResponse::<()>::error("ACCESS_DENIED", "Insufficient permissions to remove this member"));
+    }
+
+    // Cannot remove owner
+    if is_owner && repo.is_space_owner(&space_id, &member_user_id).await.unwrap_or(false) {
+        return HttpResponse::BadRequest()
+            .json(ApiResponse::<()>::error("INVALID_OPERATION", "Cannot remove space owner"));
+    }
+
+    match repo.remove_space_member(&space_id, &member_user_id).await {
+        Ok(true) => {
+            HttpResponse::NoContent().finish()
+        }
+        Ok(false) => {
+            HttpResponse::NotFound()
+                .json(ApiResponse::<()>::error("MEMBER_NOT_FOUND", "Member not found"))
+        }
+        Err(e) => {
+            error!("Database error removing member: {:?}", e);
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+// Helper functions for space conversions
+fn space_row_to_response(row: &crate::repository::SpaceRow) -> SpaceResponse {
+    SpaceResponse {
+        id: row.id.to_string(),
+        owner_id: row.owner_id.to_string(),
+        name: row.name.clone(),
+        icon: row.icon.clone(),
+        description: row.description.clone(),
+        is_public: row.is_public,
+        created_at: row.created_at.and_utc().to_rfc3339(),
+        updated_at: row.updated_at.and_utc().to_rfc3339(),
+        user_role: row.user_role.clone(),
+    }
+}
+
+fn membership_row_to_response(row: &crate::repository::SpaceMembershipRow) -> MemberResponse {
+    MemberResponse {
+        id: row.id.to_string(),
+        space_id: row.space_id.to_string(),
+        user_id: row.user_id.to_string(),
+        role: row.role.clone(),
+        joined_at: row.joined_at.and_utc().to_rfc3339(),
+        invited_by: row.invited_by.to_string(),
+    }
+}

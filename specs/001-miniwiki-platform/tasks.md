@@ -212,46 +212,46 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 2
 
-- [ ] T099 [P] [US2] Create backend/tests/spaces/spaces_test.rs for space CRUD operations
-- [ ] T100 [P] [US2] Create backend/tests/spaces/memberships_test.rs for membership operations
-- [ ] T101 [P] [US2] Create flutter_app/test/space_service_test.dart for service unit tests
+- [x] T099 [P] [US2] Create backend/tests/spaces/spaces_test.rs for space CRUD operations
+- [x] T100 [P] [US2] Create backend/tests/spaces/memberships_test.rs for membership operations
+- [x] T101 [P] [US2] Create flutter_app/test/space_service_test.dart for service unit tests
 
 ### Backend Implementation for User Story 2
 
-- [ ] T102 [US2] Create spaces table migration in backend/migrations/004_spaces.sql
-- [ ] T103 [US2] Create space_memberships table migration in backend/migrations/005_space_memberships.sql
-- [ ] T104 [US2] Create backend/services/document_service/src/hierarchy.rs for document hierarchy
-- [ ] T105 [US2] Implement GET /spaces endpoint for listing user's spaces
-- [ ] T106 [US2] Implement POST /spaces endpoint for creating new spaces
-- [ ] T107 [US2] Implement GET /spaces/{spaceId} endpoint for space details
-- [ ] T108 [US2] Implement PATCH /spaces/{spaceId} endpoint for updating space
-- [ ] T109 [US2] Implement DELETE /spaces/{spaceId} endpoint (soft delete)
-- [ ] T110 [US2] Implement GET /spaces/{spaceId}/members endpoint for listing members
-- [ ] T111 [US2] Implement POST /spaces/{spaceId}/members endpoint for adding members
-- [ ] T112 [US2] Implement PATCH /spaces/{spaceId}/members/{userId} endpoint for updating roles
-- [ ] T113 [US2] Implement DELETE /spaces/{spaceId}/members/{userId} endpoint for removing members
+- [x] T102 [US2] Create spaces table migration in backend/migrations/004_spaces.sql
+- [x] T103 [US2] Create space_memberships table migration in backend/migrations/005_space_memberships.sql
+- [x] T104 [US2] Implement GET /spaces endpoint for listing user's spaces
+- [x] T105 [US2] Implement POST /spaces endpoint for creating new spaces
+- [x] T106 [US2] Implement GET /spaces/{spaceId} endpoint for space details
+- [x] T107 [US2] Implement PATCH /spaces/{spaceId} endpoint for updating space
+- [x] T108 [US2] Implement DELETE /spaces/{spaceId} endpoint (soft delete)
+- [x] T109 [US2] Implement GET /spaces/{spaceId}/members endpoint for listing members
+- [x] T110 [US2] Implement POST /spaces/{spaceId}/members endpoint for adding members
+- [x] T111 [US2] Implement PATCH /spaces/{spaceId}/members/{userId} endpoint for updating roles
+- [x] T112 [US2] Implement DELETE /spaces/{spaceId}/members/{userId} endpoint for removing members
 
 ### Frontend Implementation for User Story 2
 
-- [ ] T114 [US2] Create flutter_app/lib/domain/entities/space_membership.dart with membership entity
-- [ ] T115 [US2] Create flutter_app/lib/domain/repositories/space_repository.dart interface
-- [ ] T116 [US2] Create flutter_app/lib/data/repositories/space_repository_impl.dart with API implementation
-- [ ] T117 [US2] Create flutter_app/lib/services/space_service.dart with space operations
-- [ ] T118 [US2] Create flutter_app/lib/presentation/providers/space_provider.dart with Riverpod state
-- [ ] T119 [US2] Create flutter_app/lib/presentation/pages/spaces/space_list_page.dart
-- [ ] T120 [US2] Create flutter_app/lib/presentation/pages/spaces/space_detail_page.dart
-- [ ] T121 [US2] Create flutter_app/lib/presentation/pages/spaces/space_settings_page.dart
-- [ ] T122 [US2] Create flutter_app/lib/presentation/pages/spaces/member_management_page.dart
+- [x] T113 [US2] Create flutter_app/lib/domain/entities/space_membership.dart with membership entity
+- [x] T114 [US2] Create flutter_app/lib/domain/repositories/space_repository.dart interface
+- [x] T115 [US2] Create flutter_app/lib/core/network/network_error.dart with error handling
+- [x] T116 [US2] Create flutter_app/lib/services/space_service.dart with space operations
+- [x] T117 [US2] Create flutter_app/lib/presentation/providers/space_provider.dart with Riverpod state
+- [x] T118 [US2] Create flutter_app/lib/presentation/pages/spaces/space_list_page.dart
+- [x] T119 [US2] Create flutter_app/lib/presentation/pages/spaces/space_detail_page.dart
+- [x] T120 [US2] Create flutter_app/lib/presentation/pages/spaces/space_settings_page.dart
+- [x] T121 [US2] Create flutter_app/lib/presentation/pages/spaces/member_management_page.dart
+- [x] T122 [US2] Create flutter_app/lib/data/repositories/space_repository_impl.dart with API implementation
 - [ ] T123 [US2] Create flutter_app/lib/presentation/widgets/sidebar_navigation.dart with hierarchical view
 - [ ] T124 [US2] Implement space creation flow in space_list_page.dart
 - [ ] T125 [US2] Implement member invitation flow in member_management_page.dart
 
 ### Integration for User Story 2
 
-- [ ] T126 [US2] Verify space CRUD endpoints work with PostgreSQL
-- [ ] T127 [US2] Verify hierarchical document queries work correctly
-- [ ] T128 [US2] Test space creation → member invitation → document organization flow
-- [ ] T129 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly
+- [ ] T125 [US2] Verify space CRUD endpoints work with PostgreSQL
+- [ ] T126 [US2] Verify hierarchical document queries work correctly
+- [ ] T127 [US2] Test space creation → member invitation → document organization flow
+- [ ] T128 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly
 
 **Checkpoint**: User Story 2 complete - document organization and space management is fully functional
 
