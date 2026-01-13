@@ -6025,6 +6025,7 @@ dependencies = [
  "chrono",
  "config",
  "dotenv",
+ "futures 0.3.31",
  "once_cell",
  "redis",
  "serde",

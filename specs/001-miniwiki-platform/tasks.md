@@ -309,18 +309,18 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 4
 
-- [ ] T152 [P] [US4] Create backend/tests/websocket/presence_test.rs for WebSocket presence
-- [ ] T153 [P] [US4] Create flutter_app/test/websocket_service_test.dart for real-time service tests
+- [x] T152 [P] [US4] Create backend/tests/websocket/presence_test.rs for WebSocket presence
+- [x] T153 [P] [US4] Create flutter_app/test/websocket_service_test.dart for real-time service tests
 
 ### Backend Implementation for User Story 4
 
-- [ ] T154 [US4] Create backend/services/websocket_service/src/lib.rs with WebSocket service
-- [ ] T155 [US4] Create backend/services/websocket_service/src/handlers.rs with WebSocket handlers
-- [ ] T156 [US4] Create backend/services/websocket_service/src/presence.rs with presence tracking
-- [ ] T157 [US4] Implement WebSocket endpoint at /ws/documents/{documentId}
-- [ ] T158 [US4] Implement Yjs sync protocol over WebSocket (using y_crdt)
-- [ ] T159 [US4] Implement cursor position broadcasting
-- [ ] T160 [US4] Implement Redis pub/sub for multi-instance presence
+- [x] T154 [US4] Create backend/services/websocket_service/src/lib.rs with WebSocket service (already exists)
+- [x] T155 [US4] Create backend/services/websocket_service/src/handlers.rs with WebSocket handlers (already exists)
+- [x] T156 [US4] Create backend/services/websocket_service/src/presence.rs with presence tracking (already exists)
+- [x] T157 [US4] Implement WebSocket endpoint at /ws/documents/{documentId} (already exists)
+- [x] T158 [US4] Implement Yjs sync protocol over WebSocket (using y_crdt)
+- [x] T159 [US4] Implement cursor position broadcasting
+- [x] T160 [US4] Implement Redis pub/sub for multi-instance presence
 
 ### Frontend Implementation for User Story 4
 
