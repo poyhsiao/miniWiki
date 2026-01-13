@@ -43,6 +43,7 @@ struct DocumentPathRow {
     level: Option<i32>,
 }
 
+#[derive(Debug, Clone)]
 pub struct DocumentRepository {
     pool: PgPool,
 }
@@ -359,8 +360,7 @@ impl DocumentRepository {
         let doc_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let restorer_uuid = Uuid::parse_str(restored_by).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        // First, check if the version exists
-        let version_exists = sqlx::query_as!(
+        let version_exists: Option<DocumentVersionRow> = sqlx::query_as!(
             DocumentVersionRow,
             r#"SELECT * FROM document_versions WHERE document_id = $1 AND version_number = $2 LIMIT 1"#,
             doc_uuid,
@@ -373,17 +373,15 @@ impl DocumentRepository {
             return Ok(None);
         }
 
-        // Call the SQL function for version restore
         sqlx::query!(
             r#"SELECT restore_document_to_version($1, $2, $3) as result"#,
             doc_uuid,
             version_number,
             restorer_uuid
         )
-        .fetch_optional(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
 
-        // Fetch the restored document
         let document = sqlx::query_as!(
             DocumentRow,
             r#"SELECT * FROM documents WHERE id = $1"#,
@@ -429,7 +427,7 @@ impl DocumentRepository {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query!(
+        let result = sqlx::query_as::<_, (i32,)>(
             r#"
             SELECT 1 as found FROM spaces
             WHERE id = $1 AND owner_id = $2
@@ -438,9 +436,9 @@ impl DocumentRepository {
             WHERE space_id = $1 AND user_id = $2
             LIMIT 1
             "#,
-            space_uuid,
-            user_uuid
         )
+        .bind(space_uuid)
+        .bind(user_uuid)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -451,7 +449,7 @@ impl DocumentRepository {
         let doc_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query!(
+        let result = sqlx::query_as::<_, (i32,)>(
             r#"
             SELECT 1 as found FROM documents d
             JOIN spaces s ON d.space_id = s.id
@@ -461,9 +459,9 @@ impl DocumentRepository {
             )
             LIMIT 1
             "#,
-            doc_uuid,
-            user_uuid
         )
+        .bind(doc_uuid)
+        .bind(user_uuid)
         .fetch_optional(&self.pool)
         .await?;
 

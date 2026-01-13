@@ -114,6 +114,9 @@ shared_errors = { path = "./shared/errors" }
 shared_models = { path = "./shared/models" }
 shared_database = { path = "./shared/database" }
 
+# HTTP utilities for testing
+hyper = { version = "1.0", features = ["client", "http1", "http2"] }
+
 [dev-dependencies]
 sqlx-cli = { version = "0.7", features = ["postgres"] }
 actix-rt = "2.9"
