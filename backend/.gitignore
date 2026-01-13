@@ -1,0 +1,25 @@
+# Backend/Rust specific gitignore
+# This file extends the root .gitignore with Rust-specific patterns
+
+target/
+**/*.rs.bk
+**/*.rlib
+Cargo.lock
+.cargo/
+.sqlx/
+.frozen
+rust-project.json
+.rustc_info.json
+
+# Build artifacts
+*.pdb
+*.dSYM/
+*.dylib
+
+# Profiling
+*.prof*
+*.perf*
+
+# Environment
+.env*
+!.env.example

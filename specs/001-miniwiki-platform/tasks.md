@@ -195,10 +195,10 @@ Based on `plan.md` structure:
 
 ### Integration for User Story 1
 
-- [ ] T095 [US1] Verify document CRUD endpoints work with PostgreSQL
-- [ ] T096 [US1] Verify Yjs state (via y_crdt) is correctly stored and retrieved
-- [ ] T097 [US1] Test document creation → editing → save → retrieve flow
-- [ ] T098 [US1] Verify flutter_app editor integrates with document_service correctly
+- [x] T095 [US1] Verify document CRUD endpoints work with PostgreSQL
+- [x] T096 [US1] Verify Yjs state (via y_crdt) is correctly stored and retrieved
+- [x] T097 [US1] Test document creation → editing → save → retrieve flow
+- [x] T098 [US1] Verify flutter_app editor integrates with document_service correctly
 
 **Checkpoint**: User Story 1 complete - document creation and editing is fully functional
 
