@@ -248,9 +248,9 @@ Based on `plan.md` structure:
 
 ### Integration for User Story 2
 
-- [ ] T126 [US2] Verify space CRUD endpoints work with PostgreSQL (blocked by test helpers structure)
-- [ ] T127 [US2] Verify hierarchical document queries work correctly (blocked by test helpers structure)
-- [ ] T128 [US2] Test space creation → member invitation → document organization flow (blocked by test helpers structure)
+- [x] T126 [US2] Verify space CRUD endpoints work with PostgreSQL via integration_test.rs
+- [x] T127 [US2] Verify hierarchical document queries work correctly via integration_test.rs
+- [x] T128 [US2] Test space creation → member invitation → document organization flow via integration_test.rs
 - [x] T129 [US2] Verify flutter_app sidebar navigation displays hierarchy correctly (flutter tests pass: 18/18)
 
 **Checkpoint**: User Story 2 complete - document organization and space management is fully functional
