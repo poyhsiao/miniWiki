@@ -9,12 +9,14 @@ pub mod models;
 pub mod presence;
 pub mod connection_manager;
 pub mod actor;
+pub mod redis_pubsub;
 
 pub use handlers::*;
 pub use models::*;
 pub use presence::*;
 pub use connection_manager::*;
 pub use actor::*;
+pub use redis_pubsub::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CursorPosition {

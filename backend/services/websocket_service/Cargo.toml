@@ -54,6 +54,10 @@ base64 = "0.22"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 
+# Futures for async bridging
+futures = "0.3"
+
 [dev-dependencies]
 actix-rt = "2.9"
 tokio-test = "0.4"
+futures = "0.3"
