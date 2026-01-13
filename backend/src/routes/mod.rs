@@ -19,4 +19,6 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .configure(space_service::config)
             .configure(document_service::config)
     );
+    
+    cfg.configure(websocket_service::config);
 }

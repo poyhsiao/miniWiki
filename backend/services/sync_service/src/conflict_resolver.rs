@@ -61,14 +61,14 @@ impl ConflictResolver {
         let mut merged = StateVector::new();
 
         // Merge entries from both state vectors
-        for (&client_id, &local_clock) in &local_sv.0 {
+        for (&client_id, &local_clock) in local_sv.inner() {
             let remote_clock = remote_sv.get(client_id).copied().unwrap_or(0);
             let max_clock = local_clock.max(remote_clock);
             merged.set(client_id, max_clock);
         }
 
-        for (&client_id, &remote_clock) in &remote_sv.0 {
-            if !local_sv.0.contains_key(&client_id) {
+        for (&client_id, &remote_clock) in remote_sv.inner() {
+            if !local_sv.inner().contains_key(&client_id) {
                 merged.set(client_id, remote_clock);
             }
         }
@@ -121,8 +121,8 @@ impl ConflictResolver {
         local_sv: &StateVector,
         remote_sv: &StateVector,
     ) -> (T, ConflictResolution) {
-        let local_max = local_sv.0.values().max().copied().unwrap_or(0);
-        let remote_max = remote_sv.0.values().max().copied().unwrap_or(0);
+        let local_max = local_sv.inner().values().max().copied().unwrap_or(0);
+        let remote_max = remote_sv.inner().values().max().copied().unwrap_or(0);
 
         if local_max >= remote_max {
             (local.clone(), ConflictResolution::KeepFirst)
@@ -139,8 +139,8 @@ impl ConflictResolver {
         local_sv: &StateVector,
         remote_sv: &StateVector,
     ) -> (T, ConflictResolution) {
-        let local_client_id = local_sv.0.keys().max().copied().unwrap_or(0);
-        let remote_client_id = remote_sv.0.keys().max().copied().unwrap_or(0);
+        let local_client_id = local_sv.inner().keys().max().copied().unwrap_or(0);
+        let remote_client_id = remote_sv.inner().keys().max().copied().unwrap_or(0);
 
         if local_client_id >= remote_client_id {
             (local.clone(), ConflictResolution::KeepFirst)

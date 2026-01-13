@@ -51,14 +51,11 @@ void main() {
       });
 
       test('login with invalid credentials throws error', () async {
-        final response = MockResponse();
-        when(() => response.statusCode).thenReturn(401);
-        when(() => response.data).thenReturn({
-          'error': 'AUTH_INVALID_CREDENTIALS',
-          'message': 'Invalid email or password',
-        });
         when(() => apiClient.post('/auth/login', data: any(named: 'data')))
-            .thenAnswer((_) async => response);
+            .thenThrow(DioException(
+              requestOptions: RequestOptions(path: '/auth/login'),
+              response: MockResponse()..statusCode = 401,
+            ));
 
         expect(
           () => authRepository.login(
@@ -99,14 +96,11 @@ void main() {
       });
 
       test('register with existing email throws conflict error', () async {
-        final response = MockResponse();
-        when(() => response.statusCode).thenReturn(409);
-        when(() => response.data).thenReturn({
-          'error': 'AUTH_EMAIL_EXISTS',
-          'message': 'Email is already registered',
-        });
         when(() => apiClient.post('/auth/register', data: any(named: 'data')))
-            .thenAnswer((_) async => response);
+            .thenThrow(DioException(
+              requestOptions: RequestOptions(path: '/auth/register'),
+              response: MockResponse()..statusCode = 409,
+            ));
 
         expect(
           () => authRepository.register(

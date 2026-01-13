@@ -3,8 +3,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/data/repositories/document_repository_impl.dart';
-import 'package:miniwiki/data/models/document_entity.dart';
 import 'package:miniwiki/data/datasources/isar_datasource.dart';
+import 'package:miniwiki/data/models/document_entity.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 
@@ -12,7 +12,14 @@ class MockIsarDatabase extends Mock implements IsarDatabase {}
 
 class MockResponse extends Mock implements Response {}
 
+class DocumentEntityFake extends Fake implements DocumentEntity {}
+
 void main() {
+  setUpAll(() {
+    registerFallbackValue(DocumentEntityFake());
+    registerFallbackValue('');
+  });
+
   group('DocumentRepository Tests', () {
     late ApiClient apiClient;
     late IsarDatabase isarDatabase;
@@ -22,18 +29,69 @@ void main() {
       apiClient = MockApiClient();
       isarDatabase = MockIsarDatabase();
       documentRepository = DocumentRepositoryImpl(apiClient, isarDatabase);
+
+      when(() => isarDatabase.saveDocument(any())).thenAnswer((_) async => {});
+      when(() => isarDatabase.getDocumentById(any())).thenAnswer((_) async => null);
+      when(() => isarDatabase.getDocumentsBySpace(any())).thenAnswer((_) async => []);
+      when(() => isarDatabase.getDocumentsByParent(any())).thenAnswer((_) async => []);
+      when(() => isarDatabase.deleteDocument(any())).thenAnswer((_) async => {});
     });
 
-    group('getDocuments', () {
-      test('getDocuments returns list from API', () async {
+    group('listDocuments', () {
+      test('listDocuments returns list from API', () async {
         final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
-        when(() => response.data).thenReturn([
-          {
-            'id': 'doc-1',
+        when(() => response.data).thenReturn({
+          'data': {
+            'documents': [
+              {
+                'id': 'doc-1',
+                'space_id': 'space-uuid',
+                'parent_id': null,
+                'title': 'Document 1',
+                'icon': '📄',
+                'content': {'type': 'Y.Doc'},
+                'content_size': 100,
+                'is_archived': false,
+                'created_by': 'user-uuid',
+                'last_edited_by': 'user-uuid',
+                'created_at': '2026-01-12T10:00:00Z',
+                'updated_at': '2026-01-12T10:00:00Z',
+              },
+            ],
+            'total': 1,
+          },
+        });
+        when(() => apiClient.get('/spaces/space-uuid/documents', queryParams: any(named: 'queryParams')))
+            .thenAnswer((_) async => response);
+
+        final result = await documentRepository.listDocuments(spaceId: 'space-uuid');
+
+        expect(result.documents.length, 1);
+        expect(result.documents.first.id, 'doc-1');
+        expect(result.documents.first.title, 'Document 1');
+      });
+
+      test('listDocuments falls back to Isar on error', () async {
+        when(() => apiClient.get('/spaces/space-uuid/documents', queryParams: any(named: 'queryParams')))
+            .thenThrow(Exception('Network error'));
+
+        final result = await documentRepository.listDocuments(spaceId: 'space-uuid');
+
+        expect(result.documents, isEmpty);
+      });
+    });
+
+    group('getDocument', () {
+      test('getDocument returns document from API', () async {
+        final response = MockResponse();
+        when(() => response.statusCode).thenReturn(200);
+        when(() => response.data).thenReturn({
+          'data': {
+            'id': 'doc-uuid',
             'space_id': 'space-uuid',
             'parent_id': null,
-            'title': 'Document 1',
+            'title': 'Test Document',
             'icon': '📄',
             'content': {'type': 'Y.Doc'},
             'content_size': 100,
@@ -43,57 +101,17 @@ void main() {
             'created_at': '2026-01-12T10:00:00Z',
             'updated_at': '2026-01-12T10:00:00Z',
           },
-        ]);
-        when(() => apiClient.get('/spaces/space-uuid/documents'))
-            .thenAnswer((_) async => response);
-
-        final result = await documentRepository.getDocuments('space-uuid');
-
-        expect(result.length, 1);
-        expect(result.first.uuid, 'doc-1');
-        expect(result.first.title, 'Document 1');
-      });
-
-      test('getDocuments falls back to Isar on error', () async {
-        when(() => apiClient.get('/spaces/space-uuid/documents'))
-            .thenThrow(Exception('Network error'));
-        when(() => isarDatabase.getDocumentsBySpace('space-uuid'))
-            .thenAnswer((_) async => []);
-
-        final result = await documentRepository.getDocuments('space-uuid');
-
-        expect(result, isEmpty);
-      });
-    });
-
-    group('getDocument', () {
-      test('getDocument returns document from API', () async {
-        final response = MockResponse();
-        when(() => response.statusCode).thenReturn(200);
-        when(() => response.data).thenReturn({
-          'id': 'doc-uuid',
-          'space_id': 'space-uuid',
-          'parent_id': null,
-          'title': 'Test Document',
-          'icon': '📄',
-          'content': {'type': 'Y.Doc'},
-          'content_size': 100,
-          'is_archived': false,
-          'created_by': 'user-uuid',
-          'last_edited_by': 'user-uuid',
-          'created_at': '2026-01-12T10:00:00Z',
-          'updated_at': '2026-01-12T10:00:00Z',
         });
         when(() => apiClient.get('/documents/doc-uuid'))
             .thenAnswer((_) async => response);
 
         final result = await documentRepository.getDocument('doc-uuid');
 
-        expect(result!.uuid, 'doc-uuid');
+        expect(result.id, 'doc-uuid');
         expect(result.title, 'Test Document');
       });
 
-      test('getDocument returns null when not found', () async {
+      test('getDocument throws when not found', () async {
         final response = MockResponse();
         when(() => response.statusCode).thenReturn(404);
         when(() => response.data).thenReturn({
@@ -103,9 +121,10 @@ void main() {
         when(() => apiClient.get('/documents/nonexistent'))
             .thenAnswer((_) async => response);
 
-        final result = await documentRepository.getDocument('nonexistent');
-
-        expect(result, isNull);
+        expect(
+          () => documentRepository.getDocument('nonexistent'),
+          throwsA(isA<Exception>()),
+        );
       });
     });
 
@@ -114,31 +133,35 @@ void main() {
         final response = MockResponse();
         when(() => response.statusCode).thenReturn(201);
         when(() => response.data).thenReturn({
-          'id': 'new-doc-uuid',
-          'space_id': 'space-uuid',
-          'parent_id': null,
-          'title': 'New Document',
-          'icon': '📝',
-          'content': {'type': 'Y.Doc'},
-          'content_size': 50,
-          'is_archived': false,
-          'created_by': 'user-uuid',
-          'last_edited_by': 'user-uuid',
-          'created_at': '2026-01-12T10:00:00Z',
-          'updated_at': '2026-01-12T10:00:00Z',
+          'data': {
+            'document': {
+              'id': 'new-doc-uuid',
+              'space_id': 'space-uuid',
+              'parent_id': null,
+              'title': 'New Document',
+              'icon': '📝',
+              'content': {'type': 'Y.Doc'},
+              'content_size': 50,
+              'is_archived': false,
+              'created_by': 'user-uuid',
+              'last_edited_by': 'user-uuid',
+              'created_at': '2026-01-12T10:00:00Z',
+              'updated_at': '2026-01-12T10:00:00Z',
+            },
+          },
         });
         when(() => apiClient.post('/spaces/space-uuid/documents', data: any(named: 'data')))
             .thenAnswer((_) async => response);
 
-        final newDoc = DocumentEntity()
-          ..spaceId = 'space-uuid'
-          ..title = 'New Document'
-          ..icon = '📝'
-          ..content = {'type': 'Y.Doc'};
+        final result = await documentRepository.createDocument(
+          spaceId: 'space-uuid',
+          parentId: null,
+          title: 'New Document',
+          icon: '📝',
+          content: {'type': 'Y.Doc'},
+        );
 
-        final result = await documentRepository.createDocument(newDoc);
-
-        expect(result.uuid, 'new-doc-uuid');
+        expect(result.id, 'new-doc-uuid');
         expect(result.title, 'New Document');
       });
     });
@@ -148,28 +171,30 @@ void main() {
         final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
-          'id': 'doc-uuid',
-          'space_id': 'space-uuid',
-          'parent_id': null,
-          'title': 'Updated Title',
-          'icon': '📄',
-          'content': {'type': 'Y.Doc'},
-          'content_size': 100,
-          'is_archived': false,
-          'created_by': 'user-uuid',
-          'last_edited_by': 'user-uuid',
-          'created_at': '2026-01-12T10:00:00Z',
-          'updated_at': '2026-01-12T11:00:00Z',
+          'data': {
+            'document': {
+              'id': 'doc-uuid',
+              'space_id': 'space-uuid',
+              'parent_id': null,
+              'title': 'Updated Title',
+              'icon': '📄',
+              'content': {'type': 'Y.Doc'},
+              'content_size': 100,
+              'is_archived': false,
+              'created_by': 'user-uuid',
+              'last_edited_by': 'user-uuid',
+              'created_at': '2026-01-12T10:00:00Z',
+              'updated_at': '2026-01-12T11:00:00Z',
+            },
+          },
         });
         when(() => apiClient.patch('/documents/doc-uuid', data: any(named: 'data')))
             .thenAnswer((_) async => response);
 
-        final updateDoc = DocumentEntity()
-          ..uuid = 'doc-uuid'
-          ..spaceId = 'space-uuid'
-          ..title = 'Updated Title';
-
-        final result = await documentRepository.updateDocument(updateDoc);
+        final result = await documentRepository.updateDocument(
+          id: 'doc-uuid',
+          title: 'Updated Title',
+        );
 
         expect(result.title, 'Updated Title');
       });
@@ -187,28 +212,86 @@ void main() {
       });
     });
 
-    group('getDirtyDocuments', () {
-      test('getDirtyDocuments returns dirty documents from Isar', () async {
-        final dirtyDoc = DocumentEntity()..uuid = 'dirty-doc';
-        when(() => isarDatabase.getDirtyDocuments())
-            .thenAnswer((_) async => [dirtyDoc]);
+    group('getDocumentChildren', () {
+      test('getDocumentChildren returns child documents', () async {
+        final response = MockResponse();
+        when(() => response.statusCode).thenReturn(200);
+        when(() => response.data).thenReturn({
+          'data': {
+            'documents': [
+              {
+                'id': 'child-doc',
+                'space_id': 'space-uuid',
+                'parent_id': 'parent-doc',
+                'title': 'Child Document',
+                'icon': '📄',
+                'content': {'type': 'Y.Doc'},
+                'content_size': 50,
+                'is_archived': false,
+                'created_by': 'user-uuid',
+                'last_edited_by': 'user-uuid',
+                'created_at': '2026-01-12T10:00:00Z',
+                'updated_at': '2026-01-12T10:00:00Z',
+              },
+            ],
+            'total': 1,
+          },
+        });
+        when(() => apiClient.get('/documents/parent-doc/children'))
+            .thenAnswer((_) async => response);
 
-        final result = await documentRepository.getDirtyDocuments();
+        final result = await documentRepository.getDocumentChildren('parent-doc');
 
-        expect(result.length, 1);
-        expect(result.first.uuid, 'dirty-doc');
+        expect(result.documents.length, 1);
+        expect(result.documents.first.id, 'child-doc');
       });
     });
 
-    group('markDocumentSynced', () {
-      test('markDocumentSynced calls Isar', () async {
-        when(() => isarDatabase.markDocumentSynced('doc-uuid'))
-            .thenAnswer((_) async => {});
+    group('getDocumentPath', () {
+      test('getDocumentPath returns path from root to document', () async {
+        final response = MockResponse();
+        when(() => response.statusCode).thenReturn(200);
+        when(() => response.data).thenReturn({
+          'data': {
+            'path': [
+              {
+                'id': 'root-doc',
+                'space_id': 'space-uuid',
+                'title': 'Root',
+                'content': {},
+                'created_by': 'user',
+                'last_edited_by': 'user',
+              },
+              {
+                'id': 'child-doc',
+                'space_id': 'space-uuid',
+                'parent_id': 'root-doc',
+                'title': 'Child',
+                'content': {},
+                'created_by': 'user',
+                'last_edited_by': 'user',
+              },
+            ],
+          },
+        });
+        when(() => apiClient.get(any(), queryParams: any(named: 'queryParams')))
+            .thenAnswer((_) async => response);
 
-        await expectLater(
-          documentRepository.markDocumentSynced('doc-uuid'),
-          completes,
-        );
+        final result = await documentRepository.getDocumentPath('child-doc');
+
+        expect(result.length, 2);
+        expect(result.first.id, 'root-doc');
+        expect(result.last.id, 'child-doc');
+        verify(() => apiClient.get('/documents/child-doc/path')).called(1);
+      });
+
+      test('getDocumentPath returns empty list when document not found', () async {
+        when(() => apiClient.get(any(), queryParams: any(named: 'queryParams')))
+            .thenThrow(Exception('Not found'));
+
+        final result = await documentRepository.getDocumentPath('unknown');
+
+        expect(result, isEmpty);
       });
     });
   });

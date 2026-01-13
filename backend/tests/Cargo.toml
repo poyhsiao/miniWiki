@@ -26,6 +26,7 @@ shared_database = { path = "../shared/database" }
 document_service = { path = "../services/document_service" }
 auth_service = { path = "../services/auth_service" }
 space_service = { path = "../services/space_service" }
+sync_service = { path = "../services/sync_service" }
 
 # JWT
 jsonwebtoken = "9.3"
@@ -48,3 +49,6 @@ chrono = { version = "0.4", features = ["serde"] }
 [dev-dependencies]
 # Test utilities
 tokio-test = "0.4"
+
+# Futures for async operations
+futures = "0.3"

@@ -23,6 +23,7 @@ dependencies:
   dio: ^5.4.0
   dio_http2_adapter: ^2.5.0
   http_interceptor: ^2.0.0
+  web_socket_channel: ^2.4.0
 
   # Local Storage (Offline-first)
   isar: ^3.1.0

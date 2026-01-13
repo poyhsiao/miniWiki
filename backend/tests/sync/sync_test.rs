@@ -7,6 +7,7 @@
 
 use actix_web::web;
 use chrono::Utc;
+use futures_util::future::join_all;
 use uuid::Uuid;
 use crate::helpers::TestApp;
 
@@ -39,7 +40,7 @@ async fn test_get_sync_state_not_found() {
     let fake_id = Uuid::new_v4();
 
     let response = app
-        .get(&format!("/api/v1/sync/documents/{}", document.id))
+        .get(&format!("/api/v1/sync/documents/{}", fake_id))
         .send()
         .await
         .expect("GET request failed");
@@ -212,7 +213,7 @@ async fn test_concurrent_sync_updates() {
         })
         .collect();
 
-    let results: Vec<_> = futures::future::join_all(handles).await;
+    let results: Vec<_> = join_all(handles).await;
 
     // All updates should succeed
     for result in results {

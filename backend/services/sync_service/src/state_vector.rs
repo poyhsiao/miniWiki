@@ -40,6 +40,16 @@ impl StateVector {
         self.0.is_empty()
     }
 
+    /// Get a reference to the internal HashMap (for internal use)
+    pub fn inner(&self) -> &HashMap<ClientId, Clock> {
+        &self.0
+    }
+
+    /// Get a mutable reference to the internal HashMap (for internal use)
+    pub fn inner_mut(&mut self) -> &mut HashMap<ClientId, Clock> {
+        &mut self.0
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         let mut bytes = Vec::new();
         let mut entries: Vec<_> = self.0.iter().collect();
