@@ -28,7 +28,7 @@ impl ResponseError for Error {
                 HttpResponse::build(StatusCode::FORBIDDEN)
                     .body(msg.to_string())
             }
-            Error::InternalServerError(msg) => {
+            Error::InternalServerError(_) => {
                 HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
                     .body("Internal server error")
             }
@@ -36,11 +36,7 @@ impl ResponseError for Error {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct PermissionClaim {
-    pub space_id: String,
-    pub user_role: String,
-}
+
 
 /// RBAC middleware for checking user permissions
 ///
