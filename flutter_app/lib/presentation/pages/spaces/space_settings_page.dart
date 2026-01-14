@@ -21,6 +21,12 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   void initState() {
     super.initState();
     final spaceState = ref.read(spaceProvider);
+    if (spaceState.spaces.isEmpty) {
+      _nameController = TextEditingController();
+      _descriptionController = TextEditingController();
+      _isPublic = false;
+      return;
+    }
     final space = spaceState.selectedSpace ??
         spaceState.spaces.firstWhere(
           (s) => s.id == widget.spaceId,

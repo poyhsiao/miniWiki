@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-final websocketServiceProvider =
-    Provider<WebSocketService>((ref) => WebSocketService());
+final websocketServiceProvider = Provider<WebSocketService>((ref) {
+  final service = WebSocketService();
+  ref.onDispose(() => service.dispose());
+  return service;
+});
 
 class WebSocketService {
   WebSocketChannel? _channel;
