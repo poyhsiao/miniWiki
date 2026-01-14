@@ -229,6 +229,8 @@ class RbacConfig {
       Permission.createDocuments,
       Permission.editDocuments,
       Permission.comment,
+      Permission.share,
+      Permission.manageMembers,
     },
     Role.commenter: {
       Permission.viewDocuments,

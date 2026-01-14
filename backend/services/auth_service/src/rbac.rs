@@ -1,9 +1,20 @@
 use actix_web::{web, FromRequest, HttpMessage};
 use jsonwebtoken::TokenData;
 use thiserror::Error;
+use serde::Deserialize;
 
 use crate::jwt::Claims;
 use crate::permissions::{Role, Permission, ActionType};
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct PermissionClaim {
@@ -22,8 +33,8 @@ impl RbacMiddleware {
         Self {}
     }
 
-    /// Extracts and validates the JWT token from the request
-    fn extract_claims(req: &web::HttpRequest) -> Result<Claims, Error> {
+    /// Extracts and validates JWT token from request
+    fn extract_claims(req: &actix_web::HttpRequest) -> Result<Claims, Error> {
         // Get Authorization header
         let auth_header = req
             .headers()
@@ -32,20 +43,18 @@ impl RbacMiddleware {
             .and_then(|s| s.strip_prefix("Bearer "));
 
         if let Some(token_str) = auth_header {
-            // Decode JWT token
+            let secret = std::env::var("JWT_SECRET")
+                .map_err(|_| Error::InternalServerError("JWT_SECRET not configured".to_string()))?;
+
             let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
-            let token_data = TokenData::decode_without_signature(
+            let token_data: jsonwebtoken::TokenData<Claims> = jsonwebtoken::decode(
                 token_str,
+                &jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()),
                 &validation,
-                &jsonwebtoken::DecodingKey::from_secret("your-secret-key-here"),
             )
             .map_err(|e| Error::Unauthorized(format!("Invalid token: {}", e)))?;
 
-            // Extract claims from token
-            let claims: Claims = serde_json::from_slice(&token_data.claims)
-                .map_err(|e| Error::InternalServerError(format!("Invalid claims: {}", e)))?;
-
-            Ok(claims)
+            Ok(token_data.claims)
         } else {
             Err(Error::Unauthorized("Missing authorization header".to_string()))
         }
@@ -53,7 +62,7 @@ impl RbacMiddleware {
 
     /// Checks if a user has a specific permission
     pub fn has_permission(role: &str, permission: &Permission) -> bool {
-        if let Ok(parsed_role) = serde_json::from_str::<Role>(role.to_lowercase().as_str()) {
+        if let Some(parsed_role) = Role::from_str(role) {
             parsed_role.has_permission(permission)
         } else {
             false
@@ -62,7 +71,7 @@ impl RbacMiddleware {
 
     /// Checks if a user can perform a specific action
     pub fn can_perform_action(role: &str, action: &ActionType) -> bool {
-        if let Ok(parsed_role) = serde_json::from_str::<Role>(role.to_lowercase().as_str()) {
+        if let Some(parsed_role) = Role::from_str(role) {
             parsed_role.can_perform_action(action)
         } else {
             false
@@ -99,7 +108,7 @@ impl RbacMiddleware {
 ///
 /// #[get("/documents/{id}")]
 /// async fn get_document(
-///     req: web::HttpRequest,
+///     req: ;web::HttpRequest,
 ///     data: web::Path<(String,)>,
 /// ) -> Result<HttpResponse, Error> {
 ///     check_permission(req, data.0, Permission::ViewDocuments)?;
@@ -107,7 +116,7 @@ impl RbacMiddleware {
 /// }
 /// ```
 pub fn check_permission(
-    req: &web::HttpRequest,
+    req: &;web::HttpRequest,
     action: ActionType,
 ) -> Result<(), Error> {
     // Extract and validate claims
@@ -133,14 +142,14 @@ pub fn check_permission(
 /// ```rust
 /// #[get("/admin")]
 /// async fn admin_only(
-///     req: web::HttpRequest,
+///     req: ;web::HttpRequest,
 /// ) -> Result<HttpResponse, Error> {
 ///     check_role(req, Role::Owner)?;
 ///     // ... rest of handler
 /// }
 /// ```
 pub fn check_role(
-    req: &web::HttpRequest,
+    req: &;web::HttpRequest,
     required_role: Role,
 ) -> Result<(), Error> {
     // Extract and validate claims
@@ -167,24 +176,24 @@ pub fn check_role(
 }
 
 /// Extracts user claims from request
-pub fn get_claims(req: &web::HttpRequest) -> Result<Claims, Error> {
+pub fn get_claims(req: &;web::HttpRequest) -> Result<Claims, Error> {
     RbacMiddleware::extract_claims(req)
 }
 
 /// Gets user ID from request
-pub fn get_user_id(req: &web::HttpRequest) -> Result<String, Error> {
+pub fn get_user_id(req: &;web::HttpRequest) -> Result<String, Error> {
     let claims = get_claims(req)?;
     Ok(claims.user_id)
 }
 
 /// Gets user role from request
-pub fn get_user_role(req: &web::HttpRequest) -> Result<Role, Error> {
+pub fn get_user_role(req: &;web::HttpRequest) -> Result<Role, Error> {
     let claims = get_claims(req)?;
     let role_str = RbacMiddleware::extract_role(&claims)
             .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
 
-    serde_json::from_str::<Role>(role_str.to_lowercase().as_str())
-        .map_err(|e| Error::InternalServerError(format!("Invalid role: {}", e)))
+            serde_json::from_str::<Role>(role_str.to_lowercase().as_str())
+                .map_err(|e| Error::InternalServerError(format!("Invalid role: {}", e)))
 }
 
 #[cfg(test)]
@@ -216,9 +225,9 @@ mod tests {
 
     #[test]
     fn test_extract_role() {
-        assert_eq!(RbacMiddleware::extract_role_from_string("owner"), Role::Owner);
-        assert_eq!(RbacMiddleware::extract_role_from_string("editor"), Role::Editor);
-        assert_eq!(RbacMiddleware::extract_role_from_string("viewer"), Role::Viewer);
+        assert_eq!(extract_role_from_string("\"owner\""), Role::Owner);
+        assert_eq!(extract_role_from_string("\"editor\""), Role::Editor);
+        assert_eq!(extract_role_from_string("\"viewer\""), Role::Viewer);
     }
 
     // Helper function for tests (not exposed in main API)

@@ -116,6 +116,16 @@ impl Permission {
         }
     }
 
+    pub fn from_str(role: &str) -> Option<Role> {
+        match role.to_lowercase().as_str() {
+            "owner" => Some(Role::Owner),
+            "editor" => Some(Role::Editor),
+            "commenter" => Some(Role::Commenter),
+            "viewer" => Some(Role::Viewer),
+            _ => None,
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             Permission::ViewDocuments => "view_documents",
@@ -267,6 +277,8 @@ impl RbacConfig {
                 Permission::CreateDocuments,
                 Permission::EditDocuments,
                 Permission::Comment,
+                Permission::Share,
+                Permission::ManageMembers,
             ],
             Role::Commenter => vec![
                 Permission::ViewDocuments,

@@ -1,8 +1,6 @@
-use sqlx::{types::text, types::Uuid};
-
 #[cfg(test)]
 mod tests {
-    use crate::permissions::{Role, Permission, ActionType};
+    use auth_service::permissions::{Role, Permission, ActionType};
 
     #[test]
     fn test_role_levels() {
@@ -99,7 +97,8 @@ mod tests {
         assert!(ActionType::DeleteDocument
             .allowed_roles()
             .contains(&Role::Owner));
-        assert!(ActionType::DeleteDocument
+        // Editor cannot delete documents
+        assert!(!ActionType::DeleteDocument
             .allowed_roles()
             .contains(&Role::Editor));
 
@@ -107,7 +106,8 @@ mod tests {
         assert!(ActionType::ViewDocument
             .allowed_roles()
             .contains(&Role::Viewer));
-        assert!(ActionType::DeleteDocument
+        // Viewer cannot delete documents
+        assert!(!ActionType::DeleteDocument
             .allowed_roles()
             .contains(&Role::Viewer));
     }
@@ -144,24 +144,24 @@ mod tests {
     fn test_role_from_string() {
         // Test valid role strings
         assert_eq!(
-            serde_json::from_str::<Role>("owner"),
+            serde_json::from_str::<Role>("\"owner\"").unwrap(),
             Role::Owner
         );
         assert_eq!(
-            serde_json::from_str::<Role>("editor"),
+            serde_json::from_str::<Role>("\"editor\"").unwrap(),
             Role::Editor
         );
         assert_eq!(
-            serde_json::from_str::<Role>("commenter"),
+            serde_json::from_str::<Role>("\"commenter\"").unwrap(),
             Role::Commenter
         );
         assert_eq!(
-            serde_json::from_str::<Role>("viewer"),
+            serde_json::from_str::<Role>("\"viewer\"").unwrap(),
             Role::Viewer
         );
 
         // Test invalid role string
-        assert!(serde_json::from_str::<Role>("invalid_role").is_err());
+        assert!(serde_json::from_str::<Role>("\"invalid_role\"").is_err());
     }
 
     #[test]

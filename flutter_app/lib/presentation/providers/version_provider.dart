@@ -178,6 +178,14 @@ class VersionComparisonNotifier extends StateNotifier<VersionComparisonState> {
   Future<void> compareVersions() async {
     if (!state.canCompare) return;
 
+    if (state.fromVersion!.documentId != state.toVersion!.documentId) {
+      state = state.copyWith(
+        isComparing: false,
+        error: 'Cannot compare versions from different documents',
+      );
+      return;
+    }
+
     state = state.copyWith(isComparing: true, error: null);
 
     try {

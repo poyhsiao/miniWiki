@@ -217,8 +217,9 @@ final class CurrentSpacePermissionProvider
   bool get isCommenter => state.isCommenter;
 }
 
-ProviderFamily<CurrentSpacePermissionProvider, String>
-    currentSpacePermissionProvider = Provider.family((ref, String spaceId) {
+ProviderFamily<CurrentSpacePermissionProvider, PermissionState, String>
+    currentSpacePermissionProvider = StateNotifierProvider.family<
+    CurrentSpacePermissionProvider, PermissionState, String>((ref, String spaceId) {
   final rbacService = ref.read(rbacServiceProvider);
   final userId = ref.watch(currentUserIdProvider);
 
