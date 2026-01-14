@@ -50,6 +50,16 @@ impl Role {
     pub fn can_perform_action(&self, action: &ActionType) -> bool {
         action.allowed_roles().contains(self)
     }
+
+    pub fn from_str(role: &str) -> Option<Role> {
+        match role.to_lowercase().as_str() {
+            "owner" => Some(Role::Owner),
+            "editor" => Some(Role::Editor),
+            "commenter" => Some(Role::Commenter),
+            "viewer" => Some(Role::Viewer),
+            _ => None,
+        }
+    }
 }
 
 /// Permission enum representing granular permissions
@@ -112,16 +122,6 @@ impl Permission {
             "manage_members" => Some(Permission::ManageMembers),
             "manage_roles" => Some(Permission::ManageRoles),
             "delete_space" => Some(Permission::DeleteSpace),
-            _ => None,
-        }
-    }
-
-    pub fn from_str(role: &str) -> Option<Role> {
-        match role.to_lowercase().as_str() {
-            "owner" => Some(Role::Owner),
-            "editor" => Some(Role::Editor),
-            "commenter" => Some(Role::Commenter),
-            "viewer" => Some(Role::Viewer),
             _ => None,
         }
     }

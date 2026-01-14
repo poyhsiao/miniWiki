@@ -1,4 +1,4 @@
-use actix_web::{web, FromRequest, HttpMessage};
+use actix_web::{web, FromRequest, HttpMessage, HttpRequest};
 use jsonwebtoken::TokenData;
 use thiserror::Error;
 use serde::Deserialize;
@@ -34,7 +34,7 @@ impl RbacMiddleware {
     }
 
     /// Extracts and validates JWT token from request
-    fn extract_claims(req: &actix_web::HttpRequest) -> Result<Claims, Error> {
+    fn extract_claims(req: &HttpRequest) -> Result<Claims, Error> {
         // Get Authorization header
         let auth_header = req
             .headers()
@@ -108,7 +108,7 @@ impl RbacMiddleware {
 ///
 /// #[get("/documents/{id}")]
 /// async fn get_document(
-///     req: ;web::HttpRequest,
+///     req: web::HttpRequest,
 ///     data: web::Path<(String,)>,
 /// ) -> Result<HttpResponse, Error> {
 ///     check_permission(req, data.0, Permission::ViewDocuments)?;
@@ -116,7 +116,7 @@ impl RbacMiddleware {
 /// }
 /// ```
 pub fn check_permission(
-    req: &;web::HttpRequest,
+    req: &HttpRequest,
     action: ActionType,
 ) -> Result<(), Error> {
     // Extract and validate claims
@@ -142,14 +142,14 @@ pub fn check_permission(
 /// ```rust
 /// #[get("/admin")]
 /// async fn admin_only(
-///     req: ;web::HttpRequest,
+///     req: web::HttpRequest,
 /// ) -> Result<HttpResponse, Error> {
 ///     check_role(req, Role::Owner)?;
 ///     // ... rest of handler
 /// }
 /// ```
 pub fn check_role(
-    req: &;web::HttpRequest,
+    req: &HttpRequest,
     required_role: Role,
 ) -> Result<(), Error> {
     // Extract and validate claims
@@ -159,7 +159,7 @@ pub fn check_role(
     let role_str = RbacMiddleware::extract_role(&claims)
             .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
 
-    if let Ok(user_role) = serde_json::from_str::<Role>(role_str.to_lowercase().as_str()) {
+    if let Some(user_role) = serde_json::from_str::<Role>(role_str.to_lowercase().as_str()) {
         if user_role.level() < required_role.level() {
             return Err(Error::Forbidden(format!(
                 "Insufficient privileges. Required role: {:?}",
@@ -176,18 +176,18 @@ pub fn check_role(
 }
 
 /// Extracts user claims from request
-pub fn get_claims(req: &;web::HttpRequest) -> Result<Claims, Error> {
+pub fn get_claims(req: &HttpRequest) -> Result<Claims, Error> {
     RbacMiddleware::extract_claims(req)
 }
 
 /// Gets user ID from request
-pub fn get_user_id(req: &;web::HttpRequest) -> Result<String, Error> {
+pub fn get_user_id(req: &HttpRequest) -> Result<String, Error> {
     let claims = get_claims(req)?;
     Ok(claims.user_id)
 }
 
 /// Gets user role from request
-pub fn get_user_role(req: &;web::HttpRequest) -> Result<Role, Error> {
+pub fn get_user_role(req: &HttpRequest) -> Result<Role, Error> {
     let claims = get_claims(req)?;
     let role_str = RbacMiddleware::extract_role(&claims)
             .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
