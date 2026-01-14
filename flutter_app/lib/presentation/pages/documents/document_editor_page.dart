@@ -3,38 +3,78 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
+import 'package:miniwiki/presentation/providers/presence_provider.dart';
 import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
+import 'package:miniwiki/presentation/widgets/cursor_overlay.dart';
+import 'package:miniwiki/core/config/auth_provider.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
   final String documentId;
   final String spaceId;
 
   const DocumentEditorPage({
-    super.key,
-    required this.documentId,
-    required this.spaceId,
+    required this.documentId, required this.spaceId, super.key,
   });
 
   @override
   ConsumerState<DocumentEditorPage> createState() => _DocumentEditorPageState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('spaceId', spaceId));
+  }
 }
 
-class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
-  Timer? _autoSaveTimer;
-  Duration _autoSaveInterval = const Duration(seconds: 30);
-  bool _isAutoSaving = false;
-  DateTime? _lastSavedAt;
+ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
+   Timer? _autoSaveTimer;
+   Timer? _cursorDebounceTimer;
+   final Duration _autoSaveInterval = const Duration(seconds: 30);
+   bool _isAutoSaving = false;
+   DateTime? _lastSavedAt;
+   bool _isConnectedToWebSocket = false;
 
   @override
   void initState() {
     super.initState();
     _startAutoSave();
+    _connectToWebSocket();
   }
 
   @override
   void dispose() {
     _autoSaveTimer?.cancel();
+    _cursorDebounceTimer?.cancel();
+    _disconnectFromWebSocket();
     super.dispose();
+  }
+
+  Future<void> _connectToWebSocket() async {
+    final authState = ref.read(authProvider);
+
+    if (authState is! Authenticated) {
+      return;
+    }
+
+    try {
+      final userId = (authState).userId;
+      await ref.read(presenceProvider.notifier).connectToDocument(
+        widget.documentId,
+        userId,
+      );
+      _isConnectedToWebSocket = true;
+    } catch (e) {
+      // Log error but don't block the editor
+      debugPrint('Failed to connect to WebSocket: $e');
+    }
+  }
+
+  Future<void> _disconnectFromWebSocket() async {
+    if (_isConnectedToWebSocket) {
+      await ref.read(presenceProvider.notifier).disconnectFromDocument();
+      _isConnectedToWebSocket = false;
+    }
   }
 
   void _startAutoSave() {
@@ -73,12 +113,22 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
 
     return Scaffold(
       appBar: _buildAppBar(context, state),
-      body: _buildBody(context, state),
+      body: Stack(
+        children: [
+          _buildBody(context, state),
+          // Active users indicator overlay
+          if (state.document != null)
+            const Positioned(
+              top: 16,
+              right: 16,
+              child: ActiveUsersIndicator(),
+            ),
+        ],
+      ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, DocumentEditState state) {
-    return AppBar(
+  PreferredSizeWidget _buildAppBar(BuildContext context, DocumentEditState state) => AppBar(
       title: state.document == null
           ? const Text('Loading...')
           : Column(
@@ -116,7 +166,6 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
         ),
       ],
     );
-  }
 
   Widget _buildBody(BuildContext context, DocumentEditState state) {
     if (state.isLoading && state.document == null) {
@@ -159,7 +208,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => _autoSave(),
+                  onPressed: _autoSave,
                   child: Text(
                     'Save Now',
                     style: TextStyle(
@@ -171,11 +220,13 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
             ),
           ),
         Expanded(
-          child: RichTextEditor(
-            initialContent: state.content,
-            onContentChanged: (newContent) {
-              ref.read(documentEditProvider.notifier).updateContent(newContent);
-            },
+          child: CursorOverlay(
+            child: RichTextEditor(
+              initialContent: state.content,
+              onContentChanged: (newContent) {
+                ref.read(documentEditProvider.notifier).updateContent(newContent);
+              },
+            ),
           ),
         ),
       ],
@@ -340,6 +391,12 @@ class _VersionHistorySheet extends ConsumerWidget {
       ),
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+  }
 }
 
 class _MoreOptionsSheet extends StatelessWidget {
@@ -352,8 +409,7 @@ class _MoreOptionsSheet extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
+  Widget build(BuildContext context) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -388,5 +444,11 @@ class _MoreOptionsSheet extends StatelessWidget {
         ],
       ),
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }

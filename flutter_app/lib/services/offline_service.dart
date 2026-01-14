@@ -32,7 +32,7 @@ class OfflineServiceState {
     this.lastSuccessfulSync,
   });
 
-  factory OfflineServiceState.initial() => OfflineServiceState(
+  factory OfflineServiceState.initial() => const OfflineServiceState(
         isOnline: true,
         pendingQueueCount: 0,
         failedQueueCount: 0,
@@ -40,8 +40,6 @@ class OfflineServiceState {
         cacheSizeBytes: 0,
         connectionType: ConnectivityResult.wifi,
         isSyncing: false,
-        lastSyncError: null,
-        lastSuccessfulSync: null,
       );
 
   OfflineServiceState copyWith({
@@ -74,6 +72,7 @@ class OfflineService {
   final Connectivity _connectivity;
   final StreamController<OfflineServiceState> _stateController =
       StreamController<OfflineServiceState>.broadcast();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   OfflineServiceState _state = OfflineServiceState.initial();
 
@@ -86,11 +85,12 @@ class OfflineService {
   /// Initialize offline service
   Future<void> initialize() async {
     // Subscribe to connectivity changes
-    _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivitySubscription =
+        _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
 
     // Get initial connectivity status
     final result = await _connectivity.checkConnectivity();
-    final results = result is List<ConnectivityResult> ? result : [result as ConnectivityResult];
+    final results = result;
     final isOnline = results.any((r) => r != ConnectivityResult.none);
     final connectionType = results.firstWhere(
       (r) => r != ConnectivityResult.none,
@@ -115,9 +115,8 @@ class OfflineService {
   OfflineServiceState get currentState => _state;
 
   /// Handle connectivity changes
-  void _onConnectivityChanged(dynamic result) {
+  void _onConnectivityChanged(List<ConnectivityResult> results) {
     final wasOnline = _state.isOnline;
-    final results = result is List<ConnectivityResult> ? result : [result as ConnectivityResult];
     final isOnline = results.any((r) => r != ConnectivityResult.none);
     final connectionType = results.firstWhere(
       (r) => r != ConnectivityResult.none,
@@ -159,9 +158,8 @@ class OfflineService {
   }
 
   /// Get next pending queue item
-  Future<SyncQueueItem?> getNextPendingItem() async {
-    return await _syncDatasource.getNextPendingItem();
-  }
+  Future<SyncQueueItem?> getNextPendingItem() async =>
+      await _syncDatasource.getNextPendingItem();
 
   /// Mark queue item as synced
   Future<void> markQueueItemSynced(String itemId) async {
@@ -188,19 +186,15 @@ class OfflineService {
   }
 
   /// Get queue count
-  Future<int> getQueueCount() async {
-    return await _syncDatasource.getQueueCount();
-  }
+  Future<int> getQueueCount() async => await _syncDatasource.getQueueCount();
 
   /// Get pending queue count
-  Future<int> getPendingQueueCount() async {
-    return await _syncDatasource.getPendingCount();
-  }
+  Future<int> getPendingQueueCount() async =>
+      await _syncDatasource.getPendingCount();
 
   /// Get failed queue count
-  Future<int> getFailedQueueCount() async {
-    return await _syncDatasource.getFailedCount();
-  }
+  Future<int> getFailedQueueCount() async =>
+      await _syncDatasource.getFailedCount();
 
   /// Cache a document for offline access
   Future<void> cacheDocument({
@@ -212,9 +206,8 @@ class OfflineService {
   }
 
   /// Get cached document
-  Future<Uint8List?> getCachedDocument(String documentId) async {
-    return await _syncDatasource.getCachedDocument(documentId);
-  }
+  Future<Uint8List?> getCachedDocument(String documentId) async =>
+      await _syncDatasource.getCachedDocument(documentId);
 
   /// Remove cached document
   Future<void> removeCachedDocument(String documentId) async {
@@ -223,14 +216,11 @@ class OfflineService {
   }
 
   /// Get all cached document IDs
-  Future<List<String>> getAllCachedDocumentIds() async {
-    return await _syncDatasource.getAllCachedDocumentIds();
-  }
+  Future<List<String>> getAllCachedDocumentIds() async =>
+      await _syncDatasource.getAllCachedDocumentIds();
 
   /// Get cache size in bytes
-  Future<int> getCacheSize() async {
-    return await _syncDatasource.getCacheSize();
-  }
+  Future<int> getCacheSize() async => await _syncDatasource.getCacheSize();
 
   /// Clear all cached documents
   Future<void> clearCache() async {
@@ -270,7 +260,6 @@ class OfflineService {
   void setLastSuccessfulSync(DateTime time) {
     _state = _state.copyWith(
       lastSuccessfulSync: time,
-      lastSyncError: null,
     );
     _stateController.add(_state);
   }
@@ -283,6 +272,7 @@ class OfflineService {
 
   /// Dispose of the service
   void dispose() {
+    _connectivitySubscription?.cancel();
     _stateController.close();
   }
 }
@@ -296,4 +286,3 @@ final offlineServiceProvider = Provider<OfflineService>((ref) {
     connectivity: connectivity,
   );
 });
-

@@ -10,9 +10,7 @@ class DocumentListPage extends ConsumerWidget {
   final String? parentId;
 
   const DocumentListPage({
-    super.key,
-    required this.spaceId,
-    required this.spaceName,
+    required this.spaceId, required this.spaceName, super.key,
     this.parentId,
   });
 
@@ -93,9 +91,7 @@ class DocumentListPage extends ConsumerWidget {
     }
 
     return RefreshIndicator(
-      onRefresh: () {
-        return ref.read(documentListProvider(spaceId).notifier).refresh();
-      },
+      onRefresh: () => ref.read(documentListProvider(spaceId).notifier).refresh(),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: state.documents.length + (state.hasMore ? 1 : 0),
@@ -222,6 +218,14 @@ class DocumentListPage extends ConsumerWidget {
       ),
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('spaceName', spaceName));
+    properties.add(StringProperty('parentId', parentId));
+  }
 }
 
 class _DocumentListTile extends StatelessWidget {
@@ -236,8 +240,7 @@ class _DocumentListTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context) => Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Container(
@@ -281,7 +284,6 @@ class _DocumentListTile extends StatelessWidget {
         onTap: onTap,
       ),
     );
-  }
 
   String _formatDate(DateTime? date) {
     if (date == null) return '';
@@ -295,5 +297,13 @@ class _DocumentListTile extends StatelessWidget {
     if (difference.inDays < 7) return '${difference.inDays} days ago';
 
     return '${date.month}/${date.day}/${date.year}';
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<Document>('document', document));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onTap', onTap));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onDelete', onDelete));
   }
 }

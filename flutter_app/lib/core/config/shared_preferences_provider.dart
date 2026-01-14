@@ -6,7 +6,5 @@ part 'shared_preferences_provider.g.dart';
 @riverpod
 class SharedPreferencesNotifier extends _$SharedPreferencesNotifier {
   @override
-  Future<SharedPreferences> build() async {
-    return await SharedPreferences.getInstance();
-  }
+  Future<SharedPreferences> build() async => await SharedPreferences.getInstance();
 }

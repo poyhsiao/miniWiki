@@ -172,11 +172,11 @@ impl ConflictResolver {
     }
 
     /// Get the newer state between two state vectors
-    pub fn get_newer_state(
-        &self,
-        sv1: &StateVector,
-        sv2: &StateVector,
-    ) -> (&StateVector, &StateVector) {
+    pub fn get_newer_state<'a, 'b>(
+        &'a self,
+        sv1: &'b StateVector,
+        sv2: &'b StateVector,
+    ) -> (&'b StateVector, &'b StateVector) {
         match sv1.compare(sv2) {
             Ordering::Less => (sv2, sv1),
             Ordering::Greater => (sv1, sv2),
@@ -283,7 +283,7 @@ mod tests {
 
         // Missing updates: client needs clock 6-10 from client 1, and clock 0-5 from client 2
         assert!(missing.contains(&(1, 6, 10)));
-        assert!(missing.contains &(2, 0, 5));
+        assert!(missing.contains(&(2, 0, 5)));
     }
 
     #[test]

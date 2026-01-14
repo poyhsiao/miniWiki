@@ -104,16 +104,10 @@ void main() {
 
         when(() => mockRepository.createSpace(
           name: 'New Space',
-          icon: null,
-          description: null,
-          isPublic: false,
         )).thenAnswer((_) async => newSpace);
 
         final result = await spaceService.createSpace(
           name: 'New Space',
-          icon: null,
-          description: null,
-          isPublic: false,
         );
 
         expect(result.name, 'New Space');
@@ -124,9 +118,6 @@ void main() {
         expect(
           () => spaceService.createSpace(
             name: '',
-            icon: null,
-            description: null,
-            isPublic: false,
           ),
           throwsArgumentError,
         );
@@ -138,9 +129,6 @@ void main() {
         expect(
           () => spaceService.createSpace(
             name: longName,
-            icon: null,
-            description: null,
-            isPublic: false,
           ),
           throwsArgumentError,
         );
@@ -164,7 +152,6 @@ void main() {
           name: 'Updated Name',
           icon: '🚀',
           description: 'Updated description',
-          isPublic: null,
         )).thenAnswer((_) async => updatedSpace);
 
         final result = await spaceService.updateSpace(

@@ -147,8 +147,8 @@ class SpaceListPage extends ConsumerWidget {
   void _showCreateSpaceDialog(BuildContext context, WidgetRef ref) {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
-    bool isPublic = false;
-    bool isLoading = false;
+    var isPublic = false;
+    var isLoading = false;
 
     showDialog(
       context: context,
@@ -287,16 +287,11 @@ class SpaceCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const SpaceCard({
-    super.key,
-    required this.space,
-    required this.onTap,
-    required this.onSettings,
-    required this.onDelete,
+    required this.space, required this.onTap, required this.onSettings, required this.onDelete, super.key,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context) => Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
@@ -423,5 +418,13 @@ class SpaceCard extends StatelessWidget {
         ),
       ),
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<Space>('space', space));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onTap', onTap));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onSettings', onSettings));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onDelete', onDelete));
   }
 }

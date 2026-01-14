@@ -5,11 +5,7 @@
 //!
 //! Tests: T126, T127, T128
 
-use actix_web::test;
-use actix_web::web;
-use auth_service::jwt::generate_jwt_token;
-use sqlx::PgPool;
-use uuid::Uuid;
+use crate::helpers::generate_test_jwt_token;
 
 use crate::helpers::TestApp;
 
@@ -23,7 +19,7 @@ async fn test_space_crud_with_postgres() {
 
     // Create a test user
     let user = app.create_test_user().await;
-    let token = generate_jwt_token(user.id, &user.email).unwrap();
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Test CREATE space
     let create_req = serde_json::json!({
@@ -116,7 +112,7 @@ async fn test_hierarchical_document_queries() {
     // Create a test user and space
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
-    let token = generate_jwt_token(user.id, &user.email).unwrap();
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create parent document
     let parent_doc_req = serde_json::json!({
@@ -210,7 +206,7 @@ async fn test_complete_space_member_document_flow() {
 
     // Create space owner
     let owner = app.create_test_user().await;
-    let owner_token = generate_jwt_token(owner.id, &owner.email).unwrap();
+    let owner_token = generate_test_jwt_token(owner.id, &owner.email);
 
     // Create another user to be invited
     let member_user = app.create_test_user().await;
@@ -252,7 +248,7 @@ async fn test_complete_space_member_document_flow() {
     assert_eq!(membership["role"], "editor");
 
     // Verify member can list spaces
-    let member_token = generate_jwt_token(member_user.id, &member_user.email).unwrap();
+    let member_token = generate_test_jwt_token(member_user.id, &member_user.email);
     let resp = app.get("/api/v1/spaces")
         .header("Authorization", format!("Bearer {}", member_token))
         .send()

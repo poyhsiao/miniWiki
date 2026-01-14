@@ -8,16 +8,21 @@ class EmailVerificationDialog extends StatefulWidget {
   final VoidCallback onCancel;
 
   const EmailVerificationDialog({
-    super.key,
-    required this.email,
-    required this.onVerified,
-    required this.onResendCode,
-    required this.onCancel,
+    required this.email, required this.onVerified, required this.onResendCode, required this.onCancel, super.key,
   });
 
   @override
   State<EmailVerificationDialog> createState() =>
       _EmailVerificationDialogState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('email', email));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onVerified', onVerified));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onResendCode', onResendCode));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onCancel', onCancel));
+  }
 }
 
 class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
@@ -72,7 +77,7 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
   }
 
   void _verifyCode() {
-    final code = _controllers.map((c) => c.text).join('');
+    final code = _controllers.map((c) => c.text).join();
     if (code.length == 6) {
       setState(() {
         _isLoading = true;
@@ -157,7 +162,7 @@ class _EmailVerificationDialogState extends State<EmailVerificationDialog> {
                   decoration: InputDecoration(
                     counterText: '',
                     filled: true,
-                    fillColor: colorScheme.surfaceVariant,
+                    fillColor: colorScheme.surfaceContainerHighest,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: colorScheme.outline),

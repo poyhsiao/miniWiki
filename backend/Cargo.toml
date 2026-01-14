@@ -25,6 +25,7 @@ authors = ["miniWiki Team"]
 [dependencies]
 
 # Internal workspace dependencies (services in this workspace)
+auth_service = { path = "./services/auth_service" }
 document_service = { path = "./services/document_service" }
 space_service = { path = "./services/space_service" }
 websocket_service = { path = "./services/websocket_service" }

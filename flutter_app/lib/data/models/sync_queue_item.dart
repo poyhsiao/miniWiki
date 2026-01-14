@@ -4,7 +4,7 @@ part 'sync_queue_item.g.dart';
 
 @Collection()
 class SyncQueueItem {
-  Id get id => Isar.autoIncrement;
+  Id id = Isar.autoIncrement;
 
   @Index()
   String entityType = '';

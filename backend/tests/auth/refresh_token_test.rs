@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod refresh_token_test {
-    use miniwiki_backend::services::auth_service::jwt::{JwtService, JwtConfig};
+    use auth_service::jwt::{JwtService, JwtConfig};
 
     #[test]
     fn test_refresh_token_generation() {
@@ -65,7 +65,7 @@ mod refresh_token_test {
         use chrono::{Utc, Duration};
         let now = Utc::now();
         let expected_expiry = now + Duration::seconds(86400);
-        let actual_expiry = chrono::Utc.timestamp_opt(claims.exp as i64).unwrap();
+        let actual_expiry = chrono::Utc.timestamp_opt(claims.exp as i64, 0).single().unwrap();
 
         let diff = (actual_expiry - expected_expiry).num_seconds().abs();
         assert!(diff < 10);

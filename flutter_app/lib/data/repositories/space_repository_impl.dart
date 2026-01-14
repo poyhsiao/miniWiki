@@ -1,8 +1,8 @@
-import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/domain/entities/space.dart';
 import 'package:miniwiki/domain/entities/space_membership.dart';
 import 'package:miniwiki/domain/repositories/space_repository.dart';
+import 'package:riverpod/riverpod.dart';
 
 class SpaceRepositoryImpl implements SpaceRepository {
   final ApiClient _apiClient;

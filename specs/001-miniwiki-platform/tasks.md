@@ -324,20 +324,17 @@ Based on `plan.md` structure:
 
 ### Frontend Implementation for User Story 4
 
-- [ ] T161 [US4] Create flutter_app/lib/services/websocket_service.dart with WebSocket connection
-- [ ] T162 [US4] Create flutter_app/lib/services/presence_service.dart with presence tracking
-- [ ] T163 [US4] Create flutter_app/lib/presentation/providers/presence_provider.dart with presence state
-- [ ] T164 [US4] Create flutter_app/lib/presentation/widgets/cursor_overlay.dart for cursor visualization
-- [ ] TUS165 [US4] Implement WebSocket connection in document_editor_page.dart
-- [ ] T166 [US4] Implement real-time update application from WebSocket
-- [ ] T167 [US4] Implement cursor position reporting
-
-### Integration for User Story 4
-
-- [ ] T168 [US4] Verify WebSocket connection works end-to-end
-- [ ] T169 [US4] Verify real-time updates propagate within 2 seconds
-- [ ] T170 [US4] Test cursor visibility across multiple clients
-- [ ] T171 [US4] Verify flutter_app displays other users' edits in real-time
+- [x] T161 [US4] Create flutter_app/lib/services/websocket_service.dart with WebSocket connection
+- [x] T162 [US4] Create flutter_app/lib/services/presence_service.dart with presence tracking
+- [x] T163 [US4] Create flutter_app/lib/presentation/providers/presence_provider.dart with presence state
+- [x] T164 [US4] Create flutter_app/lib/presentation/widgets/cursor_overlay.dart for cursor visualization
+- [x] T165 [US4] Implement WebSocket connection in document_editor_page.dart
+- [x] T166 [US4] Implement real-time update application from WebSocket
+- [x] T167 [US4] Implement cursor position reporting
+- [x] T168 [US4] Verify WebSocket connection works end-to-end
+- [x] T169 [US4] Verify real-time updates propagate within 2 seconds
+- [x] T170 [US4] Test cursor visibility across multiple clients
+- [x] T171 [US4] Verify flutter_app displays other users' edits in real-time
 
 **Checkpoint**: User Story 4 complete - real-time collaboration is fully functional
 

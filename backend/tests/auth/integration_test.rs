@@ -1,15 +1,12 @@
-#[cfg(test)]
-mod common;
-
 mod auth_integration_test {
     use actix_web::{test, web, App};
     use serde_json::json;
-    use miniwiki_backend::services::auth_service::{
+    use auth_service::{
         handlers::{register, login},
         models::{RegisterRequest, LoginRequest},
         jwt::JwtService,
     };
-    use miniwiki_backend::services::auth_service::jwt::JwtConfig;
+    use auth_service::jwt::JwtConfig;
 
     #[actix_web::test]
     async fn test_register_endpoint_returns_201() {

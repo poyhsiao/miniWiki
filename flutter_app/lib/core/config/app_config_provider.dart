@@ -5,9 +5,7 @@ part 'app_config_provider.g.dart';
 @riverpod
 class AppConfig extends _$AppConfig {
   @override
-  String build() {
-    return 'http://localhost:8080/api/v1';
-  }
+  String build() => 'http://localhost:8080/api/v1';
 
   String get wsUrl => 'ws://localhost:8080/ws';
 }

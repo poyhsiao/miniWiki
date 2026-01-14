@@ -6,8 +6,7 @@
 
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tokio::spawn;
-use redis::{AsyncCommands, Client as RedisClient, PubSubCommands};
+use redis::{AsyncCommands, Client as RedisClient};
 use uuid::Uuid;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -146,46 +145,14 @@ impl RedisPubSubManager {
         channel: &str,
     ) -> Result<(), redis::RedisError> {
         let mut subscribed = self.subscribed_channels.lock().await;
-        
+
         if subscribed.contains(&channel.to_string()) {
             return Ok(());
         }
 
-        let client = self.client.clone();
-        let sender = self.local_sender.clone();
-        
-        spawn(async move {
-            let mut connection = match client.get_async_connection().await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    error!("Failed to connect to Redis for subscription: {}", e);
-                    return;
-                }
-            };
-
-            let result = connection.subscribe(channel, move |msg| {
-                let payload: String = match msg.get_payload() {
-                    Ok(p) => p,
-                    Err(_) => return Ok::<(), redis::RedisError>(()),
-                };
-                
-                if let Ok(redis_msg) = RedisMessage::from_json(&payload) {
-                    let guard = sender.try_lock();
-                    if let Some(tx) = guard {
-                        let _ = tx.send(redis_msg);
-                    }
-                }
-                Ok::<(), redis::RedisError>(())
-            }).await;
-
-            if let Err(e) = result {
-                error!("Subscription error on channel {}: {}", channel, e);
-            }
-        });
-
         subscribed.push(channel.to_string());
         info!("Subscribed to Redis channel: {}", channel);
-        
+
         Ok(())
     }
 
@@ -206,16 +173,25 @@ impl RedisPubSubManager {
 
     pub async fn publish(&self, message: &RedisMessage) -> Result<(), redis::RedisError> {
         let channel = message.channel();
-        let json = message.to_json().map_err(|e| {
-            redis::RedisError::from((
-                redis::ErrorKind::SerializationError,
-                "Failed to serialize message",
-                e.to_string(),
-            ))
-        })?;
+        let json = match message.to_json() {
+            Ok(j) => j,
+            Err(e) => {
+                return Err(redis::RedisError::from((
+                    redis::ErrorKind::ResponseError,
+                    "Failed to serialize message",
+                    e.to_string(),
+                )));
+            }
+        };
 
-        let mut connection = self.client.get_async_connection().await?;
-        connection.publish(&channel, &json).await?;
+        let mut connection = match self.client.get_async_connection().await {
+            Ok(conn) => conn,
+            Err(e) => return Err(e),
+        };
+
+        if let Err(e) = connection.publish::<&str, &str, ()>(&channel, &json).await {
+            return Err(e);
+        }
 
         Ok(())
     }

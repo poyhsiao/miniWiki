@@ -61,14 +61,12 @@ class MockSyncService {
     _syncIntervalSeconds = seconds;
   }
 
-  Future<int> getPendingSyncCount() async {
-    return _crdtService.getDirtyDocumentIds().length;
-  }
+  Future<int> getPendingSyncCount() async => _crdtService.getDirtyDocumentIds().length;
 
   Future<ss.SyncResult> syncDocument(String documentId) async {
     final state = _crdtService.getDocumentState(documentId);
     if (state == null) {
-      return const ss.SyncResult(success: true, documentsSynced: 0);
+      return const ss.SyncResult(success: true);
     }
     _crdtService.markSynced(documentId);
     return const ss.SyncResult(success: true, documentsSynced: 1);
@@ -124,19 +122,19 @@ void main() {
         type: ss.SyncEventType.started,
         documentId: 'doc-123',
         message: 'Starting sync',
-        timestamp: DateTime(2024, 1, 1),
+        timestamp: DateTime(2024, 1),
       );
 
       expect(event.type, ss.SyncEventType.started);
       expect(event.documentId, 'doc-123');
       expect(event.message, 'Starting sync');
-      expect(event.timestamp, DateTime(2024, 1, 1));
+      expect(event.timestamp, DateTime(2024, 1));
     });
 
     test('SyncEvent with minimal fields', () {
       final event = ss.SyncEvent(
         type: ss.SyncEventType.success,
-        timestamp: DateTime(2024, 1, 1),
+        timestamp: DateTime(2024, 1),
       );
 
       expect(event.type, ss.SyncEventType.success);
@@ -147,7 +145,7 @@ void main() {
 
   group('SyncService - SyncResult Tests', () {
     test('SyncResult success', () {
-      final result = ss.SyncResult(
+      const result = ss.SyncResult(
         success: true,
         documentsSynced: 5,
       );
@@ -158,10 +156,9 @@ void main() {
     });
 
     test('SyncResult failure with error message', () {
-      final result = ss.SyncResult(
+      const result = ss.SyncResult(
         success: false,
         errorMessage: 'Network error',
-        documentsSynced: 0,
       );
 
       expect(result.success, false);
@@ -176,7 +173,7 @@ void main() {
         success: true,
         syncedCount: 10,
         failedCount: 2,
-        timestamp: DateTime(2024, 1, 1),
+        timestamp: DateTime(2024, 1),
       );
 
       final modified = original.copyWith(
@@ -194,7 +191,7 @@ void main() {
         success: false,
         syncedCount: 8,
         failedCount: 3,
-        timestamp: DateTime(2024, 1, 1),
+        timestamp: DateTime(2024, 1),
       );
 
       expect(summary.success, false);
@@ -316,7 +313,7 @@ void main() {
       final syncService = MockSyncService(mockCrdtService);
 
       // Create multiple dirty documents
-      for (int i = 1; i <= 5; i++) {
+      for (var i = 1; i <= 5; i++) {
         final testData = Uint8List.fromList([i]);
         mockCrdtService.setDocumentState('doc-$i', testData);
         mockCrdtService.markDirty('doc-$i');

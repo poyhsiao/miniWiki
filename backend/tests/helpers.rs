@@ -5,8 +5,20 @@ use reqwest;
 use actix_web::{web, test, App, dev::ServiceFactory};
 use std::sync::Arc;
 use shared_database::connection::init_database;
+use auth_service::jwt::{JwtService, JwtConfig};
 
 const TEST_JWT_SECRET: &str = "test-secret-key-for-testing-only-do-not-use-in-production";
+
+// JWT token helper function
+pub fn generate_test_jwt_token(user_id: Uuid, email: &str) -> String {
+    let config = JwtConfig {
+        secret: TEST_JWT_SECRET.to_string(),
+        access_expiry: 3600,
+        refresh_expiry: 86400,
+    };
+    let service = JwtService::new(config);
+    service.generate_access_token(&user_id.to_string(), email, "user").unwrap()
+}
 
 pub struct TestApp {
     pub pool: PgPool,

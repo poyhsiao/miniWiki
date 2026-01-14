@@ -5,7 +5,7 @@ import 'package:miniwiki/presentation/providers/space_provider.dart';
 class SpaceDetailPage extends ConsumerWidget {
   final String spaceId;
 
-  const SpaceDetailPage({super.key, required this.spaceId});
+  const SpaceDetailPage({required this.spaceId, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -71,8 +71,7 @@ class SpaceDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildDocumentList(BuildContext context, String spaceId) {
-    return FutureBuilder<List>(
+  Widget _buildDocumentList(BuildContext context, String spaceId) => FutureBuilder<List>(
       future: Future.value([]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -100,7 +99,6 @@ class SpaceDetailPage extends ConsumerWidget {
         );
       },
     );
-  }
 
   void _showCreateDocumentDialog(BuildContext context) {
     final titleController = TextEditingController();
@@ -133,5 +131,11 @@ class SpaceDetailPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }

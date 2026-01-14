@@ -53,8 +53,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "${MINIO_API_PORT:-9010}:9000"
+      - "${MINIO_CONSOLE_PORT:-9011}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -95,7 +95,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/app:ro
-      - cargo_cache:/root/.cargo
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+
 
   # Flutter Web App
   web:

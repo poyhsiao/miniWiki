@@ -31,9 +31,7 @@ class Authenticated extends AuthState {
 @riverpod
 class Auth extends _$Auth {
   @override
-  AuthState build() {
-    return const Unauthenticated();
-  }
+  AuthState build() => const Unauthenticated();
 
   Future<void> login(String email, String password) async {
     state = const Loading();

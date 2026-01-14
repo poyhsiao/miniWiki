@@ -1,7 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/sync_provider.dart';
 import 'package:miniwiki/services/sync_service.dart' as ss;
+
+class _RotatingIcon extends StatefulWidget {
+  final IconData icon;
+  final double size;
+  final Color color;
+
+  const _RotatingIcon({
+    required this.icon,
+    required this.size,
+    required this.color,
+  });
+
+  @override
+  State<_RotatingIcon> createState() => _RotatingIconState();
+}
+
+class _RotatingIconState extends State<_RotatingIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.rotate(
+          angle: _controller.value * 2 * 3.14159,
+          child: child,
+        );
+      },
+      child: Icon(widget.icon, size: widget.size, color: widget.color),
+    );
+  }
+}
 
 /// Sync status indicator widget
 /// Displays current sync status with visual feedback
@@ -59,16 +109,10 @@ class SyncStatusIndicator extends ConsumerWidget {
       case ss.SyncStatus.syncing:
         iconColor = syncingColor ?? Colors.blue;
         iconData = Icons.sync;
-        iconWidget = TweenAnimationBuilder<double>(
-          tween: Tween(begin: 0, end: 1),
-          duration: const Duration(seconds: 1),
-          builder: (context, value, child) {
-            return Transform.rotate(
-              angle: value * 2 * 3.14159,
-              child: child,
-            );
-          },
-          child: Icon(iconData, size: iconSize, color: iconColor),
+        iconWidget = _RotatingIcon(
+          icon: iconData,
+          size: iconSize,
+          color: iconColor,
         );
         break;
 
@@ -106,7 +150,7 @@ class SyncStatusIndicator extends ConsumerWidget {
   }
 
   Widget _buildStatusText(BuildContext context, SyncState syncState) {
-    TextStyle textStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+    var textStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
 
     String statusText;
     Color? statusColor;
@@ -162,6 +206,17 @@ class SyncStatusIndicator extends ConsumerWidget {
       ],
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<bool>('showDetails', showDetails));
+    properties.add(DoubleProperty('iconSize', iconSize));
+    properties.add(ColorProperty('onlineColor', onlineColor));
+    properties.add(ColorProperty('offlineColor', offlineColor));
+    properties.add(ColorProperty('syncingColor', syncingColor));
+    properties.add(ColorProperty('errorColor', errorColor));
+  }
 }
 
 /// Compact sync status indicator
@@ -189,7 +244,9 @@ class SyncStatusIcon extends ConsumerWidget {
       case ss.SyncStatus.failed:
         return syncState.lastError ?? 'Sync failed';
       case ss.SyncStatus.completed:
-        return syncState.isOnline ? 'Synced' : 'Offline - changes will sync when online';
+        return syncState.isOnline
+            ? 'Synced'
+            : 'Offline - changes will sync when online';
       case ss.SyncStatus.pending:
       default:
         return syncState.isOnline ? 'Online' : 'Offline';
@@ -234,19 +291,20 @@ class SyncStatusIcon extends ConsumerWidget {
     }
 
     if (status == ss.SyncStatus.syncing) {
-      return TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(seconds: 1),
-        builder: (context, value, child) {
-          return Transform.rotate(
-            angle: value * 2 * 3.14159,
-            child: Icon(iconData, size: size, color: iconColor),
-          );
-        },
+      return _RotatingIcon(
+        icon: iconData,
+        size: size,
+        color: iconColor,
       );
     }
 
     return Icon(iconData, size: size, color: iconColor);
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DoubleProperty('size', size));
   }
 }
 
@@ -349,6 +407,14 @@ class SyncStatusBanner extends ConsumerWidget {
         );
     }
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<bool>('autoHide', autoHide));
+    properties.add(
+        DiagnosticsProperty<Duration>('autoHideDuration', autoHideDuration));
+  }
 }
 
 /// Sync status row
@@ -366,18 +432,18 @@ class SyncStatusRow extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Sync Status',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   SyncStatusIndicator(
                     showDetails: true,
                     onlineColor: Colors.green,
@@ -393,7 +459,7 @@ class SyncStatusRow extends ConsumerWidget {
               onPressed: syncState.isOnline &&
                       (syncState.pendingCount > 0 ||
                           syncState.status == ss.SyncStatus.pending)
-                  ? () => syncNotifier.syncAllPending()
+                  ? syncNotifier.syncAllPending
                   : null,
               icon: const Icon(Icons.refresh),
               label: const Text('Sync Now'),

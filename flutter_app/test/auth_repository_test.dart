@@ -1,9 +1,9 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
-import 'package:miniwiki/domain/repositories/auth_repository.dart';
-import 'package:miniwiki/data/repositories/auth_repository_impl.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:miniwiki/core/network/api_client.dart';
+import 'package:miniwiki/data/repositories/auth_repository_impl.dart';
+import 'package:miniwiki/domain/repositories/auth_repository.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 
@@ -51,11 +51,13 @@ void main() {
       });
 
       test('login with invalid credentials throws error', () async {
+        final errorResponse = MockResponse();
+        when(() => errorResponse.statusCode).thenReturn(401);
         when(() => apiClient.post('/auth/login', data: any(named: 'data')))
             .thenThrow(DioException(
-              requestOptions: RequestOptions(path: '/auth/login'),
-              response: MockResponse()..statusCode = 401,
-            ));
+          requestOptions: RequestOptions(path: '/auth/login'),
+          response: errorResponse,
+        ));
 
         expect(
           () => authRepository.login(
@@ -96,11 +98,13 @@ void main() {
       });
 
       test('register with existing email throws conflict error', () async {
+        final errorResponse = MockResponse();
+        when(() => errorResponse.statusCode).thenReturn(409);
         when(() => apiClient.post('/auth/register', data: any(named: 'data')))
             .thenThrow(DioException(
-              requestOptions: RequestOptions(path: '/auth/register'),
-              response: MockResponse()..statusCode = 409,
-            ));
+          requestOptions: RequestOptions(path: '/auth/register'),
+          response: errorResponse,
+        ));
 
         expect(
           () => authRepository.register(

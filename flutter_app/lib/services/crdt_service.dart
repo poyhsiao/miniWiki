@@ -19,9 +19,9 @@ class DocumentSyncState {
 
   const DocumentSyncState({
     required this.documentId,
+    required this.lastSyncedAt,
     this.status = SyncStatus.idle,
     this.errorMessage,
-    required this.lastSyncedAt,
   });
 
   DocumentSyncState copyWith({
@@ -29,14 +29,13 @@ class DocumentSyncState {
     SyncStatus? status,
     String? errorMessage,
     DateTime? lastSyncedAt,
-  }) {
-    return DocumentSyncState(
-      documentId: documentId ?? this.documentId,
-      status: status ?? this.status,
-      errorMessage: errorMessage ?? this.errorMessage,
-      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
-    );
-  }
+  }) =>
+      DocumentSyncState(
+        documentId: documentId ?? this.documentId,
+        status: status ?? this.status,
+        errorMessage: errorMessage ?? this.errorMessage,
+        lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
+      );
 }
 
 /// CRDT document wrapper - uses dynamic for y_crdt types
@@ -79,18 +78,14 @@ class CrdtService {
   final StreamController<Map<String, dynamic>> _updateController =
       StreamController<Map<String, dynamic>>.broadcast();
   final Map<String, DocumentSyncState> _syncStates = {};
+  final StreamController<DocumentSyncState> _syncStateController =
+      StreamController<DocumentSyncState>.broadcast();
 
   /// Stream of document updates
   Stream<Map<String, dynamic>> get updates => _updateController.stream;
 
   /// Stream of sync state changes
-  Stream<DocumentSyncState> get syncStateChanges {
-    final controller = StreamController<DocumentSyncState>();
-    for (var state in _syncStates.values) {
-      controller.add(state);
-    }
-    return controller.stream;
-  }
+  Stream<DocumentSyncState> get syncStateChanges => _syncStateController.stream;
 
   /// Get or create a document
   CrdtDocument getDocument(String id) {
@@ -98,7 +93,6 @@ class CrdtService {
       _documents[id] = CrdtDocument(
         id: id,
         doc: null,
-        text: null,
         arrays: {},
         maps: {},
       );
@@ -119,12 +113,14 @@ class CrdtService {
 
   /// Update sync state
   void updateSyncState(String documentId, SyncStatus status, [String? error]) {
-    _syncStates[documentId] = DocumentSyncState(
+    final newState = DocumentSyncState(
       documentId: documentId,
       status: status,
       errorMessage: error,
       lastSyncedAt: DateTime.now(),
     );
+    _syncStates[documentId] = newState;
+    _syncStateController.add(newState);
   }
 
   /// Get text content from a document
@@ -188,17 +184,14 @@ class CrdtService {
   }
 
   /// Check if document has pending changes
-  bool hasPendingChanges(String documentId) {
-    return _documents[documentId]?.isDirty ?? false;
-  }
+  bool hasPendingChanges(String documentId) =>
+      _documents[documentId]?.isDirty ?? false;
 
   /// Get all document IDs with pending changes
-  List<String> getDirtyDocumentIds() {
-    return _documents.entries
-        .where((e) => e.value.isDirty)
-        .map((e) => e.key)
-        .toList();
-  }
+  List<String> getDirtyDocumentIds() => _documents.entries
+      .where((e) => e.value.isDirty)
+      .map((e) => e.key)
+      .toList();
 
   /// Mark document as synced
   void markSynced(String documentId) {
@@ -211,7 +204,7 @@ class CrdtService {
   }
 
   /// Emit update event
-  void _emitUpdate(String documentId, String field, dynamic event) {
+  void _emitUpdate(String documentId, String field, event) {
     _updateController.add({
       'documentId': documentId,
       'field': field,
@@ -225,10 +218,9 @@ class CrdtService {
     _documents.clear();
     _syncStates.clear();
     _updateController.close();
+    _syncStateController.close();
   }
 }
 
 /// Provider for CrdtService
-final crdtServiceProvider = Provider<CrdtService>((ref) {
-  return CrdtService();
-});
+final crdtServiceProvider = Provider<CrdtService>((ref) => CrdtService());

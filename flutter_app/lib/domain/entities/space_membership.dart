@@ -15,8 +15,7 @@ class SpaceMembership {
     required this.invitedBy,
   });
 
-  factory SpaceMembership.fromJson(Map<String, dynamic> json) {
-    return SpaceMembership(
+  factory SpaceMembership.fromJson(Map<String, dynamic> json) => SpaceMembership(
       id: json['id'] as String,
       spaceId: json['space_id'] as String,
       userId: json['user_id'] as String,
@@ -24,10 +23,8 @@ class SpaceMembership {
       joinedAt: DateTime.parse(json['joined_at'] as String),
       invitedBy: json['invited_by'] as String,
     );
-  }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'id': id,
       'space_id': spaceId,
       'user_id': userId,
@@ -35,7 +32,6 @@ class SpaceMembership {
       'joined_at': joinedAt.toIso8601String(),
       'invited_by': invitedBy,
     };
-  }
 
   @override
   bool operator ==(Object other) {

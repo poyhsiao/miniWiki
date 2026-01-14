@@ -45,12 +45,9 @@ class Space {
   const Space({
     required this.id,
     required this.name,
-    this.icon,
+    required this.ownerId, required this.createdAt, required this.updatedAt, this.icon,
     this.description,
     this.isPublic = false,
-    required this.ownerId,
-    required this.createdAt,
-    required this.updatedAt,
     this.userRole,
     this.isSynced = true,
     this.isDirty = false,
@@ -71,8 +68,7 @@ class Space {
     bool? isSynced,
     bool? isDirty,
     DateTime? lastSyncedAt,
-  }) {
-    return Space(
+  }) => Space(
       id: id ?? this.id,
       name: name ?? this.name,
       icon: icon ?? this.icon,
@@ -86,7 +82,6 @@ class Space {
       isDirty: isDirty ?? this.isDirty,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     );
-  }
 
   /// Creates a Space from JSON (for API responses)
   factory Space.fromJson(Map<String, dynamic> json) {
@@ -171,9 +166,7 @@ class Space {
   }
 
   @override
-  String toString() {
-    return 'Space(id: $id, name: $name)';
-  }
+  String toString() => 'Space(id: $id, name: $name)';
 
   @override
   bool operator ==(Object other) {

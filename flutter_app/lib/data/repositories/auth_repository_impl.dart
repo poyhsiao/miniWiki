@@ -1,7 +1,7 @@
-import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/data/models/user_entity.dart';
 import 'package:miniwiki/domain/repositories/auth_repository.dart';
+import 'package:riverpod/riverpod.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
   final ApiClient _apiClient;

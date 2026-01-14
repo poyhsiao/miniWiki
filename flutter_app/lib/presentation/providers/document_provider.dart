@@ -15,12 +15,11 @@ class DocumentListState {
   final String spaceId;
 
   const DocumentListState({
-    this.documents = const [],
+    required this.spaceId, this.documents = const [],
     this.total = 0,
     this.isLoading = false,
     this.error,
     this.parentId,
-    required this.spaceId,
   });
 
   DocumentListState copyWith({
@@ -30,8 +29,7 @@ class DocumentListState {
     String? error,
     String? parentId,
     String? spaceId,
-  }) {
-    return DocumentListState(
+  }) => DocumentListState(
       documents: documents ?? this.documents,
       total: total ?? this.total,
       isLoading: isLoading ?? this.isLoading,
@@ -39,7 +37,6 @@ class DocumentListState {
       parentId: parentId ?? this.parentId,
       spaceId: spaceId ?? this.spaceId,
     );
-  }
 
   bool get hasMore => documents.length < total;
 }
@@ -75,8 +72,7 @@ class DocumentEditState {
     Object? error,
     List<DocumentVersion>? versions,
     int? selectedVersion,
-  }) {
-    return DocumentEditState(
+  }) => DocumentEditState(
       document: document ?? this.document,
       content: content ?? this.content,
       isLoading: isLoading ?? this.isLoading,
@@ -86,7 +82,6 @@ class DocumentEditState {
       versions: versions ?? this.versions,
       selectedVersion: selectedVersion ?? this.selectedVersion,
     );
-  }
 }
 
 /// Provider for document list state
@@ -98,7 +93,7 @@ class DocumentListNotifier extends StateNotifier<DocumentListState> {
       : super(DocumentListState(spaceId: spaceId));
 
   Future<void> loadDocuments({String? parentId, int limit = 20}) async {
-    state = state.copyWith(isLoading: true, error: null, parentId: parentId);
+    state = state.copyWith(isLoading: true, parentId: parentId);
 
     try {
       final result = await _service.listDocuments(
@@ -168,7 +163,7 @@ class DocumentEditNotifier extends StateNotifier<DocumentEditState> {
   DocumentEditNotifier(this._service) : super(const DocumentEditState());
 
   Future<Document> loadDocument(String documentId) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
 
     try {
       final document = await _service.getDocument(documentId);
@@ -201,7 +196,7 @@ class DocumentEditNotifier extends StateNotifier<DocumentEditState> {
       throw Exception('No document to save');
     }
 
-    state = state.copyWith(isSaving: true, error: null);
+    state = state.copyWith(isSaving: true);
 
     try {
       final updated = await _service.updateDocument(
@@ -283,7 +278,7 @@ class DocumentEditNotifier extends StateNotifier<DocumentEditState> {
       throw Exception('No document to restore');
     }
 
-    state = state.copyWith(isSaving: true, error: null);
+    state = state.copyWith(isSaving: true);
 
     try {
       final restored = await _service.restoreVersion(document.id, versionNumber);
@@ -308,7 +303,7 @@ class DocumentEditNotifier extends StateNotifier<DocumentEditState> {
   }
 
   void clearError() {
-    state = state.copyWith(error: null);
+    state = state.copyWith();
   }
 
   void reset() {

@@ -28,13 +28,12 @@ class SyncState {
     this.syncIntervalSeconds = 30,
   });
 
-  factory SyncState.initial() => SyncState(
+  factory SyncState.initial() => const SyncState(
         status: ss.SyncStatus.pending,
         pendingCount: 0,
         isOnline: true,
         autoSyncEnabled: true,
         recentEvents: [],
-        syncIntervalSeconds: 30,
       );
 
   SyncState copyWith({
@@ -42,7 +41,7 @@ class SyncState {
     int? pendingCount,
     bool? isOnline,
     bool? autoSyncEnabled,
-    String? lastError,
+    Object? lastError = _unchanged,
     DateTime? lastSuccessfulSync,
     List<ss.SyncEvent>? recentEvents,
     int? syncIntervalSeconds,
@@ -52,11 +51,14 @@ class SyncState {
         pendingCount: pendingCount ?? this.pendingCount,
         isOnline: isOnline ?? this.isOnline,
         autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
-        lastError: lastError ?? this.lastError,
+        lastError:
+            lastError == _unchanged ? this.lastError : lastError as String?,
         lastSuccessfulSync: lastSuccessfulSync ?? this.lastSuccessfulSync,
         recentEvents: recentEvents ?? this.recentEvents,
         syncIntervalSeconds: syncIntervalSeconds ?? this.syncIntervalSeconds,
       );
+
+  static const Object _unchanged = Object();
 }
 
 /// Sync state notifier - manages sync state and operations
@@ -82,7 +84,8 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
     _syncEventsSubscription = _syncService.syncEvents.listen(_handleSyncEvent);
 
     // Listen to offline state changes
-    _offlineStateSubscription = _offlineService.stateChanges.listen((offlineState) {
+    _offlineStateSubscription =
+        _offlineService.stateChanges.listen((offlineState) {
       state = state.copyWith(
         isOnline: offlineState.isOnline,
         pendingCount: offlineState.pendingQueueCount,
@@ -112,7 +115,6 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
       case ss.SyncEventType.success:
         state = state.copyWith(
           status: ss.SyncStatus.completed,
-          lastError: null,
           lastSuccessfulSync: event.timestamp,
           recentEvents: events,
         );
@@ -158,7 +160,8 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
     try {
       final summary = await _syncService.syncAllDirtyDocuments();
       state = state.copyWith(
-        status: summary.success ? ss.SyncStatus.completed : ss.SyncStatus.failed,
+        status:
+            summary.success ? ss.SyncStatus.completed : ss.SyncStatus.failed,
         pendingCount: 0,
         lastSuccessfulSync: summary.success ? DateTime.now() : null,
         lastError: summary.success ? null : 'Some documents failed to sync',
@@ -204,9 +207,8 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
   }
 
   /// Get pending sync count
-  Future<int> getPendingCount() async {
-    return await _syncService.getPendingSyncCount();
-  }
+  Future<int> getPendingCount() async =>
+      await _syncService.getPendingSyncCount();
 
   /// Clear sync error
   void clearError() {
@@ -223,32 +225,28 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
 }
 
 /// Simple sync status provider (for widgets that only need status)
-final syncStatusProvider = Provider<ss.SyncStatus>((ref) {
-  return ref.watch(syncStateProvider).status;
-});
+final syncStatusProvider =
+    Provider<ss.SyncStatus>((ref) => ref.watch(syncStateProvider).status);
 
 /// Online status provider
-final isOnlineProvider = Provider<bool>((ref) {
-  return ref.watch(syncStateProvider).isOnline;
-});
+final isOnlineProvider =
+    Provider<bool>((ref) => ref.watch(syncStateProvider).isOnline);
 
 /// Pending sync count provider
-final pendingSyncCountProvider = Provider<int>((ref) {
-  return ref.watch(syncStateProvider).pendingCount;
-});
+final pendingSyncCountProvider =
+    Provider<int>((ref) => ref.watch(syncStateProvider).pendingCount);
 
 /// Auto-sync enabled provider
-final autoSyncEnabledProvider = Provider<bool>((ref) {
-  return ref.watch(syncStateProvider).autoSyncEnabled;
-});
+final autoSyncEnabledProvider =
+    Provider<bool>((ref) => ref.watch(syncStateProvider).autoSyncEnabled);
 
 /// Sync error provider
-final syncErrorProvider = Provider<String?>((ref) {
-  return ref.watch(syncStateProvider).lastError;
-});
+final syncErrorProvider =
+    Provider<String?>((ref) => ref.watch(syncStateProvider).lastError);
 
 /// Sync state provider (for full state access)
-final syncStateProvider = StateNotifierProvider<SyncStateNotifier, SyncState>((ref) {
+final syncStateProvider =
+    StateNotifierProvider<SyncStateNotifier, SyncState>((ref) {
   final syncService = ref.watch(ss.syncServiceProvider);
   final offlineService = ref.watch(offlineServiceProvider);
 
