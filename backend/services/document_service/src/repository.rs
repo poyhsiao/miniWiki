@@ -66,6 +66,22 @@ struct DocumentPathRow {
     level: Option<i32>,
 }
 
+#[derive(Debug, Clone, FromRow)]
+pub struct CommentRow {
+    pub id: Uuid,
+    pub document_id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub author_id: Uuid,
+    pub author_name: Option<String>,
+    pub author_avatar: Option<String>,
+    pub content: String,
+    pub is_resolved: bool,
+    pub resolved_by: Option<Uuid>,
+    pub resolved_at: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
+}
+
 #[derive(Debug, Clone)]
 pub struct DocumentRepository {
     pool: PgPool,
@@ -738,6 +754,191 @@ impl DocumentRepository {
             r#"DELETE FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
             space_uuid,
             user_uuid
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(result.rows_affected() > 0)
+    }
+
+    // ==================== Comment Operations ====================
+
+    pub async fn get_comment(&self, comment_id: &str) -> Result<Option<CommentRow>, sqlx::Error> {
+        let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let comment = sqlx::query_as!(
+            CommentRow,
+            r#"SELECT * FROM comments WHERE id = $1"#,
+            comment_uuid
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    pub async fn list_comments(
+        &self,
+        document_id: &str,
+        parent_id: Option<&str>,
+        limit: Option<i32>,
+        offset: Option<i32>,
+    ) -> Result<(Vec<CommentRow>, i64), sqlx::Error> {
+        let document_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let parent_uuid = parent_id.map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into()))).transpose()?;
+
+        let limit = limit.unwrap_or(50);
+        let offset = offset.unwrap_or(0);
+
+        let comments = if let Some(parent) = parent_uuid {
+            sqlx::query_as!(
+                CommentRow,
+                r#"SELECT * FROM comments WHERE document_id = $1 AND parent_id = $2 ORDER BY created_at LIMIT $3 OFFSET $4"#,
+                document_uuid,
+                parent,
+                limit,
+                offset
+            )
+            .fetch_all(&self.pool)
+            .await?
+        } else {
+            sqlx::query_as!(
+                CommentRow,
+                r#"SELECT * FROM comments WHERE document_id = $1 AND parent_id IS NULL ORDER BY created_at LIMIT $2 OFFSET $3"#,
+                document_uuid,
+                limit,
+                offset
+            )
+            .fetch_all(&self.pool)
+            .await?
+        };
+
+        let total: i64 = if let Some(parent) = parent_uuid {
+            sqlx::query_scalar!(
+                r#"SELECT COUNT(*) FROM comments WHERE document_id = $1 AND parent_id = $2"#,
+                document_uuid,
+                parent
+            )
+            .fetch_one(&self.pool)
+            .await?
+        } else {
+            sqlx::query_scalar!(
+                r#"SELECT COUNT(*) FROM comments WHERE document_id = $1 AND parent_id IS NULL"#,
+                document_uuid
+            )
+            .fetch_one(&self.pool)
+            .await?
+        };
+
+        Ok((comments, total))
+    }
+
+    pub async fn create_comment(
+        &self,
+        document_id: &str,
+        author_id: &str,
+        author_name: &str,
+        content: &str,
+        parent_id: Option<&str>,
+    ) -> Result<CommentRow, sqlx::Error> {
+        let document_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let author_uuid = Uuid::parse_str(author_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let parent_uuid = parent_id.map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into()))).transpose()?;
+
+        let comment = sqlx::query_as!(
+            CommentRow,
+            r#"
+            INSERT INTO comments (id, document_id, parent_id, author_id, author_name, content)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+            RETURNING *
+            "#,
+            document_uuid,
+            parent_uuid,
+            author_uuid,
+            author_name,
+            content
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    pub async fn update_comment(&self, comment_id: &str, content: &str) -> Result<CommentRow, sqlx::Error> {
+        let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let comment = sqlx::query_as!(
+            CommentRow,
+            r#"
+            UPDATE comments
+            SET content = $2, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+            comment_uuid,
+            content
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    pub async fn resolve_comment(&self, comment_id: &str, resolved_by: &str) -> Result<CommentRow, sqlx::Error> {
+        let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+        let resolver_uuid = Uuid::parse_str(resolved_by).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let comment = sqlx::query_as!(
+            CommentRow,
+            r#"
+            UPDATE comments
+            SET is_resolved = true, resolved_by = $2, resolved_at = NOW(), updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+            comment_uuid,
+            resolver_uuid
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    pub async fn unresolve_comment(&self, comment_id: &str) -> Result<CommentRow, sqlx::Error> {
+        let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        let comment = sqlx::query_as!(
+            CommentRow,
+            r#"
+            UPDATE comments
+            SET is_resolved = false, resolved_by = NULL, resolved_at = NULL, updated_at = NOW()
+            WHERE id = $1
+            RETURNING *
+            "#,
+            comment_uuid
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(comment)
+    }
+
+    pub async fn delete_comment(&self, comment_id: &str) -> Result<bool, sqlx::Error> {
+        let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+
+        // First, delete all child comments
+        sqlx::query!(
+            r#"DELETE FROM comments WHERE parent_id = $1"#,
+            comment_uuid
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Then delete the comment itself
+        let result = sqlx::query!(
+            r#"DELETE FROM comments WHERE id = $1"#,
+            comment_uuid
         )
         .execute(&self.pool)
         .await?;

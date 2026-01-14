@@ -1,4 +1,5 @@
 pub mod export;
+pub mod comments;
 pub mod handlers;
 pub mod models;
 pub mod repository;
@@ -6,6 +7,7 @@ pub mod validation;
 
 use actix_web::web;
 use crate::handlers::*;
+use crate::comments::*;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     // Space-scoped document endpoints
@@ -31,5 +33,17 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{documentId}/versions/{versionNumber}", web::get().to(get_version))
             .route("/{documentId}/versions/{versionNumber}/restore", web::post().to(restore_version))
             .route("/{documentId}/versions/diff", web::get().to(get_version_diff))
+            // Comment endpoints
+            .route("/{documentId}/comments", web::get().to(list_comments))
+            .route("/{documentId}/comments", web::post().to(create_comment))
+    );
+
+    // Comment-scoped endpoints
+    cfg.service(
+        web::scope("/comments")
+            .route("/{commentId}", web::patch().to(update_comment))
+            .route("/{commentId}/resolve", web::post().to(resolve_comment))
+            .route("/{commentId}/unresolve", web::post().to(unresolve_comment))
+            .route("/{commentId}", web::delete().to(delete_comment))
     );
 }

@@ -285,3 +285,63 @@ pub struct MemberListResponse {
     pub members: Vec<MemberResponse>,
     pub total: i32,
 }
+
+// ============================================
+// Comment Request Types
+// ============================================
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct CreateCommentRequest {
+    #[validate(length(min = 1, max = 5000))]
+    pub content: String,
+
+    pub parent_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct UpdateCommentRequest {
+    #[validate(length(min = 1, max = 5000))]
+    pub content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListCommentsQuery {
+    pub parent_id: Option<String>,
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+// ============================================
+// Comment Response Types
+// ============================================
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommentResponse {
+    pub id: String,
+    pub document_id: String,
+    pub parent_id: Option<String>,
+    pub author_id: String,
+    pub author_name: String,
+    pub author_avatar: Option<String>,
+    pub content: String,
+    pub is_resolved: bool,
+    pub resolved_by: Option<String>,
+    pub resolved_at: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommentListResponse {
+    pub comments: Vec<CommentResponse>,
+    pub total: i64,
+    pub limit: i32,
+    pub offset: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateCommentResponse {
+    pub id: String,
+    pub message: String,
+    pub comment: CommentResponse,
+}
