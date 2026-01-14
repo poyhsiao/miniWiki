@@ -49,9 +49,10 @@ class PendingSyncDatasource {
   // ============================================
 
   /// Add item to failed queue
-  Future<void> addToFailedQueue(
-      String entityType, String entityId, String error) async {
-    await _syncQueue.addFailedItem(entityType, entityId, error);
+  Future<void> addToFailedQueue(String entityType, String entityId,
+      String operation, Map<String, dynamic> data, String error) async {
+    await _syncQueue.addFailedItem(
+        entityType, entityId, operation, data, error);
   }
 
   /// Get all failed items

@@ -209,7 +209,9 @@ class SyncService {
         }
       } catch (e) {
         print('[SyncService] Failed to sync $entityType:$entityId - $e');
-        _syncDatasource.removeFromQueue(entityType, entityId);
+        await _syncDatasource.removeFromQueue(entityType, entityId);
+        await _syncDatasource.addToFailedQueue(
+            entityType, entityId, operation, data ?? {}, e.toString());
         failedCount++;
         _failedCount++;
         _totalFailedCount++;

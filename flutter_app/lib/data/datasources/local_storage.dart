@@ -195,11 +195,13 @@ class SyncQueueService {
   // ============================================
 
   /// Add item to failed queue
-  Future<void> addFailedItem(
-      String entityType, String entityId, String error) async {
+  Future<void> addFailedItem(String entityType, String entityId,
+      String operation, Map<String, dynamic> data, String error) async {
     final item = {
       'entityType': entityType,
       'entityId': entityId,
+      'operation': operation,
+      'data': data,
       'error': error,
       'failedAt': DateTime.now().toIso8601String(),
     };
