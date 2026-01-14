@@ -50,7 +50,7 @@ pub struct RbacMiddleware;
 
 impl RbacMiddleware {
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 
     /// Extracts and validates JWT token from request
@@ -134,7 +134,7 @@ impl RbacMiddleware {
  ///     req: web::HttpRequest,
  ///     data: web::Path<(String,)>,
  /// ) -> Result<HttpResponse, Error> {
- ///     check_permission(req, ActionType::ViewDocument)?;
+ ///     check_permission(&req, ActionType::ViewDocument)?;
  ///     // ... rest of handler
  /// }
  /// ```
@@ -171,7 +171,7 @@ impl RbacMiddleware {
     /// async fn admin_only(
     ///     req: web::HttpRequest,
     /// ) -> Result<HttpResponse, Error> {
-    ///     check_role(req, Role::Owner)?;
+    ///     check_role(&req, Role::Owner)?;
     ///     // ... rest of handler
     /// }
     /// ```
