@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/domain/repositories/auth_repository.dart';
 import 'package:miniwiki/data/repositories/auth_repository_impl.dart';
+import 'package:miniwiki/domain/repositories/auth_repository.dart';
 
 /// Authentication state sealed class
 sealed class AuthState {

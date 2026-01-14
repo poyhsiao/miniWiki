@@ -19,9 +19,8 @@ class DocumentSyncState {
 
   const DocumentSyncState({
     required this.documentId,
-    this.status = SyncStatus.idle,
+    required this.lastSyncedAt, this.status = SyncStatus.idle,
     this.errorMessage,
-    required this.lastSyncedAt,
   });
 
   DocumentSyncState copyWith({
@@ -29,14 +28,12 @@ class DocumentSyncState {
     SyncStatus? status,
     String? errorMessage,
     DateTime? lastSyncedAt,
-  }) {
-    return DocumentSyncState(
+  }) => DocumentSyncState(
       documentId: documentId ?? this.documentId,
       status: status ?? this.status,
       errorMessage: errorMessage ?? this.errorMessage,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     );
-  }
 }
 
 /// CRDT document wrapper - uses dynamic for y_crdt types
@@ -86,7 +83,7 @@ class CrdtService {
   /// Stream of sync state changes
   Stream<DocumentSyncState> get syncStateChanges {
     final controller = StreamController<DocumentSyncState>();
-    for (var state in _syncStates.values) {
+    for (final state in _syncStates.values) {
       controller.add(state);
     }
     return controller.stream;
@@ -98,7 +95,6 @@ class CrdtService {
       _documents[id] = CrdtDocument(
         id: id,
         doc: null,
-        text: null,
         arrays: {},
         maps: {},
       );
@@ -188,17 +184,13 @@ class CrdtService {
   }
 
   /// Check if document has pending changes
-  bool hasPendingChanges(String documentId) {
-    return _documents[documentId]?.isDirty ?? false;
-  }
+  bool hasPendingChanges(String documentId) => _documents[documentId]?.isDirty ?? false;
 
   /// Get all document IDs with pending changes
-  List<String> getDirtyDocumentIds() {
-    return _documents.entries
+  List<String> getDirtyDocumentIds() => _documents.entries
         .where((e) => e.value.isDirty)
         .map((e) => e.key)
         .toList();
-  }
 
   /// Mark document as synced
   void markSynced(String documentId) {
@@ -211,7 +203,7 @@ class CrdtService {
   }
 
   /// Emit update event
-  void _emitUpdate(String documentId, String field, dynamic event) {
+  void _emitUpdate(String documentId, String field, event) {
     _updateController.add({
       'documentId': documentId,
       'field': field,
@@ -229,6 +221,4 @@ class CrdtService {
 }
 
 /// Provider for CrdtService
-final crdtServiceProvider = Provider<CrdtService>((ref) {
-  return CrdtService();
-});
+final crdtServiceProvider = Provider<CrdtService>((ref) => CrdtService());

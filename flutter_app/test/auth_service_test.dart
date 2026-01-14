@@ -13,21 +13,18 @@ class MockAuthRepository implements AuthRepository {
     required String email,
     required String password,
     required String displayName,
-  }) async {
-    return UserEntity()
+  }) async => UserEntity()
       ..uuid = '12345678-1234-5678-1234-5678-1234'
       ..email = email
       ..displayName = displayName
       ..avatarUrl = null
       ..isEmailVerified = false;
-  }
 
   @override
   Future<AuthTokens> login({
     required String email,
     required String password,
-  }) async {
-    return AuthTokens(
+  }) async => AuthTokens(
       accessToken: 'mock_access_token_123',
       refreshToken: 'mock_refresh_token_456',
       expiresIn: 900,
@@ -38,20 +35,17 @@ class MockAuthRepository implements AuthRepository {
         ..avatarUrl = null
         ..isEmailVerified = true,
     );
-  }
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<UserEntity> getCurrentUser() async {
-    return UserEntity()
+  Future<UserEntity> getCurrentUser() async => UserEntity()
       ..uuid = '12345678-1234-5678-1234-5678-1234'
       ..email = 'mock@example.com'
       ..displayName = 'Mock User'
       ..avatarUrl = null
       ..isEmailVerified = true;
-  }
 
   @override
   Future<void> refreshToken() async {}
@@ -90,8 +84,8 @@ void main() {
 
       expect(result, isA<Authenticated>());
       expect((result as Authenticated).userId, '12345678-1234-5678-1234-5678-1234');
-      expect((result as Authenticated).email, 'test@example.com');
-      expect((result as Authenticated).displayName, 'Mock User');
+      expect((result).email, 'test@example.com');
+      expect((result).displayName, 'Mock User');
     });
 
     test('login with repository error returns AuthError state', () async {
@@ -118,8 +112,8 @@ void main() {
 
       expect(result, isA<Authenticated>());
       expect((result as Authenticated).userId, '12345678-1234-5678-1234-5678-1234');
-      expect((result as Authenticated).email, 'newuser@example.com');
-      expect((result as Authenticated).displayName, 'New User');
+      expect((result).email, 'newuser@example.com');
+      expect((result).displayName, 'New User');
     });
 
     test('logout calls repository logout', () async {
@@ -137,8 +131,8 @@ void main() {
 
       expect(result, isA<Authenticated>());
       expect((result as Authenticated).userId, '12345678-1234-5678-1234-5678-1234');
-      expect((result as Authenticated).email, 'mock@example.com');
-      expect((result as Authenticated).displayName, 'Mock User');
+      expect((result).email, 'mock@example.com');
+      expect((result).displayName, 'Mock User');
     });
 
     test('refreshToken calls repository refreshToken', () async {

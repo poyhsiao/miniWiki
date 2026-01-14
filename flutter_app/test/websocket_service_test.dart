@@ -16,17 +16,13 @@ class MockCrdtService {
   final Map<String, Uint8List> _stateVectors = {};
   final List<Uint8List> _pendingUpdates = [];
 
-  Future<Uint8List?> getDocumentState(String documentId) async {
-    return _documentStates[documentId];
-  }
+  Future<Uint8List?> getDocumentState(String documentId) async => _documentStates[documentId];
 
   Future<void> setDocumentState(String documentId, Uint8List state) async {
     _documentStates[documentId] = state;
   }
 
-  Future<Uint8List?> getStateVector(String documentId) async {
-    return _stateVectors[documentId];
-  }
+  Future<Uint8List?> getStateVector(String documentId) async => _stateVectors[documentId];
 
   Future<void> setStateVector(String documentId, Uint8List vector) async {
     _stateVectors[documentId] = vector;
@@ -36,9 +32,7 @@ class MockCrdtService {
     _pendingUpdates.add(update);
   }
 
-  Future<Uint8List> diffUpdate(String documentId, Uint8List stateVector) async {
-    return Uint8List.fromList([1, 2, 3, 4]);
-  }
+  Future<Uint8List> diffUpdate(String documentId, Uint8List stateVector) async => Uint8List.fromList([1, 2, 3, 4]);
 
   Future<void> initializeDocument(String documentId) async {
     if (!_documentStates.containsKey(documentId)) {
@@ -106,16 +100,12 @@ class MockPresenceService {
     }
   }
 
-  Future<List<PresenceUser>> getActiveUsers(String documentId) async {
-    return _activeUsers.entries
+  Future<List<PresenceUser>> getActiveUsers(String documentId) async => _activeUsers.entries
         .where((e) => e.key.startsWith('$documentId:'))
         .map((e) => e.value)
         .toList();
-  }
 
-  Future<CursorPosition?> getCursor(String documentId, String userId) async {
-    return _userCursors['$documentId:$userId']?['cursor'];
-  }
+  Future<CursorPosition?> getCursor(String documentId, String userId) async => _userCursors['$documentId:$userId']?['cursor'];
 
   List<PresenceEvent> getEvents() => List.from(_events);
   void clearEvents() => _events.clear();
@@ -172,8 +162,6 @@ void main() {
     test('SyncMessage handles null fields', () {
       final message = SyncMessage(
         documentId: 'doc-456',
-        stateVector: null,
-        update: null,
       );
 
       final encoded = message.toJson();
@@ -215,7 +203,6 @@ void main() {
       final message = AwarenessMessage(
         documentId: 'doc-456',
         user: user,
-        cursor: null,
       );
 
       expect(message.cursor, isNull);
@@ -363,9 +350,7 @@ void main() {
 
     test('MockPresenceService emits presence events', () async {
       final events = <PresenceEvent>[];
-      final subscription = mockPresenceService.onPresenceChange.listen((event) {
-        events.add(event);
-      });
+      final subscription = mockPresenceService.onPresenceChange.listen(events.add);
 
       await mockPresenceService.joinDocument('doc-3', 'user-3', 'User Three', '#0000FF');
       await mockPresenceService.leaveDocument('doc-3', 'user-3');
@@ -479,8 +464,8 @@ class SyncMessage {
 
   factory SyncMessage.fromJson(Map<String, dynamic> json) => SyncMessage(
         documentId: json['documentId'] as String,
-        stateVector: (json['stateVector'] as List?)?.cast<int>().let((i) => Uint8List.fromList(i)),
-        update: (json['update'] as List?)?.cast<int>().let((i) => Uint8List.fromList(i)),
+        stateVector: (json['stateVector'] as List?)?.cast<int>().let(Uint8List.fromList),
+        update: (json['update'] as List?)?.cast<int>().let(Uint8List.fromList),
       );
 }
 
@@ -614,6 +599,6 @@ class WebSocketConfig {
 extension LetExtension<T> on T? {
   R? let<R>(R Function(T) f) {
     if (this == null) return null;
-    return f(this!);
+    return f(this as T);
   }
 }

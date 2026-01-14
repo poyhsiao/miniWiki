@@ -37,6 +37,7 @@
         "shared_preferences",
         "url_launcher",
         "uuid",
+        "web_socket_channel",
         "y_crdt"
       ],
       "devDependencies": [
@@ -421,6 +422,15 @@
       ]
     },
     {
+      "name": "web_socket_channel",
+      "version": "2.4.0",
+      "dependencies": [
+        "async",
+        "crypto",
+        "stream_channel"
+      ]
+    },
+    {
       "name": "http_interceptor",
       "version": "2.0.0",
       "dependencies": [
@@ -703,15 +713,6 @@
         "collection",
         "source_span",
         "string_scanner"
-      ]
-    },
-    {
-      "name": "web_socket_channel",
-      "version": "2.4.0",
-      "dependencies": [
-        "async",
-        "crypto",
-        "stream_channel"
       ]
     },
     {

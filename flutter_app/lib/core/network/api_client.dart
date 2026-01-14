@@ -54,9 +54,7 @@ final dioProvider = Provider<Dio>((ref) {
   ));
 
   dio.interceptors.add(LogInterceptor(
-    request: true,
     responseBody: true,
-    error: true,
   ));
 
   dio.interceptors.add(InterceptorsWrapper(
@@ -82,25 +80,15 @@ class ApiClient {
   ApiClient(this._dio);
 
   Future<Response> get(String path,
-      {Map<String, dynamic>? queryParams, Options? options}) async {
-    return _dio.get(path, queryParameters: queryParams, options: options);
-  }
+      {Map<String, dynamic>? queryParams, Options? options}) async => _dio.get(path, queryParameters: queryParams, options: options);
 
-  Future<Response> post(String path, {dynamic data, Options? options}) async {
-    return _dio.post(path, data: data, options: options);
-  }
+  Future<Response> post(String path, {data, Options? options}) async => _dio.post(path, data: data, options: options);
 
-  Future<Response> put(String path, {dynamic data, Options? options}) async {
-    return _dio.put(path, data: data, options: options);
-  }
+  Future<Response> put(String path, {data, Options? options}) async => _dio.put(path, data: data, options: options);
 
-  Future<Response> patch(String path, {dynamic data, Options? options}) async {
-    return _dio.patch(path, data: data, options: options);
-  }
+  Future<Response> patch(String path, {data, Options? options}) async => _dio.patch(path, data: data, options: options);
 
-  Future<Response> delete(String path, {dynamic data, Options? options}) async {
-    return _dio.delete(path, data: data, options: options);
-  }
+  Future<Response> delete(String path, {data, Options? options}) async => _dio.delete(path, data: data, options: options);
 
   void setAuthToken(String token) {
     _dio.options.headers['Authorization'] = 'Bearer $token';

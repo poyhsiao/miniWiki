@@ -1,9 +1,9 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
-import 'package:miniwiki/domain/repositories/auth_repository.dart';
-import 'package:miniwiki/data/repositories/auth_repository_impl.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:miniwiki/core/network/api_client.dart';
+import 'package:miniwiki/data/repositories/auth_repository_impl.dart';
+import 'package:miniwiki/domain/repositories/auth_repository.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 

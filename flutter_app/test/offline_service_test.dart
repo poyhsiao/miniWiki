@@ -78,17 +78,13 @@ class MockOfflineService {
     _cachedDocuments[documentId] = content;
   }
 
-  Future<Uint8List?> getCachedDocument(String documentId) async {
-    return _cachedDocuments[documentId];
-  }
+  Future<Uint8List?> getCachedDocument(String documentId) async => _cachedDocuments[documentId];
 
   Future<void> removeCachedDocument(String documentId) async {
     _cachedDocuments.remove(documentId);
   }
 
-  Future<List<String>> getAllCachedDocumentIds() async {
-    return _cachedDocuments.keys.toList();
-  }
+  Future<List<String>> getAllCachedDocumentIds() async => _cachedDocuments.keys.toList();
 
   Future<int> getCacheSize() async {
     var size = 0;
@@ -99,9 +95,7 @@ class MockOfflineService {
   }
 
   // Connectivity
-  Future<ConnectivityResult> checkConnectivity() async {
-    return _connectionStatus;
-  }
+  Future<ConnectivityResult> checkConnectivity() async => _connectionStatus;
 
   void setConnectivity(ConnectivityResult status) {
     _connectionStatus = status;
@@ -188,11 +182,11 @@ void main() {
       // Clear any previous state
       await offlineService.clearQueue();
 
-      for (int i = 1; i <= 5; i++) {
+      for (var i = 1; i <= 5; i++) {
         await offlineService.addToQueue('doc-$i', {'index': i});
       }
 
-      for (int i = 1; i <= 5; i++) {
+      for (var i = 1; i <= 5; i++) {
         final item = await offlineService.getNextQueueItem();
         expect(item, isNotNull);
         expect(item!.data['index'], i);
@@ -288,13 +282,13 @@ void main() {
       final subscription = offlineService.connectivityChanges.listen(changes.add);
 
       // Give the stream listener time to register
-      await Future.delayed(Duration(milliseconds: 10));
+      await Future.delayed(const Duration(milliseconds: 10));
 
       offlineService.setConnectivity(ConnectivityResult.mobile);
       offlineService.setConnectivity(ConnectivityResult.none);
 
       // Wait for events to be processed
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
 
       await subscription.cancel();
 
@@ -333,7 +327,7 @@ void main() {
 
       // Process queue
       final items = <OfflineQueueItem>[];
-      for (int i = 0; i < 2; i++) {
+      for (var i = 0; i < 2; i++) {
         final item = await offlineService.getNextQueueItem();
         if (item != null) {
           items.add(item);
@@ -386,7 +380,7 @@ void main() {
 
     test('cache size tracking during heavy usage', () async {
       // Add multiple documents
-      for (int i = 0; i < 10; i++) {
+      for (var i = 0; i < 10; i++) {
         final content = Uint8List.fromList(List.generate(100, (idx) => idx % 256));
         await offlineService.cacheDocument('doc-$i', content);
       }
@@ -395,7 +389,7 @@ void main() {
       expect(size, 1000); // 10 documents * 100 bytes each
 
       // Remove half
-      for (int i = 0; i < 5; i++) {
+      for (var i = 0; i < 5; i++) {
         await offlineService.removeCachedDocument('doc-$i');
       }
 
@@ -410,7 +404,7 @@ void main() {
         id: 'test-1',
         documentId: 'doc-1',
         data: {'operation': 'update'},
-        queuedAt: DateTime(2024, 1, 1),
+        queuedAt: DateTime(2024, 1),
       );
 
       expect(item.id, 'test-1');

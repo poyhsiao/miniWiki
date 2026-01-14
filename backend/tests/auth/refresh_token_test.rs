@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod refresh_token_test {
-    use miniwiki_backend::services::auth_service::jwt::{JwtService, JwtConfig};
+    use auth_service::jwt::{JwtService, JwtConfig};
 
     #[test]
     fn test_refresh_token_generation() {

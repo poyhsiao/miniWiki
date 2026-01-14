@@ -11,8 +11,8 @@ import 'package:miniwiki/data/models/cached_document.dart';
 
 /// Helper function for exponential calculation
 int _pow(int base, int exponent) {
-  int result = 1;
-  for (int i = 0; i < exponent; i++) {
+  var result = 1;
+  for (var i = 0; i < exponent; i++) {
     result *= base;
   }
   return result;
@@ -42,8 +42,7 @@ class PendingSyncDatasource {
   }
 
   /// Get next pending item (respecting retry limits and next retry time)
-  Future<SyncQueueItem?> getNextPendingItem() async {
-    return await _isar.txn(() async {
+  Future<SyncQueueItem?> getNextPendingItem() async => await _isar.txn(() async {
       final now = DateTime.now();
       final items = await _queueCollection
           .where()
@@ -61,11 +60,9 @@ class PendingSyncDatasource {
         orElse: () => items.first,
       );
     });
-  }
 
   /// Get all pending items
-  Future<List<SyncQueueItem>> getAllPendingItems() async {
-    return await _isar.txn(() async {
+  Future<List<SyncQueueItem>> getAllPendingItems() async => await _isar.txn(() async {
       final now = DateTime.now();
       return await _queueCollection
           .where()
@@ -74,19 +71,16 @@ class PendingSyncDatasource {
           .nextRetryAtLessThan(now)
           .findAll();
     });
-  }
 
   /// Get items ready for retry
   Future<List<SyncQueueItem>> getItemsReadyForRetry() async {
     final now = DateTime.now();
-    return await _isar.txn(() async {
-      return await _queueCollection
+    return _isar.txn(() async => await _queueCollection
           .where()
           .filter()
           .retryCountLessThan(3)
           .nextRetryAtLessThan(now)
-          .findAll();
-    });
+          .findAll());
   }
 
   /// Mark item as synced (remove from queue)
@@ -136,38 +130,30 @@ class PendingSyncDatasource {
   }
 
   /// Get total queue count
-  Future<int> getQueueCount() async {
-    return await _queueCollection.count();
-  }
+  Future<int> getQueueCount() async => await _queueCollection.count();
 
   /// Get pending count (items ready for retry)
   Future<int> getPendingCount() async {
     final now = DateTime.now();
-    return await _isar.txn(() async {
-      return await _queueCollection
+    return _isar.txn(() async => await _queueCollection
           .where()
           .filter()
           .retryCountLessThan(3)
           .nextRetryAtLessThan(now)
-          .count();
-    });
+          .count());
   }
 
   /// Get failed count (items that exceeded retry limit)
-  Future<int> getFailedCount() async {
-    return await _isar.txn(() async {
+  Future<int> getFailedCount() async => await _isar.txn(() async {
       final items = await _queueCollection.where().findAll();
       return items.where((item) => item.retryCount >= 3).length;
     });
-  }
 
   /// Get total failed attempts count
-  Future<int> getTotalFailedCount() async {
-    return await _isar.txn(() async {
+  Future<int> getTotalFailedCount() async => await _isar.txn(() async {
       final items = await _queueCollection.where().findAll();
       return items.fold<int>(0, (sum, item) => sum + item.retryCount);
     });
-  }
 
   // ============================================
   // DOCUMENT CACHING OPERATIONS
@@ -201,8 +187,7 @@ class PendingSyncDatasource {
     required String documentId,
     required String title,
     required String spaceId,
-    String? parentId,
-    required Uint8List content,
+    required Uint8List content, String? parentId,
     String? stateVector,
     int version = 0,
     DateTime? expiresAt,
@@ -362,7 +347,7 @@ class PendingSyncDatasource {
   /// Get cache size in bytes
   Future<int> getCacheSize() async {
     final docs = await _cachedDocsCollection.where().findAll();
-    int totalSize = 0;
+    var totalSize = 0;
     for (final doc in docs) {
       totalSize += doc.content?.length ?? 0;
     }
@@ -373,10 +358,10 @@ class PendingSyncDatasource {
   Future<CacheStats> getCacheStats() async {
     final docs = await _cachedDocsCollection.where().findAll();
 
-    int validCount = 0;
-    int expiredCount = 0;
-    int dirtyCount = 0;
-    int totalBytes = 0;
+    var validCount = 0;
+    var expiredCount = 0;
+    var dirtyCount = 0;
+    var totalBytes = 0;
 
     for (final doc in docs) {
       if (doc.isExpired) {
@@ -464,7 +449,7 @@ class PendingSyncDatasource {
           .thenByCachedAt()
           .findAll();
 
-      int currentSize = 0;
+      var currentSize = 0;
       for (final doc in docs) {
         final docSize = doc.content?.length ?? 0;
         if (currentSize + docSize > maxBytes) {
@@ -505,7 +490,7 @@ class CacheStats {
 /// Isar provider - needs to be initialized with proper schema
 final isarProvider = FutureProvider<Isar>((ref) async {
   final dir = await getApplicationDocumentsDirectory();
-  return await Isar.open(
+  return Isar.open(
     [SyncQueueItemSchema, CachedDocumentSchema],
     directory: dir.path,
     name: 'miniwiki_sync',

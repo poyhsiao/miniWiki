@@ -54,14 +54,11 @@ class Document {
   const Document({
     required this.id,
     required this.spaceId,
-    this.parentId,
-    required this.title,
+    required this.title, required this.createdBy, required this.lastEditedBy, this.parentId,
     this.icon,
     this.content = const {},
     this.contentSize = 0,
     this.isArchived = false,
-    required this.createdBy,
-    required this.lastEditedBy,
     this.createdAt,
     this.updatedAt,
     this.isSynced = true,
@@ -86,8 +83,7 @@ class Document {
     bool? isSynced,
     bool? isDirty,
     DateTime? lastSyncedAt,
-  }) {
-    return Document(
+  }) => Document(
       id: id ?? this.id,
       spaceId: spaceId ?? this.spaceId,
       parentId: parentId ?? this.parentId,
@@ -104,7 +100,6 @@ class Document {
       isDirty: isDirty ?? this.isDirty,
       lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     );
-  }
 
   /// Helper method to safely parse DateTime from API
   /// Returns null if input is null or empty
@@ -120,8 +115,7 @@ class Document {
   }
 
   /// Creates a Document from JSON (for API responses)
-  factory Document.fromJson(Map<String, dynamic> json) {
-    return Document(
+  factory Document.fromJson(Map<String, dynamic> json) => Document(
       id: json['id'] as String,
       spaceId: json['space_id'] as String,
       parentId: json['parent_id'] as String?,
@@ -138,7 +132,6 @@ class Document {
       isDirty: json['is_dirty'] as bool? ?? false,
       lastSyncedAt: _parseDateTime(json['last_synced_at'] as String?),
     );
-  }
 
   /// Converts Document to JSON (for API requests)
   Map<String, dynamic> toJson() {
@@ -179,9 +172,7 @@ class Document {
   }
 
   @override
-  String toString() {
-    return 'Document(id: $id, title: $title)';
-  }
+  String toString() => 'Document(id: $id, title: $title)';
 
   @override
   bool operator ==(Object other) {

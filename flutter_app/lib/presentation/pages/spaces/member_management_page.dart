@@ -7,7 +7,7 @@ import 'package:miniwiki/services/space_service.dart';
 class MemberManagementPage extends ConsumerWidget {
   final String spaceId;
 
-  const MemberManagementPage({super.key, required this.spaceId});
+  const MemberManagementPage({required this.spaceId, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -132,9 +132,7 @@ class MemberManagementPage extends ConsumerWidget {
     }
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
-  }
+  String _formatDate(DateTime date) => '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
 
   void _handleMenuAction(
     String value,
@@ -184,8 +182,8 @@ class MemberManagementPage extends ConsumerWidget {
 
   void _showAddMemberDialog(BuildContext context, WidgetRef ref) {
     final userIdController = TextEditingController();
-    String selectedRole = 'viewer';
-    bool isLoading = false;
+    var selectedRole = 'viewer';
+    var isLoading = false;
 
     showDialog(
       context: context,
@@ -206,7 +204,7 @@ class MemberManagementPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: const InputDecoration(
                     labelText: 'Role',
                     border: OutlineInputBorder(),
@@ -265,5 +263,11 @@ class MemberManagementPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }

@@ -19,7 +19,6 @@ async fn test_create_document_success() {
     let space = app.create_test_space_for_user(&user.id).await;
 
     let request = CreateDocumentRequest {
-        space_id: space.id,
         parent_id: None,
         title: "Test Document".to_string(),
         icon: Some("📝".to_string()),
@@ -56,7 +55,6 @@ async fn test_create_document_with_parent() {
     let parent_doc = app.create_test_document(&space.id, None).await;
 
     let request = CreateDocumentRequest {
-        space_id: space.id,
         parent_id: Some(parent_doc.id),
         title: "Child Document".to_string(),
         icon: None,
@@ -83,7 +81,6 @@ async fn test_create_document_empty_title_fails() {
     let space = app.create_test_space_for_user(&user.id).await;
 
     let request = CreateDocumentRequest {
-        space_id: space.id,
         parent_id: None,
         title: "".to_string(),
         icon: None,

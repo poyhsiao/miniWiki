@@ -5,7 +5,7 @@ import 'package:miniwiki/presentation/providers/space_provider.dart';
 class SpaceSettingsPage extends ConsumerWidget {
   final String spaceId;
 
-  const SpaceSettingsPage({super.key, required this.spaceId});
+  const SpaceSettingsPage({required this.spaceId, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -15,7 +15,7 @@ class SpaceSettingsPage extends ConsumerWidget {
 
     final nameController = TextEditingController(text: space.name);
     final descriptionController = TextEditingController(text: space.description ?? '');
-    bool isPublic = space.isPublic;
+    var isPublic = space.isPublic;
 
     return Scaffold(
       appBar: AppBar(
@@ -152,5 +152,11 @@ class SpaceSettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }

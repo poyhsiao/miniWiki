@@ -1,10 +1,7 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use crate::models::Document;
-
-pub mod handlers;
-pub mod models;
+use shared_models::entities::Document;
 
 const YJS_ENCODING_FORMAT: u8 = 0;
 

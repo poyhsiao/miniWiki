@@ -2,7 +2,6 @@ use crate::models::*;
 use crate::helpers::*;
 use actix_web::test;
 use actix_web::web;
-use auth_service::jwt::generate_jwt_token;
 
 #[actix_rt::test]
 async fn test_list_space_members() {
@@ -17,7 +16,7 @@ async fn test_list_space_members() {
     let owner = test_app.create_test_user().await;
     eprintln!("DEBUG: Created test user: id={}, email={}", owner.id, owner.email);
     
-    let token = generate_jwt_token(owner.id, &owner.email).unwrap();
+    let token = generate_test_jwt_token(owner.id, &owner.email);
     eprintln!("DEBUG: Generated token for user");
     
     let create_req = CreateSpaceRequest {
@@ -72,7 +71,7 @@ async fn test_add_space_member() {
     
     let owner = test_app.create_test_user().await;
     let member = test_app.create_test_user().await;
-    let token = generate_jwt_token(owner.id, &owner.email).unwrap();
+    let token = generate_test_jwt_token(owner.id, &owner.email);
     
     let create_req = CreateSpaceRequest {
         name: "Test Space".to_string(),
@@ -123,7 +122,7 @@ async fn test_add_member_validation_invalid_role() {
     
     let owner = test_app.create_test_user().await;
     let member = test_app.create_test_user().await;
-    let token = generate_jwt_token(owner.id, &owner.email).unwrap();
+    let token = generate_test_jwt_token(owner.id, &owner.email);
     
     let create_req = CreateSpaceRequest {
         name: "Test Space".to_string(),
@@ -169,7 +168,7 @@ async fn test_update_member_role() {
     
     let owner = test_app.create_test_user().await;
     let member = test_app.create_test_user().await;
-    let token = generate_jwt_token(owner.id, &owner.email).unwrap();
+    let token = generate_test_jwt_token(owner.id, &owner.email);
     
     let create_req = CreateSpaceRequest {
         name: "Test Space".to_string(),

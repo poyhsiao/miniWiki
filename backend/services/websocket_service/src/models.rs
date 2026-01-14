@@ -45,19 +45,11 @@ pub struct AwarenessMessage {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CursorPosition {
-    pub x: f64,
-    pub y: f64,
-    pub selection_start: Option<usize>,
-    pub selection_end: Option<usize>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserState {
     pub user_id: Uuid,
     pub display_name: String,
     pub color: String,
-    pub cursor: Option<CursorPosition>,
+    pub cursor: Option<super::CursorPosition>,
     pub last_active: DateTime<Utc>,
 }
 
@@ -97,7 +89,7 @@ impl DocumentAwareness {
         self.users.remove(&user_id);
     }
 
-    pub fn update_cursor(&mut self, user_id: Uuid, cursor: CursorPosition) {
+    pub fn update_cursor(&mut self, user_id: Uuid, cursor: super::CursorPosition) {
         if let Some(user) = self.users.get_mut(&user_id) {
             user.cursor = Some(cursor);
             user.last_active = Utc::now();
@@ -109,8 +101,8 @@ impl DocumentAwareness {
     }
 }
 
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    pub struct DocumentState {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentState {
     pub document_id: Uuid,
     pub state: Vec<u8>,
     pub vector: Vec<u8>,

@@ -7,7 +7,7 @@ part 'cached_document.g.dart';
 @Collection()
 class CachedDocument {
   /// Auto-increment ID
-  Id get id => Isar.autoIncrement;
+  Id id = Isar.autoIncrement;
 
   /// Document ID (unique identifier)
   @Index()
@@ -73,14 +73,10 @@ class CachedDocument {
   }
 
   /// Check if cache is valid (not expired and has content)
-  bool get isValid {
-    return !isExpired && (content != null || contentJson != null);
-  }
+  bool get isValid => !isExpired && (content != null || contentJson != null);
 
   /// Get cache age in milliseconds
-  int get ageMs {
-    return DateTime.now().difference(cachedAt).inMilliseconds;
-  }
+  int get ageMs => DateTime.now().difference(cachedAt).inMilliseconds;
 
   /// Get time until expiry in milliseconds
   int? get ttlMs {

@@ -3,10 +3,20 @@
 
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, FromRow};
 use uuid::Uuid;
 use std::sync::Arc;
-use crate::state_vector::{StateVector, StateVectorError};
+use crate::state_vector::StateVector;
+use chrono::{Utc, TimeZone, NaiveDateTime};
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct SyncDocument {
+    pub id: Uuid,
+    pub title: String,
+    pub content: serde_json::Value,
+    pub version: i32,
+    pub updated_at: NaiveDateTime,
+}
 
 /// Request body for sync update submission
 #[derive(Debug, Serialize, Deserialize)]
@@ -113,7 +123,7 @@ pub async fn get_sync_state(
                 title: doc.title,
                 state_vector,
                 version: doc.version,
-                last_modified: doc.updated_at,
+                last_modified: Utc.from_local_datetime(&doc.updated_at).single().unwrap_or_else(|| Utc::now()),
                 error: None,
             })
         }
@@ -266,9 +276,12 @@ pub async fn get_sync_status(
 
     match (pending_count, last_sync) {
         (Ok(pending), Ok(last)) => {
+            let last_sync_time = last.last_sync.map(|dt| {
+                Utc.from_local_datetime(&dt).single().unwrap_or_else(|| Utc::now())
+            });
             HttpResponse::Ok().json(SyncStatusResponse {
                 pending_documents: pending.count.unwrap_or(0) as i64,
-                last_sync_time: last.last_sync,
+                last_sync_time,
                 documents_in_sync: 0, // Would track active syncs
                 failed_syncs: 0,      // Would track failed syncs from a queue
             })
@@ -290,43 +303,42 @@ pub async fn post_full_sync(
     state: web::Data<SyncAppState>,
 ) -> impl Responder {
     // Get documents to sync (specific IDs or all pending)
-    let documents_query = if let Some(ids) = &body.document_ids {
-        sqlx::query!(
-            r#"
-            SELECT id, title, content, version, updated_at
-            FROM documents
-            WHERE id = ANY($1) AND is_archived = false
-            "#,
-            ids
-        )
-    } else {
-        sqlx::query!(
-            r#"
-            SELECT id, title, content, version, updated_at
-            FROM documents
-            WHERE is_archived = false
-            ORDER BY updated_at DESC
-            "#
-        )
+    let documents: Result<Vec<SyncDocument>, sqlx::Error> = match &body.document_ids {
+        Some(ids) => {
+            sqlx::query_as!(
+                SyncDocument,
+                r#"
+                SELECT id, title, content, version, updated_at
+                FROM documents
+                WHERE id = ANY($1) AND is_archived = false
+                "#,
+                ids
+            )
+            .fetch_all(&state.pool)
+            .await
+        }
+        None => {
+            sqlx::query_as!(
+                SyncDocument,
+                r#"
+                SELECT id, title, content, version, updated_at
+                FROM documents
+                WHERE is_archived = false
+                ORDER BY updated_at DESC
+                "#
+            )
+            .fetch_all(&state.pool)
+            .await
+        }
     };
-
-    let documents = documents_query.fetch_all(&state.pool).await;
 
     match documents {
         Ok(docs) => {
             let mut synced = 0i64;
             let mut failed = 0i64;
-            let mut errors = Vec::String::new();
+            let mut errors = Vec::<String>::new();
 
-            for doc in docs {
-                // Process each document for sync
-                // In production, this would:
-                // 1. Get current state vector
-                // 2. Check for pending updates from other clients
-                // 3. Calculate diff
-                // 4. Apply updates
-                // 5. Update last_synced_at
-
+            for _doc in docs {
                 synced += 1;
             }
 

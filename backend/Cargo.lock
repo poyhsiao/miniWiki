@@ -5105,6 +5105,7 @@ dependencies = [
  "actix-web",
  "actix-web-actors",
  "anyhow",
+ "base64 0.22.1",
  "chrono",
  "config",
  "dotenv",

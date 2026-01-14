@@ -1,6 +1,6 @@
 use crate::{
-    models::{ClientMessage, ServerMessage, MessageType, SyncMessage, AwarenessMessage, CursorPosition},
-    WebSocketSession, SESSION_STORE, UserPresence, WebSocketMessage, PRESENCE_STORE,
+    models::{ClientMessage, ServerMessage, MessageType, SyncMessage, AwarenessMessage},
+    WebSocketSession, SESSION_STORE, UserPresence, WebSocketMessage, PRESENCE_STORE, CursorPosition,
 };
 use serde_json::json;
 use uuid::Uuid;
@@ -197,11 +197,14 @@ async fn handle_sync_step1(session: &WebSocketSession, state_vector: &[u8]) {
     };
 
     // Send update to requesting client
+    // TODO: Implement actual WebSocket message sending to session
+    // Currently, this is a placeholder - messages are serialized but not transmitted
     broadcast_to_document(
         document_id,
         response.clone(),
         Some(session.id),
         |_session_id, _msg| {
+            tracing::warn!("TODO: WebSocket message sending not yet implemented - send_fn closure is empty placeholder");
             // In real implementation, this would send to the specific WebSocket connection
         },
     );
@@ -221,6 +224,9 @@ async fn handle_sync_step2(session: &WebSocketSession, update: &[u8]) {
     let sync_state = SYNC_MANAGER.get_or_create_sync_state(document_id).await;
     let mut state_guard = sync_state.lock().await;
     state_guard.last_update = update.to_vec();
+
+    // Broadcast update to other clients in the same document
+    broadcast_document_update(document_id, update.to_vec(), user_id);
 
     tracing::debug!(
         "Processed update from user {} for document {}",

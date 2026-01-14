@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod jwt_test {
-    use miniwiki_backend::services::auth_service::jwt::{JwtService, JwtConfig, Claims};
+    use auth_service::jwt::{JwtService, JwtConfig, Claims};
     use chrono::{Duration, Utc};
 
     #[test]

@@ -9,12 +9,17 @@ class DocumentListPage extends ConsumerStatefulWidget {
   final String spaceId;
 
   const DocumentListPage({
-    super.key,
-    required this.spaceId,
+    required this.spaceId, super.key,
   });
 
   @override
   ConsumerState<DocumentListPage> createState() => _DocumentListPageState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+  }
 }
 
 class _DocumentListPageState extends ConsumerState<DocumentListPage> {
@@ -81,8 +86,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
     );
   }
 
-  Widget _buildBreadcrumb(BuildContext context) {
-    return Container(
+  Widget _buildBreadcrumb(BuildContext context) => Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       color: Theme.of(context).colorScheme.surfaceVariant,
       child: Row(
@@ -104,7 +108,6 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
         ],
       ),
     );
-  }
 
   Widget _buildDocumentList(BuildContext context, DocumentListState state) {
     if (state.isLoading && state.documents.isEmpty) {
@@ -204,7 +207,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
     );
   }
 
-  void _createNewDocument(BuildContext context) async {
+  Future<void> _createNewDocument(BuildContext context) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -220,7 +223,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
     }
   }
 
-  void _openDocument(BuildContext context, Document document) async {
+  Future<void> _openDocument(BuildContext context, Document document) async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -255,7 +258,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
       ),
     );
 
-    if (confirm == true) {
+    if (confirm ?? false) {
       try {
         await ref.read(documentEditProvider.notifier).loadDocument(document.id);
         await ref.read(documentEditProvider.notifier).deleteDocument();
@@ -324,5 +327,13 @@ class _DocumentTile extends StatelessWidget {
         onTap: onTap,
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<Document>('document', document));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onTap', onTap));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onDelete', onDelete));
   }
 }

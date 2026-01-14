@@ -12,7 +12,7 @@ class SpaceProvider extends StateNotifier<SpaceState> {
   }
 
   Future<void> loadSpaces() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     try {
       final spaces = await spaceService.listSpaces();
       state = state.copyWith(spaces: spaces, isLoading: false);
@@ -27,7 +27,7 @@ class SpaceProvider extends StateNotifier<SpaceState> {
     String? description,
     bool isPublic = false,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     try {
       final space = await spaceService.createSpace(
         name: name,
@@ -46,7 +46,7 @@ class SpaceProvider extends StateNotifier<SpaceState> {
   }
 
   Future<void> deleteSpace(String spaceId) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     try {
       await spaceService.deleteSpace(spaceId);
       state = state.copyWith(
@@ -60,7 +60,7 @@ class SpaceProvider extends StateNotifier<SpaceState> {
   }
 
   Future<void> loadMembers(String spaceId) async {
-    state = state.copyWith(isLoadingMembers: true, error: null);
+    state = state.copyWith(isLoadingMembers: true);
     try {
       final members = await spaceService.listMembers(spaceId);
       state = state.copyWith(members: members, isLoadingMembers: false);
@@ -76,7 +76,7 @@ class SpaceProvider extends StateNotifier<SpaceState> {
     String? description,
     bool? isPublic,
   }) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true);
     try {
       final space = await spaceService.updateSpace(
         spaceId,
@@ -145,7 +145,7 @@ class SpaceProvider extends StateNotifier<SpaceState> {
   }
 
   void clearError() {
-    state = state.copyWith(error: null);
+    state = state.copyWith();
   }
 }
 
@@ -173,8 +173,7 @@ class SpaceState {
     bool? isLoading,
     bool? isLoadingMembers,
     String? error,
-  }) {
-    return SpaceState(
+  }) => SpaceState(
       spaces: spaces ?? this.spaces,
       selectedSpace: selectedSpace ?? this.selectedSpace,
       members: members ?? this.members,
@@ -182,7 +181,6 @@ class SpaceState {
       isLoadingMembers: isLoadingMembers ?? this.isLoadingMembers,
       error: error,
     );
-  }
 }
 
 final spaceProvider = StateNotifierProvider<SpaceProvider, SpaceState>((ref) {

@@ -6,7 +6,5 @@ class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return const DocumentListPage(spaceId: 'default');
-  }
+  Widget build(BuildContext context, WidgetRef ref) => const DocumentListPage(spaceId: 'default');
 }

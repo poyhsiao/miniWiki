@@ -32,7 +32,6 @@ class AppTheme {
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primary,
-      brightness: Brightness.light,
     ),
     fontFamily: 'Inter',
   );

@@ -63,8 +63,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Reset Password')),
       body: SafeArea(
         child: Center(
@@ -81,11 +80,11 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                         currentStep: _currentStep,
                         steps: [
                           Step(
-                            title: 'Email',
+                            title: const Text('Email'),
                             content: _buildEmailStep(context),
                           ),
                           Step(
-                            title: 'New Password',
+                            title: const Text('New Password'),
                             content: _buildPasswordStep(context),
                           ),
                         ],
@@ -99,10 +98,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
         ),
       ),
     );
-  }
 
-  Widget _buildEmailStep(BuildContext context) {
-    return Form(
+  Widget _buildEmailStep(BuildContext context) => Form(
       key: _formKey,
       child: Column(
         children: [
@@ -174,10 +171,8 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
         ],
       ),
     );
-  }
 
-  Widget _buildPasswordStep(BuildContext context) {
-    return Form(
+  Widget _buildPasswordStep(BuildContext context) => Form(
       key: _formKey,
       child: Column(
         children: [
@@ -287,5 +282,4 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
         ],
       ),
     );
-  }
 }

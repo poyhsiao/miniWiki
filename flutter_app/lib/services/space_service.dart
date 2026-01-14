@@ -1,7 +1,7 @@
+import 'package:miniwiki/core/network/network_error.dart';
 import 'package:miniwiki/domain/entities/space.dart';
 import 'package:miniwiki/domain/entities/space_membership.dart';
 import 'package:miniwiki/domain/repositories/space_repository.dart';
-import 'package:miniwiki/core/network/network_error.dart';
 
 class SpaceService {
   final SpaceRepository spaceRepository;

@@ -187,14 +187,12 @@ impl ConnectionManager {
     }
 
     pub fn cleanup_stale_connections(&self) {
+        let mut last_cleanup_guard = self.last_cleanup.lock().unwrap();
         let now = Instant::now();
-        let mut last_cleanup = self.last_cleanup.lock().unwrap();
 
-        if now.duration_since(*last_cleanup) < Duration::from_secs(60) {
+        if last_cleanup_guard.duration_since(now) < Duration::from_secs(60) {
             return;
         }
-
-        *last_cleanup = now;
 
         let mut connections = self.connections.lock().unwrap();
         let mut stale_ids = Vec::new();
@@ -217,6 +215,8 @@ impl ConnectionManager {
         }
 
         tracing::debug!("Cleaned up {} stale connections", stale_ids.len());
+
+        *last_cleanup_guard = now;
     }
 
     pub fn get_active_document_count(&self) -> usize {

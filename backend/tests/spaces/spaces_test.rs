@@ -2,7 +2,6 @@ use crate::models::*;
 use crate::helpers::*;
 use actix_web::test;
 use actix_web::web;
-use auth_service::jwt::generate_jwt_token;
 use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -17,7 +16,7 @@ async fn test_list_spaces_empty() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let req = test::TestRequest::get()
         .uri("/api/v1/spaces")
@@ -61,7 +60,7 @@ async fn test_create_space() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let create_req = CreateSpaceRequest {
         name: "My Workspace".to_string(),
@@ -98,7 +97,7 @@ async fn test_create_space_validation_empty_name() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let create_req = CreateSpaceRequest {
         name: "".to_string(),
@@ -127,7 +126,7 @@ async fn test_create_space_validation_name_too_long() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let create_req = CreateSpaceRequest {
         name: "a".repeat(201),
@@ -156,7 +155,7 @@ async fn test_get_space() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let create_req = CreateSpaceRequest {
         name: "Test Space".to_string(),
@@ -200,7 +199,7 @@ async fn test_get_space_not_found() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let space_id = Uuid::new_v4().to_string();
     let req = test::TestRequest::get()
@@ -222,7 +221,7 @@ async fn test_update_space() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let create_req = CreateSpaceRequest {
         name: "Original Name".to_string(),
@@ -276,7 +275,7 @@ async fn test_delete_space() {
     ).await;
     
     let test_user = test_app.create_test_user().await;
-    let token = generate_jwt_token(test_user.id, &test_user.email).unwrap();
+    let token = generate_test_jwt_token(test_user.id, &test_user.email);
     
     let create_req = CreateSpaceRequest {
         name: "Space to Delete".to_string(),

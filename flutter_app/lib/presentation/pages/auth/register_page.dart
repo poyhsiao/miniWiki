@@ -43,8 +43,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: const Text('Sign Up')),
       body: SafeArea(
         child: Center(
@@ -219,5 +218,4 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
-  }
 }

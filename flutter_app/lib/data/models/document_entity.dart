@@ -4,7 +4,7 @@ part 'document_entity.g.dart';
 
 @Collection()
 class DocumentEntity {
-  Id get id => int.tryParse(uuid) ?? Isar.autoIncrement;
+  Id id = Isar.autoIncrement;
 
   @Index()
   String uuid = '';

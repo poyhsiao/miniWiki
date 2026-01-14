@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/space.dart';
 import 'package:miniwiki/presentation/providers/space_provider.dart';
@@ -9,14 +10,22 @@ class SidebarNavigation extends ConsumerStatefulWidget {
   final bool isCollapsed;
 
   const SidebarNavigation({
+    required this.onToggle,
     super.key,
     this.width = 280,
-    required this.onToggle,
     this.isCollapsed = false,
   });
 
   @override
   ConsumerState<SidebarNavigation> createState() => _SidebarNavigationState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DoubleProperty('width', width));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onToggle', onToggle));
+    properties.add(DiagnosticsProperty<bool>('isCollapsed', isCollapsed));
+  }
 }
 
 class _SidebarNavigationState extends ConsumerState<SidebarNavigation> {
@@ -69,41 +78,42 @@ class _SidebarNavigationState extends ConsumerState<SidebarNavigation> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    return SafeArea(
-      bottom: false,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: widget.onToggle,
-              tooltip: widget.isCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
-            ),
-            if (!widget.isCollapsed) ...[
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'miniWiki',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
+  Widget _buildHeader(BuildContext context) => SafeArea(
+        bottom: false,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: widget.onToggle,
+                tooltip:
+                    widget.isCollapsed ? 'Expand sidebar' : 'Collapse sidebar',
               ),
+              if (!widget.isCollapsed) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'miniWiki',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
-    );
-  }
+      );
 
-  Widget _buildSpacesSection(BuildContext context, List<Space> spaces, Space? selectedSpace) {
+  Widget _buildSpacesSection(
+      BuildContext context, List<Space> spaces, Space? selectedSpace) {
     if (widget.isCollapsed) {
       return Column(
-        children: spaces.map((space) {
-          return _buildCollapsedSpaceItem(context, space, selectedSpace);
-        }).toList(),
+        children: spaces
+            .map((space) =>
+                _buildCollapsedSpaceItem(context, space, selectedSpace))
+            .toList(),
       );
     }
 
@@ -150,7 +160,8 @@ class _SidebarNavigationState extends ConsumerState<SidebarNavigation> {
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Create Space'),
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                 ),
               ],
@@ -201,29 +212,27 @@ class _SidebarNavigationState extends ConsumerState<SidebarNavigation> {
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.settings_outlined, size: 20),
-            title: const Text('Settings'),
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.help_outline, size: 20),
-            title: const Text('Help & Support'),
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-            onTap: () {},
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildSettingsSection(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.settings_outlined, size: 20),
+              title: const Text('Settings'),
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              onTap: () {},
+            ),
+            ListTile(
+              leading: const Icon(Icons.help_outline, size: 20),
+              title: const Text('Help & Support'),
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              onTap: () {},
+            ),
+          ],
+        ),
+      );
 
   void _selectSpace(BuildContext context, Space space) {
     ref.read(spaceProvider.notifier).selectSpace(space);
@@ -268,10 +277,18 @@ class _SpaceItem extends StatefulWidget {
 
   @override
   State<_SpaceItem> createState() => _SpaceItemState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<Space>('space', space));
+    properties.add(DiagnosticsProperty<bool>('isSelected', isSelected));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onTap', onTap));
+  }
 }
 
 class _SpaceItemState extends State<_SpaceItem> {
-  bool _isExpanded = false;
+  final bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +323,7 @@ class _SpaceItemState extends State<_SpaceItem> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant,
+                      color: theme.colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Center(
@@ -322,8 +339,9 @@ class _SpaceItemState extends State<_SpaceItem> {
                       widget.space.name,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight:
-                            widget.isSelected ? FontWeight.w600 : FontWeight.w400,
+                        fontWeight: widget.isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
                         color: widget.isSelected
                             ? theme.colorScheme.primary
                             : theme.colorScheme.onSurface,
@@ -337,14 +355,14 @@ class _SpaceItemState extends State<_SpaceItem> {
                     padding: EdgeInsets.zero,
                     onSelected: (value) {},
                     itemBuilder: (context) => [
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: 'settings',
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.settings, size: 16),
-                            const SizedBox(width: 8),
-                            const Text('Settings'),
+                            Icon(Icons.settings, size: 16),
+                            SizedBox(width: 8),
+                            Text('Settings'),
                           ],
                         ),
                       ),
@@ -387,8 +405,8 @@ class _DocumentTreeItem extends StatelessWidget {
 
   const _DocumentTreeItem({
     required this.title,
-    this.icon,
     required this.onTap,
+    this.icon,
     this.isSelected = false,
   });
 
@@ -430,5 +448,14 @@ class _DocumentTreeItem extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('title', title));
+    properties.add(StringProperty('icon', icon));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onTap', onTap));
+    properties.add(DiagnosticsProperty<bool>('isSelected', isSelected));
   }
 }

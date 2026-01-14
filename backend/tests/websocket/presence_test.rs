@@ -502,6 +502,7 @@ pub struct ProtocolMessage {
 
 /// Yjs sync message with state vector and update
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncMessage {
     pub state_vector: Option<Vec<u8>>,
     pub update: Option<Vec<u8>>,

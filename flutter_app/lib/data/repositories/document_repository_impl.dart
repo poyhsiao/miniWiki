@@ -191,7 +191,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
           : await _isar.getDocumentsBySpace(spaceId);
 
       final documents = localEntities
-          .map((entity) => _entityToDocument(entity))
+          .map(_entityToDocument)
           .toList();
 
       final start = offset.clamp(0, documents.length).toInt();
@@ -233,7 +233,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
       // Fallback to local storage
       final localEntities = await _isar.getDocumentsByParent(parentId);
       final documents = localEntities
-          .map((entity) => _entityToDocument(entity))
+          .map(_entityToDocument)
           .toList();
       return DocumentListResult(
         documents: documents,
@@ -306,7 +306,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
 
       return VersionListResult(versions: versions, total: total);
     } catch (e) {
-      return VersionListResult(versions: [], total: 0);
+      return const VersionListResult(versions: [], total: 0);
     }
   }
 
@@ -380,8 +380,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
     await _isar.saveDocument(entity);
   }
 
-  DocumentEntity _documentToEntity(Document document) {
-    return DocumentEntity()
+  DocumentEntity _documentToEntity(Document document) => DocumentEntity()
       ..uuid = document.id
       ..spaceId = document.spaceId
       ..parentId = document.parentId
@@ -397,10 +396,8 @@ class DocumentRepositoryImpl implements DocumentRepository {
       ..isSynced = document.isSynced
       ..isDirty = document.isDirty
       ..lastSyncedAt = document.lastSyncedAt;
-  }
 
-  Document _entityToDocument(DocumentEntity entity) {
-    return Document(
+  Document _entityToDocument(DocumentEntity entity) => Document(
       id: entity.uuid,
       spaceId: entity.spaceId,
       parentId: entity.parentId,
@@ -417,7 +414,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
       isDirty: entity.isDirty,
       lastSyncedAt: entity.lastSyncedAt,
     );
-  }
 
   DateTime _parseDateTime(String? dateTimeString) {
     if (dateTimeString == null || dateTimeString.isEmpty) {

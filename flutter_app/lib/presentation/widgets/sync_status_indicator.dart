@@ -62,12 +62,10 @@ class SyncStatusIndicator extends ConsumerWidget {
         iconWidget = TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
           duration: const Duration(seconds: 1),
-          builder: (context, value, child) {
-            return Transform.rotate(
+          builder: (context, value, child) => Transform.rotate(
               angle: value * 2 * 3.14159,
               child: child,
-            );
-          },
+            ),
           child: Icon(iconData, size: iconSize, color: iconColor),
         );
         break;
@@ -106,7 +104,7 @@ class SyncStatusIndicator extends ConsumerWidget {
   }
 
   Widget _buildStatusText(BuildContext context, SyncState syncState) {
-    TextStyle textStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+    var textStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
 
     String statusText;
     Color? statusColor;
@@ -161,6 +159,17 @@ class SyncStatusIndicator extends ConsumerWidget {
           ),
       ],
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<bool>('showDetails', showDetails));
+    properties.add(DoubleProperty('iconSize', iconSize));
+    properties.add(ColorProperty('onlineColor', onlineColor));
+    properties.add(ColorProperty('offlineColor', offlineColor));
+    properties.add(ColorProperty('syncingColor', syncingColor));
+    properties.add(ColorProperty('errorColor', errorColor));
   }
 }
 
@@ -237,16 +246,20 @@ class SyncStatusIcon extends ConsumerWidget {
       return TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
         duration: const Duration(seconds: 1),
-        builder: (context, value, child) {
-          return Transform.rotate(
+        builder: (context, value, child) => Transform.rotate(
             angle: value * 2 * 3.14159,
             child: Icon(iconData, size: size, color: iconColor),
-          );
-        },
+          ),
       );
     }
 
     return Icon(iconData, size: size, color: iconColor);
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DoubleProperty('size', size));
   }
 }
 
@@ -349,6 +362,13 @@ class SyncStatusBanner extends ConsumerWidget {
         );
     }
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<bool>('autoHide', autoHide));
+    properties.add(DiagnosticsProperty<Duration>('autoHideDuration', autoHideDuration));
+  }
 }
 
 /// Sync status row
@@ -366,18 +386,18 @@ class SyncStatusRow extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Sync Status',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   SyncStatusIndicator(
                     showDetails: true,
                     onlineColor: Colors.green,
@@ -393,7 +413,7 @@ class SyncStatusRow extends ConsumerWidget {
               onPressed: syncState.isOnline &&
                       (syncState.pendingCount > 0 ||
                           syncState.status == ss.SyncStatus.pending)
-                  ? () => syncNotifier.syncAllPending()
+                  ? syncNotifier.syncAllPending
                   : null,
               icon: const Icon(Icons.refresh),
               label: const Text('Sync Now'),

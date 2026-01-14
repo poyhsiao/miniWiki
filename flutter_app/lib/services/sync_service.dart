@@ -33,9 +33,8 @@ class SyncEvent {
 
   const SyncEvent({
     required this.type,
-    this.documentId,
+    required this.timestamp, this.documentId,
     this.message,
-    required this.timestamp,
   });
 }
 
@@ -71,14 +70,12 @@ class SyncSummary {
     int? syncedCount,
     int? failedCount,
     DateTime? timestamp,
-  }) {
-    return SyncSummary(
+  }) => SyncSummary(
       success: success ?? this.success,
       syncedCount: syncedCount ?? this.syncedCount,
       failedCount: failedCount ?? this.failedCount,
       timestamp: timestamp ?? this.timestamp,
     );
-  }
 }
 
 /// Sync service for handling offline-first synchronization
@@ -201,8 +198,8 @@ class SyncService {
         return;
       }
 
-      int processed = 0;
-      int failed = 0;
+      var processed = 0;
+      var failed = 0;
 
       for (final item in items) {
         try {
@@ -416,7 +413,6 @@ class SyncService {
       if (update == null) {
         return const SyncResult(
           success: true,
-          documentsSynced: 0,
         );
       }
 
@@ -448,15 +444,12 @@ class SyncService {
       return SyncResult(
         success: false,
         errorMessage: e.toString(),
-        documentsSynced: 0,
       );
     }
   }
 
   /// Get pending sync queue count
-  Future<int> getPendingSyncCount() async {
-    return await _syncDatasource.getPendingCount();
-  }
+  Future<int> getPendingSyncCount() async => await _syncDatasource.getPendingCount();
 
   /// Clear sync queue
   Future<void> clearSyncQueue() async {

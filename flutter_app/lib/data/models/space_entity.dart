@@ -4,7 +4,7 @@ part 'space_entity.g.dart';
 
 @Collection()
 class SpaceEntity {
-  Id get id => int.tryParse(uuid) ?? Isar.autoIncrement;
+  Id id = Isar.autoIncrement;
 
   @Index()
   String uuid = '';

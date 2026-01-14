@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/domain/entities/document.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
-import 'package:miniwiki/presentation/pages/document_list_page.dart';
 import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
@@ -11,14 +9,21 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
   final String? parentId;
 
   const DocumentEditorPage({
-    super.key,
-    required this.spaceId,
+    required this.spaceId, super.key,
     this.documentId,
     this.parentId,
   });
 
   @override
   ConsumerState<DocumentEditorPage> createState() => _DocumentEditorPageState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('parentId', parentId));
+  }
 }
 
 class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
@@ -30,7 +35,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   void initState() {
     super.initState();
     if (widget.documentId != null) {
-      Future.microtask(() => _loadDocument());
+      Future.microtask(_loadDocument);
     }
   }
 
@@ -111,8 +116,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
     );
   }
 
-  Widget _buildTitleField(BuildContext context, DocumentEditState state) {
-    return TextField(
+  Widget _buildTitleField(BuildContext context, DocumentEditState state) => TextField(
       controller: _titleController,
       focusNode: _titleFocus,
       decoration: const InputDecoration(
@@ -129,10 +133,8 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
         }
       },
     );
-  }
 
-  List<Widget> _buildActions(BuildContext context, DocumentEditState state) {
-    return [
+  List<Widget> _buildActions(BuildContext context, DocumentEditState state) => [
       if (widget.documentId != null)
         IconButton(
           icon: const Icon(Icons.history),
@@ -156,10 +158,8 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
         label: const Text('Save'),
       ),
     ];
-  }
 
-  Widget _buildEditorContent(BuildContext context, DocumentEditState state) {
-    return Column(
+  Widget _buildEditorContent(BuildContext context, DocumentEditState state) => Column(
       children: [
         Expanded(
           child: RichTextEditor(
@@ -188,16 +188,14 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
           ),
       ],
     );
-  }
 
   Future<void> _saveDocument(BuildContext context) async {
     try {
       if (widget.documentId == null) {
-        final newDoc = await ref.read(documentServiceProvider).createDocument(
+        await ref.read(documentServiceProvider).createDocument(
           spaceId: widget.spaceId,
           parentId: widget.parentId,
           title: _titleController.text.isEmpty ? 'Untitled' : _titleController.text,
-          icon: null,
           content: ref.read(documentEditProvider).content,
         );
         if (mounted) {
@@ -348,6 +346,12 @@ class _VersionHistorySheet extends ConsumerWidget {
       ),
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+  }
 }
 
 class _MoreOptionsSheet extends ConsumerWidget {
@@ -357,8 +361,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
   const _MoreOptionsSheet({required this.documentId, required this.onDeleted});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SafeArea(
+  Widget build(BuildContext context, WidgetRef ref) => SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -427,5 +430,11 @@ class _MoreOptionsSheet extends ConsumerWidget {
         ],
       ),
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onDeleted', onDeleted));
   }
 }
