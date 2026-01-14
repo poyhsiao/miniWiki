@@ -431,24 +431,24 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 8
 
-- [ ] T211 [P] [US8] Create backend/tests/documents/export_test.rs for export operations
+- [x] T211 [P] [US8] Create backend/tests/documents/export_test.rs for export operations
 - [ ] T212 [P] [US8] Create flutter_app/test/export_service_test.dart for export service tests
 
 ### Backend Implementation for User Story 8
 
-- [ ] T213 [US8] Create backend/services/document_service/src/export.rs with export handlers
-- [ ] T214 [US8] Implement Markdown export with frontmatter
-- [ ] T215 [US8] Implement HTML export with embedded styles
-- [ ] T216 [US8] Implement PDF export using weasyprint or similar
-- [ ] T217 [US8] Implement GET /documents/{documentId}/export endpoint
+- [x] T213 [US8] Create backend/services/document_service/src/export.rs with export handlers
+- [x] T214 [US8] Implement Markdown export with frontmatter
+- [x] T215 [US8] Implement HTML export with embedded styles
+- [x] T216 [US8] Implement PDF export using weasyprint or similar
+- [x] T217 [US8] Implement GET /documents/{documentId}/export endpoint
 
 ### Frontend Implementation for User Story 8
 
-- [ ] T218 [US8] Create flutter_app/lib/services/export_service.dart with export operations
-- [ ] T219 [US8] Create flutter_app/lib/presentation/providers/export_provider.dart with export state
-- [ ] T220 [US8] Create flutter_app/lib/presentation/widgets/export_dialog.dart with format selection
-- [ ] T221 [US8] Implement export format selection in document_editor_page.dart
-- [ ] T222 [US8] Implement file download handling
+- [x] T218 [US8] Create flutter_app/lib/services/export_service.dart with export operations
+- [x] T219 [US8] Create flutter_app/lib/presentation/providers/export_provider.dart with export state
+- [x] T220 [US8] Create flutter_app/lib/presentation/widgets/export_dialog.dart with format selection
+- [x] T221 [US8] Implement export format selection in document_editor_page.dart
+- [x] T222 [US8] Implement file download handling
 
 ### Integration for User Story 8
 
@@ -513,23 +513,23 @@ Based on `plan.md` structure:
 
 ### Backend Implementation for Comments
 
-- [ ] T249 Create backend/services/document_service/src/comments.rs with comment handlers
-- [ ] T250 Implement GET /documents/{documentId}/comments endpoint
-- [ ] T251 Implement POST /documents/{documentId}/comments endpoint
-- [ ] T252 Implement PATCH /comments/{commentId} endpoint
-- [ ] T253 Implement POST /comments/{commentId}/resolve endpoint
-- [ ] T254 Implement POST /comments/{commentId}/unresolve endpoint
-- [ ] T255 Implement DELETE /comments/{commentId} endpoint
+- [x] T249 Create backend/services/document_service/src/comments.rs with comment handlers
+- [x] T250 Implement GET /documents/{documentId}/comments endpoint
+- [x] T251 Implement POST /documents/{documentId}/comments endpoint
+- [x] T252 Implement PATCH /comments/{commentId} endpoint
+- [x] T253 Implement POST /comments/{commentId}/resolve endpoint
+- [x] T254 Implement POST /comments/{commentId}/unresolve endpoint
+- [x] T255 Implement DELETE /comments/{commentId} endpoint
 
 ### Frontend Implementation for Comments
 
-- [ ] T256 Create flutter_app/lib/domain/entities/comment.dart with comment entity
-- [ ] T257 Create flutter_app/lib/domain/repositories/comment_repository.dart interface
-- [ ] T258 Create flutter_app/lib/data/repositories/comment_repository_impl.dart
-- [ ] T259 Create flutter_app/lib/services/comment_service.dart with comment operations
-- [ ] T260 Create flutter_app/lib/presentation/providers/comment_provider.dart with comment state
-- [ ] T261 Create flutter_app/lib/presentation/widgets/comment_list.dart
-- [ ] T262 Create flutter_app/lib/presentation/widgets/comment_input.dart
+- [x] T256 Create flutter_app/lib/domain/entities/comment.dart with comment entity
+- [x] T257 Create flutter_app/lib/domain/repositories/comment_repository.dart interface
+- [x] T258 Create flutter_app/lib/data/repositories/comment_repository_impl.dart
+- [x] T259 Create flutter_app/lib/services/comment_service.dart with comment operations
+- [x] T260 Create flutter_app/lib/presentation/providers/comment_provider.dart with comment state
+- [x] T261 Create flutter_app/lib/presentation/widgets/comment_list.dart
+- [x] T262 Create flutter_app/lib/presentation/widgets/comment_input.dart
 - [ ] T263 Implement comment display in document_editor_page.dart
 
 ---
