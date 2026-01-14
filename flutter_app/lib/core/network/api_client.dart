@@ -79,6 +79,24 @@ class ApiClient {
 
   ApiClient(this._dio);
 
+  factory ApiClient.defaultInstance() {
+    final dio = Dio(BaseOptions(
+      baseUrl: 'http://localhost:8080/api/v1',
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    dio.interceptors.add(LogInterceptor(
+      responseBody: true,
+    ));
+
+    return ApiClient(dio);
+  }
+
   Future<Response> get(String path,
       {Map<String, dynamic>? queryParams, Options? options}) async => _dio.get(path, queryParameters: queryParams, options: options);
 

@@ -257,7 +257,7 @@ class VersionComparisonWidget extends StatelessWidget {
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Unknown';
-    return DateFormat('M/d/yyyy HH:mm').format(date);
+    return DateFormat.yMd().add_Hm().format(date);
   }
 }
 

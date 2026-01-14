@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/services/crdt_service.dart';
 import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
 
@@ -83,6 +84,7 @@ class SyncSummary {
 class SyncService {
   final CrdtService _crdtService;
   final PendingSyncDatasource _syncDatasource;
+  final ApiClient _apiClient;
 
   final StreamController<SyncEvent> _syncEventsController =
       StreamController<SyncEvent>.broadcast();
@@ -109,8 +111,14 @@ class SyncService {
   /// Whether the queue worker is running
   bool _queueWorkerRunning = false;
 
+  /// Failed sync count (current session)
+  int _failedCount = 0;
+
+  /// Total failed count (historical)
+  int _totalFailedCount = 0;
+
   /// Sync service constructor
-  SyncService(this._crdtService, this._syncDatasource);
+  SyncService(this._crdtService, this._syncDatasource, this._apiClient);
 
   /// Initialize sync service
   Future<void> initialize() async {
@@ -177,20 +185,34 @@ class SyncService {
     int failedCount = 0;
 
     for (final item in items) {
+      final entityType = item['entityType'] as String;
+      final entityId = item['entityId'] as String;
+      final operation = item['operation'] as String;
+      final data = item['data'] as Map<String, dynamic>?;
+
       try {
-        // Process item - in real implementation, this would call the API
-        await Future.delayed(const Duration(milliseconds: 100));
-        _syncDatasource.removeFromQueue(
-          item['entityType'] as String,
-          item['entityId'] as String,
-        );
-        successCount++;
-      } catch (_) {
-        _syncDatasource.removeFromQueue(
-          item['entityType'] as String,
-          item['entityId'] as String,
-        );
+        bool success = false;
+
+        switch (entityType) {
+          case 'document':
+            success = await _syncDocument(entityId, operation, data ?? {});
+            break;
+          default:
+            print('[SyncService] Unknown entity type: $entityType');
+        }
+
+        if (success) {
+          _syncDatasource.removeFromQueue(entityType, entityId);
+          successCount++;
+        } else {
+          throw Exception('Sync returned false');
+        }
+      } catch (e) {
+        print('[SyncService] Failed to sync $entityType:$entityId - $e');
+        _syncDatasource.removeFromQueue(entityType, entityId);
         failedCount++;
+        _failedCount++;
+        _totalFailedCount++;
       }
     }
 
@@ -199,6 +221,40 @@ class SyncService {
       timestamp: DateTime.now(),
       message: 'Success: $successCount, Failed: $failedCount',
     ));
+  }
+
+  /// Sync a document item
+  Future<bool> _syncDocument(
+    String documentId,
+    String operation,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      switch (operation) {
+        case 'create':
+          final spaceId = data['spaceId'] as String?;
+          if (spaceId != null) {
+            await _apiClient.post('/spaces/$spaceId/documents', data: data);
+            return true;
+          }
+          return false;
+
+        case 'update':
+          await _apiClient.patch('/documents/$documentId', data: data);
+          return true;
+
+        case 'delete':
+          await _apiClient.delete('/documents/$documentId');
+          return true;
+
+        default:
+          print('[SyncService] Unknown operation: $operation');
+          return false;
+      }
+    } catch (e) {
+      print('[SyncService] Document sync failed: $e');
+      rethrow;
+    }
   }
 
   /// Queue document for sync
@@ -214,12 +270,12 @@ class SyncService {
 
   /// Get failed sync count
   int getFailedCount() {
-    return 0; // Simplified - all items are removed after processing
+    return _failedCount;
   }
 
   /// Get total failed count (historical)
   int getTotalFailedCount() {
-    return 0; // Simplified
+    return _totalFailedCount;
   }
 
   /// Enable/disable auto-sync
@@ -245,5 +301,5 @@ class SyncService {
 final syncServiceProvider = Provider<SyncService>((ref) {
   final crdtService = ref.watch(crdtServiceProvider);
   final syncDatasource = ref.watch(pendingSyncDatasourceProvider);
-  return SyncService(crdtService, syncDatasource);
+  return SyncService(crdtService, syncDatasource, ApiClient.defaultInstance());
 });

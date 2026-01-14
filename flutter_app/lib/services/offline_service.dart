@@ -2,7 +2,6 @@
 // Uses SharedPreferences for Web-compatible local storage
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
@@ -157,8 +156,12 @@ class OfflineService {
   /// Mark queue item as failed
   Future<void> markQueueItemFailed(
       String entityType, String entityId, String error) async {
+    print('[OfflineService] Sync failed for $entityType:$entityId - $error');
     await _syncDatasource.removeFromQueue(entityType, entityId);
-    await _updateState();
+    _state = _state.copyWith(
+      failedQueueCount: _state.failedQueueCount + 1,
+    );
+    _stateController.add(_state);
   }
 
   /// Clear all queue items
@@ -197,10 +200,15 @@ class OfflineService {
     return _syncDatasource.getCachedDocIds();
   }
 
-  /// Get cache size in bytes (approximate)
+  /// Get cache size in bytes (approximate based on serialized JSON sizes)
   int getCacheSize() {
     final docIds = _syncDatasource.getCachedDocIds();
-    return docIds.length * 1000; // Approximate
+    int totalSize = 0;
+    for (final docId in docIds) {
+      final content = _syncDatasource.getCachedContent(docId);
+      totalSize += content?.length ?? 0;
+    }
+    return totalSize;
   }
 
   /// Clear all cached documents
