@@ -1,22 +1,46 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/space_provider.dart';
 
-class SpaceSettingsPage extends ConsumerWidget {
+class SpaceSettingsPage extends ConsumerStatefulWidget {
   final String spaceId;
 
   const SpaceSettingsPage({required this.spaceId, super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final spaceState = ref.watch(spaceProvider);
+  ConsumerState<SpaceSettingsPage> createState() => _SpaceSettingsPageState();
+}
+
+class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
+  late bool _isPublic;
+
+  @override
+  void initState() {
+    super.initState();
+    final spaceState = ref.read(spaceProvider);
     final space = spaceState.selectedSpace ??
-        spaceState.spaces.firstWhere((s) => s.id == spaceId, orElse: () => spaceState.spaces.first);
+        spaceState.spaces.firstWhere(
+          (s) => s.id == widget.spaceId,
+          orElse: () => spaceState.spaces.first,
+        );
+    _nameController = TextEditingController(text: space.name);
+    _descriptionController =
+        TextEditingController(text: space.description ?? '');
+    _isPublic = space.isPublic;
+  }
 
-    final nameController = TextEditingController(text: space.name);
-    final descriptionController = TextEditingController(text: space.description ?? '');
-    var isPublic = space.isPublic;
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Space Settings'),
@@ -40,7 +64,7 @@ class SpaceSettingsPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      controller: nameController,
+                      controller: _nameController,
                       decoration: const InputDecoration(
                         labelText: 'Space Name',
                         border: OutlineInputBorder(),
@@ -48,7 +72,7 @@ class SpaceSettingsPage extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     TextField(
-                      controller: descriptionController,
+                      controller: _descriptionController,
                       decoration: const InputDecoration(
                         labelText: 'Description',
                         border: OutlineInputBorder(),
@@ -58,9 +82,14 @@ class SpaceSettingsPage extends ConsumerWidget {
                     const SizedBox(height: 16),
                     SwitchListTile(
                       title: const Text('Public Space'),
-                      subtitle: const Text('Anyone with the link can view this space'),
-                      value: isPublic,
-                      onChanged: (value) => isPublic = value,
+                      subtitle: const Text(
+                          'Anyone with the link can view this space'),
+                      value: _isPublic,
+                      onChanged: (value) {
+                        setState(() {
+                          _isPublic = value;
+                        });
+                      },
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -68,10 +97,10 @@ class SpaceSettingsPage extends ConsumerWidget {
                       child: ElevatedButton(
                         onPressed: () async {
                           await ref.read(spaceProvider.notifier).updateSpace(
-                                spaceId,
-                                name: nameController.text,
-                                description: descriptionController.text,
-                                isPublic: isPublic,
+                                widget.spaceId,
+                                name: _nameController.text,
+                                description: _descriptionController.text,
+                                isPublic: _isPublic,
                               );
                           if (context.mounted) {
                             Navigator.pop(context);
@@ -110,7 +139,7 @@ class SpaceSettingsPage extends ConsumerWidget {
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
                         ),
-                        onPressed: () => _showDeleteConfirmation(context, ref),
+                        onPressed: () => _showDeleteConfirmation(context),
                         child: const Text('Delete Space'),
                       ),
                     ),
@@ -124,7 +153,7 @@ class SpaceSettingsPage extends ConsumerWidget {
     );
   }
 
-  void _showDeleteConfirmation(BuildContext context, WidgetRef ref) {
+  void _showDeleteConfirmation(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -141,7 +170,9 @@ class SpaceSettingsPage extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(context);
-              await ref.read(spaceProvider.notifier).deleteSpace(spaceId);
+              await ref
+                  .read(spaceProvider.notifier)
+                  .deleteSpace(widget.spaceId);
               if (context.mounted) {
                 Navigator.pop(context);
                 Navigator.pop(context);
@@ -157,6 +188,6 @@ class SpaceSettingsPage extends ConsumerWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('spaceId', widget.spaceId));
   }
 }

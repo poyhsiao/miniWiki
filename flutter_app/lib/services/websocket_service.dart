@@ -81,6 +81,13 @@ class WebSocketService {
     _updateConnectionState(ConnectionState.disconnected);
   }
 
+  void dispose() {
+    _messageController.close();
+    _connectionStateController.close();
+    _presenceController.close();
+    _channel?.sink.close();
+  }
+
   Future<void> sendUpdate(List<int> update) async {
     if (_channel == null || _currentState != ConnectionState.connected) {
       throw WebSocketException('Not connected');
@@ -203,10 +210,15 @@ class WebSocketService {
   void _handleSyncMessage(Map<String, dynamic> json) {
     final payload = json['payload'] as Map<String, dynamic>;
     if (payload['update'] != null) {
-      base64Decode(payload['update'] as String);
+      // ignore: unused_local_variable
+      final decodedUpdate = base64Decode(payload['update'] as String);
+      // TODO: Apply the decodedjs update to the Y local document
     }
     if (payload['state_vector'] != null) {
-      base64Decode(payload['state_vector'] as String);
+      // ignore: unused_local_variable
+      final decodedStateVector =
+          base64Decode(payload['state_vector'] as String);
+      // TODO: Process the state vector for sync negotiation
     }
   }
 
@@ -217,7 +229,10 @@ class WebSocketService {
   void _handleDocumentUpdate(Map<String, dynamic> json) {
     final payload = json['payload'] as Map<String, dynamic>;
     if (payload['update'] != null) {
-      base64Decode(payload['update'] as String);
+      // ignore: unused_local_variable
+      final decoded = base64Decode(payload['update'] as String);
+      // TODO: Apply the decoded Yjs update to the local document
+      // This will be implemented when integrating with the CRDT service
     }
   }
 

@@ -8,7 +8,8 @@ class PasswordResetPage extends StatefulWidget {
 }
 
 class _PasswordResetPageState extends State<PasswordResetPage> {
-  final _formKey = GlobalKey<FormState>();
+  final _emailFormKey = GlobalKey<FormState>();
+  final _passwordFormKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -27,7 +28,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   }
 
   Future<void> _handleRequestReset() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_emailFormKey.currentState!.validate()) {
       return;
     }
 
@@ -45,7 +46,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
   }
 
   Future<void> _handleResetPassword() async {
-    if (!_formKey.currentState!.validate()) {
+    if (!_passwordFormKey.currentState!.validate()) {
       return;
     }
 
@@ -100,7 +101,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       );
 
   Widget _buildEmailStep(BuildContext context) => Form(
-        key: _formKey,
+        key: _emailFormKey,
         child: Column(
           children: [
             const SizedBox(height: 32),
@@ -119,10 +120,10 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
               keyboardType: TextInputType.emailAddress,
               autofillHints: const [AutofillHints.email],
               validator: (value) {
-                if (value == null || value!.isEmpty) {
+                if (value == null || value.isEmpty) {
                   return 'Please enter your email';
                 }
-                if (!value!.contains('@') || !value!.contains('.')) {
+                if (!value.contains('@') || !value.contains('.')) {
                   return 'Please enter a valid email';
                 }
                 return null;
@@ -165,7 +166,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
             ),
             const SizedBox(height: 16),
             TextButton(
-              onPressed: () {},
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Back to Login'),
             ),
           ],
@@ -173,7 +174,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       );
 
   Widget _buildPasswordStep(BuildContext context) => Form(
-        key: _formKey,
+        key: _passwordFormKey,
         child: Column(
           children: [
             const SizedBox(height: 32),
@@ -201,10 +202,10 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                 ),
               ),
               validator: (value) {
-                if (value == null || value!.isEmpty) {
+                if (value == null || value.isEmpty) {
                   return 'Please enter your password';
                 }
-                if (value!.length < 8) {
+                if (value.length < 8) {
                   return 'Password must be at least 8 characters';
                 }
                 return null;
@@ -231,7 +232,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                 ),
               ),
               validator: (value) {
-                if (value == null || value!.isEmpty) {
+                if (value == null || value.isEmpty) {
                   return 'Please confirm your password';
                 }
                 if (value != _newPasswordController.text) {
@@ -277,7 +278,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
             ),
             const SizedBox(height: 16),
             TextButton(
-              onPressed: () {},
+              onPressed: () => Navigator.of(context).pop(),
               child: const Text('Back to Login'),
             ),
           ],

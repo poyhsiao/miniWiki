@@ -288,7 +288,13 @@ class _SpaceItem extends StatefulWidget {
 }
 
 class _SpaceItemState extends State<_SpaceItem> {
-  final bool _isExpanded = false;
+  bool _isExpanded = false;
+
+  void _toggleExpanded() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -307,15 +313,18 @@ class _SpaceItemState extends State<_SpaceItem> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               child: Row(
                 children: [
-                  SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: Icon(
-                      _isExpanded
-                          ? Icons.keyboard_arrow_down
-                          : Icons.keyboard_arrow_right,
-                      size: 18,
-                      color: Colors.grey[600],
+                  GestureDetector(
+                    onTap: _toggleExpanded,
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: Icon(
+                        _isExpanded
+                            ? Icons.keyboard_arrow_down
+                            : Icons.keyboard_arrow_right,
+                        size: 18,
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 4),
