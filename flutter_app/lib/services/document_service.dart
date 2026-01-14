@@ -94,7 +94,7 @@ class DocumentService {
     );
 
     if (autoSave && _syncService != null) {
-      await _syncService!.queueDocumentForSync(id, 'update', {});
+      await _syncService!.queueDocumentForSync(id, 'update', content);
     }
 
     return document;

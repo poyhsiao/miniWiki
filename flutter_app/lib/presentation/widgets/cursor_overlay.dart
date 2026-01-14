@@ -89,7 +89,7 @@ class _RemoteCursorWidget extends StatelessWidget {
                 width: 2,
                 height: 20,
                 decoration: BoxDecoration(
-                  color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
+                  color: _parseColor(user.color),
                   borderRadius: BorderRadius.circular(1),
                 ),
               ),
@@ -98,7 +98,7 @@ class _RemoteCursorWidget extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
+                  color: _parseColor(user.color),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
@@ -122,6 +122,17 @@ class _RemoteCursorWidget extends StatelessWidget {
     properties.add(DiagnosticsProperty<CursorPosition>('cursor', cursor));
     properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has(
         'onCursorMoved', onCursorMoved));
+  }
+
+  Color _parseColor(String color) {
+    try {
+      final hexColor = color.replaceAll('#', '');
+      final colorInt =
+          int.parse(hexColor.length == 6 ? '0xFF$hexColor' : hexColor);
+      return Color(colorInt);
+    } catch (_) {
+      return Colors.blue;
+    }
   }
 }
 
@@ -170,8 +181,7 @@ class ActiveUsersIndicator extends ConsumerWidget {
                       width: 12,
                       height: 12,
                       decoration: BoxDecoration(
-                        color: Color(
-                            int.parse(user.color.replaceAll('#', '0xFF'))),
+                        color: _parseColor(user.color),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -206,5 +216,16 @@ class ActiveUsersIndicator extends ConsumerWidget {
     if (difference.inMinutes < 60) return '${difference.inMinutes}m';
     if (difference.inHours < 24) return '${difference.inHours}h';
     return '${difference.inDays}d';
+  }
+
+  Color _parseColor(String color) {
+    try {
+      final hexColor = color.replaceAll('#', '');
+      final colorInt =
+          int.parse(hexColor.length == 6 ? '0xFF$hexColor' : hexColor);
+      return Color(colorInt);
+    } catch (_) {
+      return Colors.blue;
+    }
   }
 }

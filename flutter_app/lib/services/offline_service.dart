@@ -157,7 +157,6 @@ class OfflineService {
   /// Mark queue item as failed
   Future<void> markQueueItemFailed(
       String entityType, String entityId, String error) async {
-    // Just remove failed items for now, could implement retry logic
     await _syncDatasource.removeFromQueue(entityType, entityId);
     await _updateState();
   }

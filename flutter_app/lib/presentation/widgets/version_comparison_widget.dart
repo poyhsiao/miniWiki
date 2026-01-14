@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:miniwiki/domain/entities/document_version.dart';
 
 class VersionComparisonWidget extends StatelessWidget {
@@ -256,7 +257,7 @@ class VersionComparisonWidget extends StatelessWidget {
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Unknown';
-    return '${date.month}/${date.day}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    return DateFormat('M/d/yyyy HH:mm').format(date);
   }
 }
 

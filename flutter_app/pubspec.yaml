@@ -25,8 +25,7 @@ dependencies:
   http_interceptor: ^2.0.0
   web_socket_channel: ^2.4.0
 
-  # Local Storage (Offline-first) - Using Hive for Web compatibility
-  hive_flutter: ^1.1.0
+  # Local Storage (Offline-first) - Web-compatible storage using SharedPreferences
   shared_preferences: ^2.2.0
 
   # CRDT for sync

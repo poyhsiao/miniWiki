@@ -70,13 +70,10 @@ impl RbacMiddleware {
             .and_then(|s| s.strip_prefix("Bearer "));
 
         if let Some(token_str) = auth_header {
-            let secret = std::env::var("JWT_SECRET")
-                .map_err(|_| Error::InternalServerError("JWT_SECRET not configured".to_string()))?;
-
             let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
             let token_data: jsonwebtoken::TokenData<Claims> = jsonwebtoken::decode(
                 token_str,
-                &jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()),
+                &JWT_DECODING_KEY,
                 &validation,
             )
             .map_err(|e| Error::Unauthorized(format!("Invalid token: {}", e)))?;

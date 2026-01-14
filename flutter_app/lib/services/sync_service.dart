@@ -94,6 +94,9 @@ class SyncService {
   /// Current connectivity status
   List<ConnectivityResult>? _connectivityStatus;
 
+  /// Connectivity subscription for cleanup
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
   /// Whether automatic sync is enabled
   bool _autoSyncEnabled = true;
 
@@ -111,7 +114,8 @@ class SyncService {
 
   /// Initialize sync service
   Future<void> initialize() async {
-    Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
     _connectivityStatus = await Connectivity().checkConnectivity();
     _startQueueWorker();
 
@@ -230,6 +234,7 @@ class SyncService {
 
   /// Dispose
   void dispose() {
+    _connectivitySubscription?.cancel();
     _syncTimers.values.forEach((t) => t.cancel());
     _queueWorkerTimer?.cancel();
     _syncEventsController.close();

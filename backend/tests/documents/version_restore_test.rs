@@ -23,7 +23,7 @@ use uuid::Uuid;
 async fn test_restore_creates_new_version_not_overwrite() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create initial version
@@ -78,7 +78,7 @@ async fn test_restore_creates_new_version_not_overwrite() {
 async fn test_restore_version_not_found() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Try to restore non-existent version
@@ -100,7 +100,7 @@ async fn test_restore_version_not_found() {
 async fn test_restore_same_version_noop() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create a version
@@ -136,7 +136,7 @@ async fn test_restore_same_version_noop() {
 async fn test_restore_content_preservation() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create version with specific Yjs content
@@ -188,7 +188,7 @@ async fn test_restore_content_preservation() {
 async fn test_restore_preserves_document_id() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create version
@@ -221,7 +221,7 @@ async fn test_restore_preserves_document_id() {
 async fn test_restore_creates_audit_log() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create version
@@ -284,7 +284,7 @@ async fn test_restore_invalid_document_id() {
 async fn test_restore_version_chain_integrity() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create versions: 1, 2, 3
@@ -333,7 +333,7 @@ async fn test_restore_version_chain_integrity() {
 async fn test_restore_concurrent_edits_simulation() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create version 1
@@ -377,7 +377,7 @@ async fn test_restore_concurrent_edits_simulation() {
 async fn test_restore_response_format() {
     let app = create_test_app().await;
     let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
+    let space = create_test_space(&app, &user.id).await.unwrap();
     let document = create_test_document(&app, &space.id, None).await;
 
     // Create version

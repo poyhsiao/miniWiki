@@ -29,8 +29,9 @@ class LocalStorageService {
     final keys = _prefs?.getKeys() ?? {};
     return keys
         .where((k) => k.startsWith(prefix))
-        .map((k) => _prefs!.getString(k)!)
+        .map((k) => _prefs!.getString(k))
         .where((v) => v != null)
+        .cast<String>()
         .toList();
   }
 
@@ -113,7 +114,10 @@ class DocumentCacheService {
 
   /// Get all cached document IDs
   List<String> getCachedDocIds() {
-    return _storage.getKeysByPrefix(_docPrefix);
+    return _storage
+        .getKeysByPrefix(_docPrefix)
+        .map((key) => key.replaceFirst(_docPrefix, ''))
+        .toList();
   }
 
   /// Clear all cached documents
@@ -244,7 +248,10 @@ class SpaceCacheService {
 
   /// Get all cached space IDs
   List<String> getCachedSpaceIds() {
-    return _storage.getKeysByPrefix(_spacePrefix);
+    return _storage
+        .getKeysByPrefix(_spacePrefix)
+        .map((key) => key.replaceFirst(_spacePrefix, ''))
+        .toList();
   }
 
   /// Clear space cache
