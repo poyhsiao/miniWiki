@@ -67,7 +67,8 @@ class CommentList extends StatelessWidget {
       itemBuilder: (context, index) {
         final comment = topLevelComments[index];
         final replies = comments.where((c) => c.parentId == comment.id).toList()
-          ..sort((a, b) => a.createdAt!.compareTo(b.createdAt!));
+          ..sort((a, b) => (a.createdAt ?? DateTime(0))
+              .compareTo(b.createdAt ?? DateTime(0)));
 
         return CommentThread(
           comment: comment,
@@ -131,7 +132,9 @@ class CommentThread extends StatelessWidget {
                       backgroundColor: theme.colorScheme.primaryContainer,
                       child: comment.authorAvatar == null
                           ? Text(
-                              comment.authorName[0].toUpperCase(),
+                              comment.authorName.isNotEmpty
+                                  ? comment.authorName[0].toUpperCase()
+                                  : '?',
                               style: TextStyle(
                                 color: theme.colorScheme.onPrimaryContainer,
                               ),
@@ -228,14 +231,14 @@ class CommentThread extends StatelessWidget {
           icon: const Icon(Icons.reply, size: 18),
           label: const Text('Reply'),
         ),
-        if (!comment.isResolved &&
-            (isAuthor || currentUserId != comment.authorId))
+        if (!comment.isResolved)
           TextButton.icon(
             onPressed: () => onResolve(comment),
             icon: const Icon(Icons.check_circle_outline, size: 18),
             label: const Text('Resolve'),
           ),
-        if (comment.isResolved && currentUserId != comment.authorId)
+        if (comment.isResolved &&
+            (isAuthor || comment.resolvedBy == currentUserId))
           TextButton.icon(
             onPressed: () => onUnresolve(comment),
             icon: const Icon(Icons.unpublished, size: 18),
@@ -279,7 +282,9 @@ class CommentThread extends StatelessWidget {
                   backgroundColor: theme.colorScheme.secondaryContainer,
                   child: reply.authorAvatar == null
                       ? Text(
-                          reply.authorName[0].toUpperCase(),
+                          reply.authorName.isNotEmpty
+                              ? reply.authorName[0].toUpperCase()
+                              : '?',
                           style: TextStyle(
                             color: theme.colorScheme.onSecondaryContainer,
                             fontSize: 12,

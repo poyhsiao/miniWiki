@@ -1,6 +1,5 @@
 import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/domain/entities/comment.dart';
-import 'package:miniwiki/domain/repositories/comment_repository.dart';
 import 'package:miniwiki/services/comment_service.dart';
 import 'package:miniwiki/core/config/providers.dart';
 
@@ -127,9 +126,15 @@ class CommentListNotifier extends StateNotifier<CommentListState> {
   }
 
   void removeComment(String commentId) {
+    final idsToRemove = {commentId};
+    idsToRemove.addAll(
+      state.comments.where((c) => c.parentId == commentId).map((c) => c.id),
+    );
+    final remaining =
+        state.comments.where((c) => !idsToRemove.contains(c.id)).toList();
     state = state.copyWith(
-      comments: state.comments.where((c) => c.id != commentId).toList(),
-      total: state.total - 1,
+      comments: remaining,
+      total: state.total - idsToRemove.length,
     );
   }
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/domain/entities/comment.dart';
 import 'package:miniwiki/presentation/providers/comment_provider.dart';
 import 'package:miniwiki/core/config/providers.dart';
+import 'package:miniwiki/services/providers.dart';
 
 /// Widget for inputting a new comment
 class CommentInput extends ConsumerStatefulWidget {
@@ -65,7 +65,9 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                 onTap: () {
                   setState(() => _isExpanded = true);
                   Future.delayed(const Duration(milliseconds: 100), () {
-                    _focusNode.requestFocus();
+                    if (mounted) {
+                      _focusNode.requestFocus();
+                    }
                   });
                 },
                 borderRadius: BorderRadius.circular(8),

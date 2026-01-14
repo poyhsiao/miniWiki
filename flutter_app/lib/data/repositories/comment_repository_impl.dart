@@ -50,12 +50,11 @@ class CommentRepositoryImpl implements CommentRepository {
   @override
   Future<Comment?> getComment(String id) async {
     try {
-      // There's no direct GET /comments/{id} endpoint,
-      // so we try to fetch it through document comments
-      // This is a workaround - ideally the backend should have this endpoint
       final response = await _apiClient.get('/comments/$id');
       final data = response.data['data'] as Map<String, dynamic>;
       return Comment.fromJson(data);
+    } on NotFoundError catch (_) {
+      return null;
     } catch (e) {
       return null;
     }

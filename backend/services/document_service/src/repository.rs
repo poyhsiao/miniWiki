@@ -927,12 +927,22 @@ impl DocumentRepository {
     pub async fn delete_comment(&self, comment_id: &str) -> Result<bool, sqlx::Error> {
         let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        // First, delete all child comments
+        let mut tx = self.pool.begin().await?;
+
+        // Recursively delete all descendant comments using CTE
         sqlx::query!(
-            r#"DELETE FROM comments WHERE parent_id = $1"#,
+            r#"
+            WITH RECURSIVE descendants AS (
+                SELECT id FROM comments WHERE parent_id = $1
+                UNION ALL
+                SELECT c.id FROM comments c
+                INNER JOIN descendants d ON c.parent_id = d.id
+            )
+            DELETE FROM comments WHERE id IN (SELECT id FROM descendants)
+            "#,
             comment_uuid
         )
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
 
         // Then delete the comment itself
@@ -940,8 +950,10 @@ impl DocumentRepository {
             r#"DELETE FROM comments WHERE id = $1"#,
             comment_uuid
         )
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await?;
+
+        tx.commit().await?;
 
         Ok(result.rows_affected() > 0)
     }

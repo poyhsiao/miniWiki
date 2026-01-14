@@ -16,64 +16,7 @@ use shared_errors::AppError;
 
 use crate::models::*;
 use crate::repository::DocumentRepository;
-
-/// Query parameters for listing comments
-#[derive(Debug, Deserialize)]
-pub struct ListCommentsQuery {
-    pub parent_id: Option<String>,
-    pub limit: Option<i32>,
-    pub offset: Option<i32>,
-}
-
-/// Request to create a new comment
-#[derive(Debug, Serialize, Deserialize, Validate)]
-pub struct CreateCommentRequest {
-    #[validate(length(min = 1, max = 5000))]
-    pub content: String,
-
-    pub parent_id: Option<String>,
-}
-
-/// Request to update a comment
-#[derive(Debug, Serialize, Deserialize, Validate)]
-pub struct UpdateCommentRequest {
-    #[validate(length(min = 1, max = 5000))]
-    pub content: String,
-}
-
-/// Comment response
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CommentResponse {
-    pub id: String,
-    pub document_id: String,
-    pub parent_id: Option<String>,
-    pub author_id: String,
-    pub author_name: String,
-    pub author_avatar: Option<String>,
-    pub content: String,
-    pub is_resolved: bool,
-    pub resolved_by: Option<String>,
-    pub resolved_at: Option<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-/// List comments response
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CommentListResponse {
-    pub comments: Vec<CommentResponse>,
-    pub total: i64,
-    pub limit: i32,
-    pub offset: i32,
-}
-
-/// Create comment response
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CreateCommentResponse {
-    pub id: String,
-    pub message: String,
-    pub comment: CommentResponse,
-}
+use crate::repository::CommentRow;
 
 /// Extract user ID from request header
 fn extract_user_id(req: &HttpRequest) -> Result<String, AppError> {
@@ -223,10 +166,17 @@ pub async fn create_comment(
         }
     }
 
-    // If parent_id is provided, verify parent comment exists
+    // If parent_id is provided, verify parent comment exists and belongs to the same document
     if let Some(ref parent_id) = req.parent_id {
         match repo.get_comment(parent_id).await {
-            Ok(Some(_)) => {},
+            Ok(Some(parent_comment)) => {
+                if parent_comment.document_id.to_string() != document_id {
+                    return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
+                        "INVALID_PARENT",
+                        "Parent comment must belong to the same document",
+                    ));
+                }
+            }
             Ok(None) => {
                 return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
                     "PARENT_NOT_FOUND",
@@ -251,11 +201,7 @@ pub async fn create_comment(
                 &user_name,
                 None,
             );
-            HttpResponse::Created().json(ApiResponse::success(CreateCommentResponse {
-                id: response.id.clone(),
-                message: "Comment created successfully".to_string(),
-                comment: response,
-            }))
+            HttpResponse::Created().json(ApiResponse::success(response))
         }
         Err(e) => {
             error!("Database error creating comment: {:?}", e);
@@ -321,8 +267,9 @@ pub async fn update_comment(
     // Update comment
     match repo.update_comment(&comment_id, &req.content).await {
         Ok(comment) => {
-            let user_name = extract_user_name(&http_req);
-            let response = comment_row_to_response(&comment, &user_name, None);
+            let author_name = comment.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
+            let author_avatar = comment.author_avatar.as_deref();
+            let response = comment_row_to_response(&comment, &author_name, author_avatar);
             HttpResponse::Ok().json(ApiResponse::success(response))
         }
         Err(e) => {
@@ -395,8 +342,9 @@ pub async fn resolve_comment(
     // Resolve comment
     match repo.resolve_comment(&comment_id, &user_id).await {
         Ok(comment) => {
-            let user_name = extract_user_name(&http_req);
-            let response = comment_row_to_response(&comment, &user_name, None);
+            let author_name = comment.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
+            let author_avatar = comment.author_avatar.as_deref();
+            let response = comment_row_to_response(&comment, &author_name, author_avatar);
             HttpResponse::Ok().json(ApiResponse::success(response))
         }
         Err(e) => {
@@ -464,8 +412,9 @@ pub async fn unresolve_comment(
     // Unresolve comment
     match repo.unresolve_comment(&comment_id).await {
         Ok(comment) => {
-            let user_name = extract_user_name(&http_req);
-            let response = comment_row_to_response(&comment, &user_name, None);
+            let author_name = comment.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
+            let author_avatar = comment.author_avatar.as_deref();
+            let response = comment_row_to_response(&comment, &author_name, author_avatar);
             HttpResponse::Ok().json(ApiResponse::success(response))
         }
         Err(e) => {
@@ -538,7 +487,7 @@ pub async fn delete_comment(
     // Delete comment
     match repo.delete_comment(&comment_id).await {
         Ok(_) => {
-            HttpResponse::Ok().json(ApiResponse::<()>::success_data(serde_json::json!({
+            HttpResponse::Ok().json(ApiResponse::success(serde_json::json!({
                 "message": "Comment deleted successfully"
             })))
         }
