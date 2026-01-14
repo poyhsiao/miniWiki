@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.20.2
   json_annotation: ^4.9.0
   mime: ^2.0.0
+  collection: ^1.18.0
 
   # Icons
   cupertino_icons: ^1.0.0
