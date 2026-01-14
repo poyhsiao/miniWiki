@@ -79,16 +79,50 @@ class ApiClient {
 
   ApiClient(this._dio);
 
+  factory ApiClient.defaultInstance({String? baseUrl}) {
+    final envBaseUrl = const String.fromEnvironment('API_BASE_URL',
+        defaultValue: 'http://localhost:8080/api/v1');
+    final dio = Dio(BaseOptions(
+      baseUrl: baseUrl ?? envBaseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ));
+
+    dio.interceptors.add(LogInterceptor(
+      responseBody: true,
+    ));
+
+    dio.interceptors.add(InterceptorsWrapper(
+      onError: (error, handler) async {
+        if (error.response?.statusCode == 401) {
+          // TODO: Handle token refresh or logout
+        }
+        return handler.next(error);
+      },
+    ));
+
+    return ApiClient(dio);
+  }
+
   Future<Response> get(String path,
-      {Map<String, dynamic>? queryParams, Options? options}) async => _dio.get(path, queryParameters: queryParams, options: options);
+          {Map<String, dynamic>? queryParams, Options? options}) async =>
+      _dio.get(path, queryParameters: queryParams, options: options);
 
-  Future<Response> post(String path, {data, Options? options}) async => _dio.post(path, data: data, options: options);
+  Future<Response> post(String path, {data, Options? options}) async =>
+      _dio.post(path, data: data, options: options);
 
-  Future<Response> put(String path, {data, Options? options}) async => _dio.put(path, data: data, options: options);
+  Future<Response> put(String path, {data, Options? options}) async =>
+      _dio.put(path, data: data, options: options);
 
-  Future<Response> patch(String path, {data, Options? options}) async => _dio.patch(path, data: data, options: options);
+  Future<Response> patch(String path, {data, Options? options}) async =>
+      _dio.patch(path, data: data, options: options);
 
-  Future<Response> delete(String path, {data, Options? options}) async => _dio.delete(path, data: data, options: options);
+  Future<Response> delete(String path, {data, Options? options}) async =>
+      _dio.delete(path, data: data, options: options);
 
   void setAuthToken(String token) {
     _dio.options.headers['Authorization'] = 'Bearer $token';

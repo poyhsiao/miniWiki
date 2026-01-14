@@ -1,17 +1,15 @@
+import 'dart:async';
 import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/domain/entities/document.dart';
 import 'package:miniwiki/domain/repositories/document_repository.dart';
-import 'package:miniwiki/data/datasources/isar_datasource.dart';
-import 'package:miniwiki/data/models/document_entity.dart';
 
-/// Implementation of DocumentRepository that handles both
-/// online (API) and offline (local database) operations
+/// Implementation of DocumentRepository that handles API operations
+/// Offline storage is handled separately by the sync service
 class DocumentRepositoryImpl implements DocumentRepository {
   final ApiClient _apiClient;
-  final IsarDatabase _isar;
 
-  DocumentRepositoryImpl(this._apiClient, this._isar);
+  DocumentRepositoryImpl(this._apiClient);
 
   @override
   Future<Document> createDocument({
@@ -21,64 +19,22 @@ class DocumentRepositoryImpl implements DocumentRepository {
     required String? icon,
     required Map<String, dynamic> content,
   }) async {
-    try {
-      final response =
-          await _apiClient.post('/spaces/$spaceId/documents', data: {
-        'title': title,
-        'icon': icon,
-        'parent_id': parentId,
-        'content': content,
-      });
+    final response = await _apiClient.post('/spaces/$spaceId/documents', data: {
+      'title': title,
+      'icon': icon,
+      'parent_id': parentId,
+      'content': content,
+    });
 
-      final doc = response.data['data']['document'] as Map<String, dynamic>;
-      final document = Document.fromJson(doc);
-
-      // Save to local storage
-      await _saveDocumentLocally(document);
-
-      return document;
-    } catch (e) {
-      // Offline create - create local document
-      final now = DateTime.now();
-      final localDoc = Document(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        spaceId: spaceId,
-        parentId: parentId,
-        title: title,
-        icon: icon,
-        content: content,
-        contentSize: content.length,
-        createdBy: 'local',
-        lastEditedBy: 'local',
-        createdAt: now,
-        updatedAt: now,
-        isSynced: false,
-        isDirty: true,
-      );
-
-      await _saveDocumentLocally(localDoc);
-      return localDoc;
-    }
+    final doc = response.data['data']['document'] as Map<String, dynamic>;
+    return Document.fromJson(doc);
   }
 
   @override
   Future<Document> getDocument(String id) async {
-    try {
-      final response = await _apiClient.get('/documents/$id');
-      final doc = response.data['data'] as Map<String, dynamic>;
-      final document = Document.fromJson(doc);
-
-      await _saveDocumentLocally(document);
-
-      return document;
-    } catch (e) {
-      // Fallback to local storage if offline
-      final entity = await _isar.getDocumentById(id);
-      if (entity != null) {
-        return _entityToDocument(entity);
-      }
-      throw Exception('Document not found');
-    }
+    final response = await _apiClient.get('/documents/$id');
+    final doc = response.data['data'] as Map<String, dynamic>;
+    return Document.fromJson(doc);
   }
 
   @override
@@ -88,60 +44,20 @@ class DocumentRepositoryImpl implements DocumentRepository {
     String? icon,
     Map<String, dynamic>? content,
   }) async {
-    try {
-      final requestData = <String, dynamic>{};
-      if (title != null) requestData['title'] = title;
-      if (icon != null) requestData['icon'] = icon;
-      if (content != null) requestData['content'] = content;
+    final requestData = <String, dynamic>{};
+    if (title != null) requestData['title'] = title;
+    if (icon != null) requestData['icon'] = icon;
+    if (content != null) requestData['content'] = content;
 
-      final response =
-          await _apiClient.patch('/documents/$id', data: requestData);
-
-      final doc = response.data['data']['document'] as Map<String, dynamic>;
-      final document = Document.fromJson(doc);
-
-      await _saveDocumentLocally(document);
-
-      return document;
-    } catch (e) {
-      // Offline update - update local document
-      final existingEntity = await _isar.getDocumentById(id);
-      if (existingEntity != null) {
-        final existingDoc = _entityToDocument(existingEntity);
-        final updatedDoc = existingDoc.copyWith(
-          title: title ?? existingDoc.title,
-          icon: icon ?? existingDoc.icon,
-          content: content ?? existingDoc.content,
-          updatedAt: DateTime.now(),
-          isSynced: false,
-          isDirty: true,
-        );
-        await _saveDocumentLocally(updatedDoc);
-        return updatedDoc;
-      }
-      rethrow;
-    }
+    final response =
+        await _apiClient.patch('/documents/$id', data: requestData);
+    final doc = response.data['data']['document'] as Map<String, dynamic>;
+    return Document.fromJson(doc);
   }
 
   @override
   Future<void> deleteDocument(String id) async {
-    try {
-      await _apiClient.delete('/documents/$id');
-      await _isar.deleteDocument(id);
-    } catch (e) {
-      // Offline delete - mark as dirty with delete operation
-      final existingEntity = await _isar.getDocumentById(id);
-      if (existingEntity != null) {
-        final existingDoc = _entityToDocument(existingEntity);
-        final deletedDoc = existingDoc.copyWith(
-          isArchived: true,
-          updatedAt: DateTime.now(),
-          isSynced: false,
-          isDirty: true,
-        );
-        await _saveDocumentLocally(deletedDoc);
-      }
-    }
+    await _apiClient.delete('/documents/$id');
   }
 
   @override
@@ -151,127 +67,73 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 20,
     int offset = 0,
   }) async {
-    try {
-      final queryParams = <String, dynamic>{
-        'limit': limit,
-        'offset': offset,
-      };
-      if (parentId != null) {
-        queryParams['parent_id'] = parentId;
-      }
-
-      final response = await _apiClient.get(
-        '/spaces/$spaceId/documents',
-        queryParams: queryParams,
-      );
-
-      final data = response.data['data'] as Map<String, dynamic>;
-      final documentsJson = data['documents'] as List;
-      final total = data['total'] as int;
-
-      final documents = documentsJson
-          .map((doc) => Document.fromJson(doc as Map<String, dynamic>))
-          .toList();
-
-      // Save to local storage
-      for (final doc in documents) {
-        await _saveDocumentLocally(doc);
-      }
-
-      return DocumentListResult(
-        documents: documents,
-        total: total,
-        limit: limit,
-        offset: offset,
-      );
-    } catch (e) {
-      // Fallback to local storage
-      final localEntities = parentId != null
-          ? await _isar.getDocumentsByParent(parentId)
-          : await _isar.getDocumentsBySpace(spaceId);
-
-      final documents = localEntities
-          .map(_entityToDocument)
-          .toList();
-
-      final start = offset.clamp(0, documents.length).toInt();
-      final end = (offset + limit).clamp(0, documents.length).toInt();
-
-      return DocumentListResult(
-        documents: documents.sublist(start, end),
-        total: documents.length,
-        limit: limit,
-        offset: offset,
-      );
+    final queryParams = <String, dynamic>{
+      'limit': limit,
+      'offset': offset,
+    };
+    if (parentId != null) {
+      queryParams['parent_id'] = parentId;
     }
+
+    final response = await _apiClient.get(
+      '/spaces/$spaceId/documents',
+      queryParams: queryParams,
+    );
+
+    final data = response.data['data'] as Map<String, dynamic>;
+    final documentsJson = data['documents'] as List;
+    final total = data['total'] as int;
+
+    final documents = documentsJson
+        .map((doc) => Document.fromJson(doc as Map<String, dynamic>))
+        .toList();
+
+    return DocumentListResult(
+      documents: documents,
+      total: total,
+      limit: limit,
+      offset: offset,
+    );
   }
 
   @override
   Future<DocumentListResult> getDocumentChildren(String parentId) async {
-    try {
-      final response = await _apiClient.get('/documents/$parentId/children');
-      final data = response.data['data'] as Map<String, dynamic>;
-      final documentsJson = data['documents'] as List;
-      final total = data['total'] as int;
+    final response = await _apiClient.get('/documents/$parentId/children');
+    final data = response.data['data'] as Map<String, dynamic>;
+    final documentsJson = data['documents'] as List;
+    final total = data['total'] as int;
 
-      final documents = documentsJson
-          .map((doc) => Document.fromJson(doc as Map<String, dynamic>))
-          .toList();
+    final documents = documentsJson
+        .map((doc) => Document.fromJson(doc as Map<String, dynamic>))
+        .toList();
 
-      // Save to local storage for offline access
-      for (final doc in documents) {
-        await _saveDocumentLocally(doc);
-      }
-
-      return DocumentListResult(
-        documents: documents,
-        total: total,
-        limit: documents.length,
-        offset: 0,
-      );
-    } catch (e) {
-      // Fallback to local storage
-      final localEntities = await _isar.getDocumentsByParent(parentId);
-      final documents = localEntities
-          .map(_entityToDocument)
-          .toList();
-      return DocumentListResult(
-        documents: documents,
-        total: documents.length,
-        limit: documents.length,
-        offset: 0,
-      );
-    }
+    return DocumentListResult(
+      documents: documents,
+      total: total,
+      limit: documents.length,
+      offset: 0,
+    );
   }
 
   @override
   Future<List<Document>> getDocumentPath(String documentId) async {
-    try {
-      final response = await _apiClient.get('/documents/$documentId/path');
-      final data = response.data['data'] as Map<String, dynamic>;
-      final pathJson = data['path'] as List;
+    final response = await _apiClient.get('/documents/$documentId/path');
+    final data = response.data['data'] as Map<String, dynamic>;
+    final pathJson = data['path'] as List;
 
-      final result = <Document>[];
-      for (final item in pathJson) {
-        final jsonMap = <String, dynamic>{};
-        (item as Map).forEach((key, value) {
-          if (value is Map) {
-            jsonMap[key.toString()] = Map<String, dynamic>.from(value);
-          } else {
-            jsonMap[key.toString()] = value;
-          }
-        });
-        result.add(Document.fromJson(jsonMap));
-      }
-      return result;
-    } catch (e) {
-      // Fallback - return just the document itself
-      final entity = await _isar.getDocumentById(documentId);
-      if (entity != null) {
-        return [_entityToDocument(entity)];
-      }
-      return [];
+    final result = <Document>[];
+    for (final item in pathJson) {
+      final jsonMap = <String, dynamic>{};
+      (item as Map).forEach((key, value) {
+        if (value is Map) {
+          jsonMap[key.toString()] = Map<String, dynamic>.from(value);
+        } else {
+          jsonMap[key.toString()] = value;
+        }
+      });
+      result.add(Document.fromJson(jsonMap));
     }
+    return result;
   }
 
   @override
@@ -280,34 +142,30 @@ class DocumentRepositoryImpl implements DocumentRepository {
     int limit = 20,
     int offset = 0,
   }) async {
-    try {
-      final response = await _apiClient.get(
-        '/documents/$documentId/versions',
-        queryParams: {'limit': limit, 'offset': offset},
+    final response = await _apiClient.get(
+      '/documents/$documentId/versions',
+      queryParams: {'limit': limit, 'offset': offset},
+    );
+
+    final data = response.data['data'] as Map<String, dynamic>;
+    final versionsJson = data['versions'] as List;
+    final total = data['total'] as int;
+
+    final versions = versionsJson.map((v) {
+      final json = v as Map<String, dynamic>;
+      return DocumentVersion(
+        id: json['id'] as String,
+        documentId: json['document_id'] as String,
+        versionNumber: json['version_number'] as int,
+        title: json['title'] as String,
+        content: json['content'] as Map<String, dynamic>,
+        createdBy: json['created_by'] as String,
+        createdAt: _parseDateTime(json['created_at'] as String?),
+        changeSummary: json['change_summary'] as String?,
       );
+    }).toList();
 
-      final data = response.data['data'] as Map<String, dynamic>;
-      final versionsJson = data['versions'] as List;
-      final total = data['total'] as int;
-
-      final versions = versionsJson.map((v) {
-        final json = v as Map<String, dynamic>;
-        return DocumentVersion(
-          id: json['id'] as String,
-          documentId: json['document_id'] as String,
-          versionNumber: json['version_number'] as int,
-          title: json['title'] as String,
-          content: json['content'] as Map<String, dynamic>,
-          createdBy: json['created_by'] as String,
-          createdAt: _parseDateTime(json['created_at'] as String?),
-          changeSummary: json['change_summary'] as String?,
-        );
-      }).toList();
-
-      return VersionListResult(versions: versions, total: total);
-    } catch (e) {
-      return const VersionListResult(versions: [], total: 0);
-    }
+    return VersionListResult(versions: versions, total: total);
   }
 
   @override
@@ -346,11 +204,7 @@ class DocumentRepositoryImpl implements DocumentRepository {
     );
 
     final json = response.data['data']['document'] as Map<String, dynamic>;
-    final document = Document.fromJson(json);
-
-    await _saveDocumentLocally(document);
-
-    return document;
+    return Document.fromJson(json);
   }
 
   @override
@@ -373,48 +227,6 @@ class DocumentRepositoryImpl implements DocumentRepository {
     );
   }
 
-  // Helper methods
-
-  Future<void> _saveDocumentLocally(Document document) async {
-    final entity = _documentToEntity(document);
-    await _isar.saveDocument(entity);
-  }
-
-  DocumentEntity _documentToEntity(Document document) => DocumentEntity()
-      ..uuid = document.id
-      ..spaceId = document.spaceId
-      ..parentId = document.parentId
-      ..title = document.title
-      ..icon = document.icon
-      ..content = document.content
-      ..contentSize = document.contentSize
-      ..isArchived = document.isArchived
-      ..createdBy = document.createdBy
-      ..lastEditedBy = document.lastEditedBy
-      ..createdAt = document.createdAt
-      ..updatedAt = document.updatedAt
-      ..isSynced = document.isSynced
-      ..isDirty = document.isDirty
-      ..lastSyncedAt = document.lastSyncedAt;
-
-  Document _entityToDocument(DocumentEntity entity) => Document(
-      id: entity.uuid,
-      spaceId: entity.spaceId,
-      parentId: entity.parentId,
-      title: entity.title,
-      icon: entity.icon,
-      content: entity.content,
-      contentSize: entity.contentSize,
-      isArchived: entity.isArchived,
-      createdBy: entity.createdBy,
-      lastEditedBy: entity.lastEditedBy,
-      createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt,
-      isSynced: entity.isSynced,
-      isDirty: entity.isDirty,
-      lastSyncedAt: entity.lastSyncedAt,
-    );
-
   DateTime _parseDateTime(String? dateTimeString) {
     if (dateTimeString == null || dateTimeString.isEmpty) {
       return DateTime.now();
@@ -430,7 +242,5 @@ class DocumentRepositoryImpl implements DocumentRepository {
 /// Provider for DocumentRepository
 final documentRepositoryProvider = Provider<DocumentRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  // final isar = ref.watch(isarProvider);
-  final isar = IsarDatabase(null);
-  return DocumentRepositoryImpl(apiClient, isar);
+  return DocumentRepositoryImpl(apiClient);
 });

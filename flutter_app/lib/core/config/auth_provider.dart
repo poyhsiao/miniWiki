@@ -43,6 +43,20 @@ class Auth extends _$Auth {
     );
   }
 
+  Future<void> register({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    state = const Loading();
+    // TODO: Implement register logic
+    state = Authenticated(
+      userId: 'uuid',
+      email: email,
+      displayName: displayName,
+    );
+  }
+
   Future<void> logout() async {
     state = const Unauthenticated();
   }

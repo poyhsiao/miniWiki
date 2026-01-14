@@ -27,13 +27,14 @@ class DocumentService {
     String? parentId,
     String? icon,
     Map<String, dynamic>? content,
-  }) => _repository.createDocument(
-      spaceId: spaceId,
-      parentId: parentId,
-      title: _sanitizeTitle(title),
-      icon: icon,
-      content: content ?? {},
-    );
+  }) =>
+      _repository.createDocument(
+        spaceId: spaceId,
+        parentId: parentId,
+        title: _sanitizeTitle(title),
+        icon: icon,
+        content: content ?? {},
+      );
 
   /// Fetches a document by its ID
   ///
@@ -48,7 +49,8 @@ class DocumentService {
     return _repository.getDocument(id);
   }
 
-  Future<Document> _forceRefreshDocument(String id) async => _repository.getDocument(id);
+  Future<Document> _forceRefreshDocument(String id) async =>
+      _repository.getDocument(id);
 
   /// Updates a document's title
   ///
@@ -56,10 +58,11 @@ class DocumentService {
   /// [title] The new title
   ///
   /// Returns the updated document
-  Future<Document> updateTitle(String id, String title) => _repository.updateDocument(
-      id: id,
-      title: _sanitizeTitle(title),
-    );
+  Future<Document> updateTitle(String id, String title) =>
+      _repository.updateDocument(
+        id: id,
+        title: _sanitizeTitle(title),
+      );
 
   /// Updates a document's icon
   ///
@@ -67,10 +70,11 @@ class DocumentService {
   /// [icon] The new icon identifier
   ///
   /// Returns the updated document
-  Future<Document> updateIcon(String id, String? icon) => _repository.updateDocument(
-      id: id,
-      icon: icon,
-    );
+  Future<Document> updateIcon(String id, String? icon) =>
+      _repository.updateDocument(
+        id: id,
+        icon: icon,
+      );
 
   /// Updates a document's content with auto-save
   ///
@@ -90,7 +94,7 @@ class DocumentService {
     );
 
     if (autoSave && _syncService != null) {
-      await _syncService.queueDocumentForSync(id);
+      await _syncService!.queueDocumentForSync(id, 'update', content);
     }
 
     return document;
@@ -120,7 +124,7 @@ class DocumentService {
     );
 
     if (autoSave && _syncService != null && content != null) {
-      await _syncService.queueDocumentForSync(id);
+      await _syncService!.queueDocumentForSync(id, 'update', content);
     }
 
     return document;
@@ -146,26 +150,29 @@ class DocumentService {
     String? parentId,
     int limit = 20,
     int offset = 0,
-  }) => _repository.listDocuments(
-      spaceId: spaceId,
-      parentId: parentId,
-      limit: limit,
-      offset: offset,
-    );
+  }) =>
+      _repository.listDocuments(
+        spaceId: spaceId,
+        parentId: parentId,
+        limit: limit,
+        offset: offset,
+      );
 
   /// Gets child documents of a parent
   ///
   /// [parentId] The parent document ID
   ///
   /// Returns a list of child documents
-  Future<DocumentListResult> getChildren(String parentId) => _repository.getDocumentChildren(parentId);
+  Future<DocumentListResult> getChildren(String parentId) =>
+      _repository.getDocumentChildren(parentId);
 
   /// Gets the document path from root to the specified document
   ///
   /// [documentId] The target document ID
   ///
   /// Returns a list of documents from root to target
-  Future<List<Document>> getDocumentPath(String documentId) => _repository.getDocumentPath(documentId);
+  Future<List<Document>> getDocumentPath(String documentId) =>
+      _repository.getDocumentPath(documentId);
 
   /// Gets version history for a document
   ///
@@ -178,11 +185,12 @@ class DocumentService {
     String documentId, {
     int limit = 20,
     int offset = 0,
-  }) => _repository.getDocumentVersions(
-      documentId,
-      limit: limit,
-      offset: offset,
-    );
+  }) =>
+      _repository.getDocumentVersions(
+        documentId,
+        limit: limit,
+        offset: offset,
+      );
 
   /// Creates a new version (save point)
   ///
@@ -197,12 +205,13 @@ class DocumentService {
     required Map<String, dynamic> content,
     required String title,
     String? changeSummary,
-  }) => _repository.createVersion(
-      documentId: documentId,
-      content: content,
-      title: _sanitizeTitle(title),
-      changeSummary: changeSummary,
-    );
+  }) =>
+      _repository.createVersion(
+        documentId: documentId,
+        content: content,
+        title: _sanitizeTitle(title),
+        changeSummary: changeSummary,
+      );
 
   /// Restores a document to a previous version
   ///
@@ -213,7 +222,8 @@ class DocumentService {
   Future<Document> restoreVersion(
     String documentId,
     int versionNumber,
-  ) => _repository.restoreVersion(documentId, versionNumber);
+  ) =>
+      _repository.restoreVersion(documentId, versionNumber);
 
   /// Gets the diff between two versions
   ///
@@ -226,7 +236,8 @@ class DocumentService {
     String documentId,
     int fromVersion,
     int toVersion,
-  ) => _repository.getVersionDiff(documentId, fromVersion, toVersion);
+  ) =>
+      _repository.getVersionDiff(documentId, fromVersion, toVersion);
 
   /// Searches documents by title in a space
   ///
@@ -287,7 +298,8 @@ class DocumentService {
   /// Sanitizes document title
   ///
   /// Removes leading/trailing whitespace and limits length
-  String _sanitizeTitle(String title) => title.trim().substring(0, min(title.trim().length, 200));
+  String _sanitizeTitle(String title) =>
+      title.trim().substring(0, min(title.trim().length, 200));
 
   int min(int a, int b) => a < b ? a : b;
 }

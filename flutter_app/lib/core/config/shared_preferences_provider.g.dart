@@ -7,7 +7,7 @@ part of 'shared_preferences_provider.dart';
 // **************************************************************************
 
 String _$sharedPreferencesNotifierHash() =>
-    r'79b0ff3d81da890efc2f69c762519f087d6bfe19';
+    r'67faa8583ae4527cae513f0963eb53da8fb85eb2';
 
 /// See also [SharedPreferencesNotifier].
 @ProviderFor(SharedPreferencesNotifier)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/document.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
@@ -9,7 +10,8 @@ class DocumentListPage extends ConsumerStatefulWidget {
   final String spaceId;
 
   const DocumentListPage({
-    required this.spaceId, super.key,
+    required this.spaceId,
+    super.key,
   });
 
   @override
@@ -31,7 +33,9 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
   void initState() {
     super.initState();
     Future.microtask(
-      () => ref.read(documentListProvider(widget.spaceId).notifier).loadDocuments(),
+      () => ref
+          .read(documentListProvider(widget.spaceId).notifier)
+          .loadDocuments(),
     );
     _scrollController.addListener(_onScroll);
   }
@@ -42,9 +46,9 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
       final state = ref.read(documentListProvider(widget.spaceId));
       if (!state.isLoading && state.hasMore) {
         ref.read(documentListProvider(widget.spaceId).notifier).loadMore(
-          state.documents.length,
-          20,
-        );
+              state.documents.length,
+              20,
+            );
       }
     }
   }
@@ -76,8 +80,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
       ),
       body: Column(
         children: [
-          if (_parentId != null)
-            _buildBreadcrumb(context),
+          if (_parentId != null) _buildBreadcrumb(context),
           Expanded(
             child: _buildDocumentList(context, documentState),
           ),
@@ -87,27 +90,29 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
   }
 
   Widget _buildBreadcrumb(BuildContext context) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Theme.of(context).colorScheme.surfaceVariant,
-      child: Row(
-        children: [
-          const Icon(Icons.folder, size: 16),
-          const SizedBox(width: 8),
-          Text(
-            'Current folder',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const Spacer(),
-          TextButton(
-            onPressed: () {
-              setState(() => _parentId = null);
-              ref.read(documentListProvider(widget.spaceId).notifier).loadDocuments();
-            },
-            child: const Text('Root'),
-          ),
-        ],
-      ),
-    );
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        color: Theme.of(context).colorScheme.surfaceVariant,
+        child: Row(
+          children: [
+            const Icon(Icons.folder, size: 16),
+            const SizedBox(width: 8),
+            Text(
+              'Current folder',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: () {
+                setState(() => _parentId = null);
+                ref
+                    .read(documentListProvider(widget.spaceId).notifier)
+                    .loadDocuments();
+              },
+              child: const Text('Root'),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildDocumentList(BuildContext context, DocumentListState state) {
     if (state.isLoading && state.documents.isEmpty) {
@@ -137,7 +142,8 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.description_outlined, size: 64, color: Colors.grey),
+            const Icon(Icons.description_outlined,
+                size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             const Text('No documents yet'),
             const SizedBox(height: 16),
@@ -160,7 +166,8 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
         itemCount: state.documents.length + (state.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= state.documents.length) {
-            return const Center(child: Padding(
+            return const Center(
+                child: Padding(
               padding: EdgeInsets.all(16),
               child: CircularProgressIndicator(),
             ));

@@ -1,11 +1,9 @@
 // Offline service interface for managing offline document access and sync queue
-// Provides abstraction over sync datasource for offline-first functionality
+// Uses SharedPreferences for Web-compatible local storage
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:miniwiki/data/models/sync_queue_item.dart';
 import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
 
 /// Offline service state
@@ -84,11 +82,9 @@ class OfflineService {
 
   /// Initialize offline service
   Future<void> initialize() async {
-    // Subscribe to connectivity changes
     _connectivitySubscription =
         _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
 
-    // Get initial connectivity status
     final result = await _connectivity.checkConnectivity();
     final results = result;
     final isOnline = results.any((r) => r != ConnectivityResult.none);
@@ -102,10 +98,6 @@ class OfflineService {
       connectionType: connectionType,
     );
     _stateController.add(_state);
-
-    if (isOnline) {
-      _triggerSyncOnReconnect();
-    }
   }
 
   /// Stream of state changes
@@ -141,73 +133,85 @@ class OfflineService {
 
   /// Add item to offline queue
   Future<void> addToQueue({
-    required String documentId,
+    required String entityType,
+    required String entityId,
     required String operation,
     required Map<String, dynamic> data,
   }) async {
-    final item = SyncQueueItem()
-      ..entityType = 'document'
-      ..entityId = documentId
-      ..operation = operation
-      ..data = data
-      ..createdAt = DateTime.now()
-      ..retryCount = 0;
-
-    await _syncDatasource.addToQueue(item);
+    await _syncDatasource.addToQueue(entityType, entityId, operation, data);
     await _updateState();
   }
 
-  /// Get next pending queue item
-  Future<SyncQueueItem?> getNextPendingItem() async =>
-      await _syncDatasource.getNextPendingItem();
+  /// Get all pending queue items
+  List<Map<String, dynamic>> getPendingItems() {
+    return _syncDatasource.getPendingItems();
+  }
 
   /// Mark queue item as synced
-  Future<void> markQueueItemSynced(String itemId) async {
-    await _syncDatasource.markAsSynced(itemId);
+  Future<void> markQueueItemSynced(String entityType, String entityId) async {
+    await _syncDatasource.removeFromQueue(entityType, entityId);
     await _updateState();
   }
 
   /// Mark queue item as failed
-  Future<void> markQueueItemFailed(String itemId, String error) async {
-    await _syncDatasource.markAsFailed(itemId, error);
+  Future<void> markQueueItemFailed(String entityType, String entityId,
+      String operation, Map<String, dynamic> data, String error) async {
+    print('[OfflineService] Sync failed for $entityType:$entityId - $error');
+    await _syncDatasource.addToFailedQueue(
+        entityType, entityId, operation, data, error);
+    _state = _state.copyWith(
+      failedQueueCount: _state.failedQueueCount + 1,
+    );
+    _stateController.add(_state);
+  }
+
+  /// Get failed queue items
+  List<Map<String, dynamic>> getFailedItems() {
+    return _syncDatasource.getFailedItems();
+  }
+
+  /// Retry failed items
+  Future<void> retryFailedItems() async {
+    final failedItems = _syncDatasource.getFailedItems();
+    for (final item in failedItems) {
+      await _syncDatasource.removeFromFailedQueue(
+        item['entityType'] as String,
+        item['entityId'] as String,
+      );
+      await _syncDatasource.addToQueue(
+        item['entityType'] as String,
+        item['entityId'] as String,
+        item['operation'] as String,
+        item['data'] as Map<String, dynamic>,
+      );
+    }
     await _updateState();
   }
 
-  /// Remove queue item
-  Future<void> removeQueueItem(String itemId) async {
-    await _syncDatasource.removeFromQueue(itemId);
+  /// Clear all queue items
+  Future<void> clearQueue() async {
+    await _syncDatasource.clearQueue();
     await _updateState();
   }
 
-  /// Clear all completed/failed queue items
-  Future<void> clearQueue({bool onlyCompleted = false}) async {
-    await _syncDatasource.clearQueue(onlyCompleted: onlyCompleted);
-    await _updateState();
+  /// Get queue size
+  int getQueueSize() {
+    return _syncDatasource.getQueueSize();
   }
-
-  /// Get queue count
-  Future<int> getQueueCount() async => await _syncDatasource.getQueueCount();
-
-  /// Get pending queue count
-  Future<int> getPendingQueueCount() async =>
-      await _syncDatasource.getPendingCount();
-
-  /// Get failed queue count
-  Future<int> getFailedQueueCount() async =>
-      await _syncDatasource.getFailedCount();
 
   /// Cache a document for offline access
   Future<void> cacheDocument({
     required String documentId,
-    required Uint8List content,
+    required Map<String, dynamic> data,
   }) async {
-    await _syncDatasource.cacheDocument(documentId, content);
+    await _syncDatasource.cacheDocument(documentId, data);
     await _updateState();
   }
 
   /// Get cached document
-  Future<Uint8List?> getCachedDocument(String documentId) async =>
-      await _syncDatasource.getCachedDocument(documentId);
+  Map<String, dynamic>? getCachedDocument(String documentId) {
+    return _syncDatasource.getCachedDocument(documentId);
+  }
 
   /// Remove cached document
   Future<void> removeCachedDocument(String documentId) async {
@@ -216,28 +220,36 @@ class OfflineService {
   }
 
   /// Get all cached document IDs
-  Future<List<String>> getAllCachedDocumentIds() async =>
-      await _syncDatasource.getAllCachedDocumentIds();
+  List<String> getAllCachedDocumentIds() {
+    return _syncDatasource.getCachedDocIds();
+  }
 
-  /// Get cache size in bytes
-  Future<int> getCacheSize() async => await _syncDatasource.getCacheSize();
+  /// Get cache size in bytes (approximate based on serialized JSON sizes)
+  int getCacheSize() {
+    final docIds = _syncDatasource.getCachedDocIds();
+    int totalSize = 0;
+    for (final docId in docIds) {
+      final content = _syncDatasource.getCachedContent(docId);
+      totalSize += content?.length ?? 0;
+    }
+    return totalSize;
+  }
 
   /// Clear all cached documents
   Future<void> clearCache() async {
-    await _syncDatasource.clearCache();
+    await _syncDatasource.clearDocumentCache();
     await _updateState();
   }
 
   /// Update service state
   Future<void> _updateState() async {
-    final pendingCount = await getPendingQueueCount();
-    final failedCount = await getFailedQueueCount();
-    final cachedCount = (await getAllCachedDocumentIds()).length;
-    final cacheSize = await getCacheSize();
+    final pendingCount = getQueueSize();
+    final cachedCount = getAllCachedDocumentIds().length;
+    final cacheSize = getCacheSize();
 
     _state = _state.copyWith(
       pendingQueueCount: pendingCount,
-      failedQueueCount: failedCount,
+      failedQueueCount: 0,
       cachedDocumentsCount: cachedCount,
       cacheSizeBytes: cacheSize,
     );
@@ -258,9 +270,7 @@ class OfflineService {
 
   /// Set last successful sync time
   void setLastSuccessfulSync(DateTime time) {
-    _state = _state.copyWith(
-      lastSuccessfulSync: time,
-    );
+    _state = _state.copyWith(lastSuccessfulSync: time);
     _stateController.add(_state);
   }
 

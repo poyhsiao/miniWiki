@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
 import 'package:miniwiki/presentation/providers/presence_provider.dart';
