@@ -432,7 +432,7 @@ Based on `plan.md` structure:
 ### Tests for User Story 8
 
 - [x] T211 [P] [US8] Create backend/tests/documents/export_test.rs for export operations
-- [ ] T212 [P] [US8] Create flutter_app/test/export_service_test.dart for export service tests
+- [x] T212 [P] [US8] Create flutter_app/test/export_service_test.dart for export service tests
 
 ### Backend Implementation for User Story 8
 
@@ -452,10 +452,10 @@ Based on `plan.md` structure:
 
 ### Integration for User Story 8
 
-- [ ] T223 [US8] Verify all export formats work correctly
-- [ ] T224 [US8] Test formatting preservation in exports
-- [ ] T225 [US8] Verify flutter_app export dialog works correctly
-- [ ] T226 [US8] Test large document export performance
+- [x] T223 [US8] Verify all export formats work correctly
+- [x] T224 [US8] Test formatting preservation in exports
+- [x] T225 [US8] Verify flutter_app export dialog works correctly
+- [x] T226 [US8] Test large document export performance
 
 **Checkpoint**: User Story 8 complete - document export is fully functional
 
@@ -530,7 +530,7 @@ Based on `plan.md` structure:
 - [x] T260 Create flutter_app/lib/presentation/providers/comment_provider.dart with comment state
 - [x] T261 Create flutter_app/lib/presentation/widgets/comment_list.dart
 - [x] T262 Create flutter_app/lib/presentation/widgets/comment_input.dart
-- [ ] T263 Implement comment display in document_editor_page.dart
+- [x] T263 Implement comment display in document_editor_page.dart
 
 ---
 
@@ -542,25 +542,25 @@ Based on `plan.md` structure:
 
 ### Backend Implementation for Files
 
-- [ ] T264 Create backend/services/file_service/src/lib.rs with file service
-- [ ] T265 Create backend/services/file_service/src/handlers.rs with file handlers
-- [ ] T266 Create backend/services/file_service/src/storage.rs with MinIO integration
-- [ ] T267 Create files table migration in backend/migrations/008_files.sql
-- [ ] T268 Implement POST /files/upload endpoint
-- [ ] T269 Implement GET /files/{fileId}/download endpoint
-- [ ] T270 Implement GET /files/{fileId} endpoint for metadata
-- [ ] T271 Implement DELETE /files/{fileId} endpoint
-- [ ] T272 Implement chunked upload for large files
+- [x] T264 Create backend/services/file_service/src/lib.rs with file service
+- [x] T265 Create backend/services/file_service/src/handlers.rs with file handlers
+- [x] T266 Create backend/services/file_service/src/storage.rs with S3/MinIO integration
+- [x] T267 Create files table migration in backend/migrations/008_files.sql
+- [ ] T268 Implement POST /files/upload endpoint (stub in handlers.rs)
+- [ ] T269 Implement GET /files/{fileId}/download endpoint (stub in handlers.rs)
+- [ ] T270 Implement GET /files/{fileId} endpoint for metadata (stub in handlers.rs)
+- [ ] T271 Implement DELETE /files/{fileId} endpoint (stub in handlers.rs)
+- [ ] T272 Implement chunked upload for large files (stub in handlers.rs)
 
 ### Frontend Implementation for Files
 
-- [ ] T273 Create flutter_app/lib/domain/entities/file.dart with file entity
-- [ ] T274 Create flutter_app/lib/domain/repositories/file_repository.dart interface
-- [ ] T275 Create flutter_app/lib/data/repositories/file_repository_impl.dart
-- [ ] T276 Create flutter_app/lib/services/file_service.dart with file operations
-- [ ] T277 Create flutter_app/lib/presentation/providers/file_provider.dart with file state
-- [ ] T278 Create flutter_app/lib/presentation/widgets/file_upload_widget.dart
-- [ ] T279 Create flutter_app/lib/presentation/widgets/file_list.dart
+- [x] T273 Create flutter_app/lib/domain/entities/file.dart with file entity
+- [x] T274 Create flutter_app/lib/domain/repositories/file_repository.dart interface
+- [x] T275 Create flutter_app/lib/data/repositories/file_repository_impl.dart
+- [x] T276 Create flutter_app/lib/services/file_service.dart with file operations
+- [x] T277 Create flutter_app/lib/presentation/providers/file_provider.dart with file state
+- [x] T278 Create flutter_app/lib/presentation/widgets/file_upload_widget.dart
+- [x] T279 Create flutter_app/lib/presentation/widgets/file_list.dart
 - [ ] T280 Implement file upload in document_editor_page.dart
 
 ---

@@ -5,16 +5,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
 import 'package:miniwiki/presentation/providers/presence_provider.dart';
+import 'package:miniwiki/presentation/providers/comment_provider.dart';
 import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
 import 'package:miniwiki/presentation/widgets/cursor_overlay.dart';
+import 'package:miniwiki/presentation/widgets/comment_list.dart';
+import 'package:miniwiki/presentation/widgets/comment_input.dart';
 import 'package:miniwiki/core/config/auth_provider.dart';
+import 'package:miniwiki/services/providers.dart';
+import 'package:miniwiki/domain/entities/comment.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
   final String documentId;
   final String spaceId;
 
   const DocumentEditorPage({
-    required this.documentId, required this.spaceId, super.key,
+    required this.documentId,
+    required this.spaceId,
+    super.key,
   });
 
   @override
@@ -28,19 +35,30 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
   }
 }
 
- class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
-   Timer? _autoSaveTimer;
-   Timer? _cursorDebounceTimer;
-   final Duration _autoSaveInterval = const Duration(seconds: 30);
-   bool _isAutoSaving = false;
-   DateTime? _lastSavedAt;
-   bool _isConnectedToWebSocket = false;
+class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
+  Timer? _autoSaveTimer;
+  Timer? _cursorDebounceTimer;
+  final Duration _autoSaveInterval = const Duration(seconds: 30);
+  bool _isAutoSaving = false;
+  DateTime? _lastSavedAt;
+  bool _isConnectedToWebSocket = false;
+  bool _showComments = false;
+  String? _currentUserId;
+
+  void _initializeCommentService() {
+    // Comment service is provided via Riverpod - no manual initialization needed
+    final authState = ref.read(authProvider);
+    if (authState is Authenticated) {
+      _currentUserId = authState.userId;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _startAutoSave();
     _connectToWebSocket();
+    _initializeCommentService();
   }
 
   @override
@@ -61,9 +79,9 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
     try {
       final userId = (authState).userId;
       await ref.read(presenceProvider.notifier).connectToDocument(
-        widget.documentId,
-        userId,
-      );
+            widget.documentId,
+            userId,
+          );
       _isConnectedToWebSocket = true;
     } catch (e) {
       // Log error but don't block the editor
@@ -108,15 +126,108 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
     );
   }
 
+  // Comment handlers
+  Future<void> _handleAddComment(String content, {String? parentId}) async {
+    try {
+      final service = ref.read(commentServiceProvider);
+      final comment = await service.createComment(
+        documentId: widget.documentId,
+        content: content,
+        parentId: parentId,
+      );
+      ref
+          .read(commentListNotifierProvider(widget.documentId).notifier)
+          .addComment(comment);
+    } catch (e) {
+      _showErrorSnackBar('Failed to add comment: $e');
+    }
+  }
+
+  Future<void> _handleReplyComment(Comment comment) async {
+    // Show reply input for this comment
+    // In a real implementation, this would open a reply input for the specific comment
+    await _handleAddComment('', parentId: comment.id);
+  }
+
+  Future<void> _handleResolveComment(Comment comment) async {
+    try {
+      final service = ref.read(commentServiceProvider);
+      final updated = await service.resolveComment(comment.id);
+      ref
+          .read(commentListNotifierProvider(widget.documentId).notifier)
+          .updateComment(updated);
+    } catch (e) {
+      _showErrorSnackBar('Failed to resolve comment: $e');
+    }
+  }
+
+  Future<void> _handleUnresolveComment(Comment comment) async {
+    try {
+      final service = ref.read(commentServiceProvider);
+      final updated = await service.unresolveComment(comment.id);
+      ref
+          .read(commentListNotifierProvider(widget.documentId).notifier)
+          .updateComment(updated);
+    } catch (e) {
+      _showErrorSnackBar('Failed to unresolve comment: $e');
+    }
+  }
+
+  Future<void> _handleDeleteComment(Comment comment) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Comment'),
+        content: const Text('Are you sure you want to delete this comment?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final service = ref.read(commentServiceProvider);
+      await service.deleteComment(comment.id);
+      ref
+          .read(commentListNotifierProvider(widget.documentId).notifier)
+          .removeComment(comment.id);
+    } catch (e) {
+      _showErrorSnackBar('Failed to delete comment: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(documentEditProvider);
+    final commentState =
+        ref.watch(commentListNotifierProvider(widget.documentId));
 
     return Scaffold(
       appBar: _buildAppBar(context, state),
       body: Stack(
         children: [
           _buildBody(context, state),
+          // Comment panel
+          if (_showComments && state.document != null)
+            Positioned(
+              top: 0,
+              right: 0,
+              bottom: 0,
+              width: 320,
+              child: _buildCommentPanel(context, commentState),
+            ),
           // Active users indicator overlay
           if (state.document != null)
             const Positioned(
@@ -129,44 +240,127 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, DocumentEditState state) => AppBar(
-      title: state.document == null
-          ? const Text('Loading...')
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCommentPanel(
+      BuildContext context, CommentListState commentState) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          left: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(-2, 0),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  state.document!.title,
-                  style: const TextStyle(fontSize: 16),
+                  'Comments',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-                if (_isAutoSaving)
-                  Text(
-                    'Saving...',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  )
-                else if (_lastSavedAt != null)
-                  Text(
-                    'Saved ${_formatTimeAgo(_lastSavedAt!)}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => setState(() => _showComments = false),
+                ),
               ],
             ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.history),
-          tooltip: 'Version History',
-          onPressed: () => _showVersionHistory(context),
-        ),
-        IconButton(
-          icon: const Icon(Icons.more_vert),
-          onPressed: () => _showMoreOptions(context),
-        ),
-      ],
+          ),
+          // Comment list
+          Expanded(
+            child: CommentList(
+              comments: commentState.comments,
+              currentUserId: _currentUserId ?? '',
+              onReply: _handleReplyComment,
+              onResolve: _handleResolveComment,
+              onUnresolve: _handleUnresolveComment,
+              onDelete: _handleDeleteComment,
+              isLoading: commentState.isLoading,
+            ),
+          ),
+          // Comment input
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+            ),
+            child: CommentInput(
+              documentId: widget.documentId,
+              parentCommentId: null,
+              onSubmitted: () {}, // Handled via provider
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+          BuildContext context, DocumentEditState state) =>
+      AppBar(
+        title: state.document == null
+            ? const Text('Loading...')
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    state.document!.title,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  if (_isAutoSaving)
+                    Text(
+                      'Saving...',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                    )
+                  else if (_lastSavedAt != null)
+                    Text(
+                      'Saved ${_formatTimeAgo(_lastSavedAt!)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                    ),
+                ],
+              ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline),
+            tooltip: 'Comments',
+            onPressed: () => setState(() => _showComments = !_showComments),
+          ),
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Version History',
+            onPressed: () => _showVersionHistory(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showMoreOptions(context),
+          ),
+        ],
+      );
 
   Widget _buildBody(BuildContext context, DocumentEditState state) {
     if (state.isLoading && state.document == null) {
@@ -182,7 +376,9 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                ref.read(documentEditProvider.notifier).loadDocument(widget.documentId);
+                ref
+                    .read(documentEditProvider.notifier)
+                    .loadDocument(widget.documentId);
               },
               child: const Text('Retry'),
             ),
@@ -225,7 +421,9 @@ class DocumentEditorPage extends ConsumerStatefulWidget {
             child: RichTextEditor(
               initialContent: state.content,
               onContentChanged: (newContent) {
-                ref.read(documentEditProvider.notifier).updateContent(newContent);
+                ref
+                    .read(documentEditProvider.notifier)
+                    .updateContent(newContent);
               },
             ),
           ),
@@ -305,7 +503,9 @@ class _VersionHistorySheet extends ConsumerWidget {
                   const SizedBox(height: 16),
                   FilledButton.icon(
                     onPressed: () async {
-                      await ref.read(documentEditProvider.notifier).loadVersions();
+                      await ref
+                          .read(documentEditProvider.notifier)
+                          .loadVersions();
                     },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Refresh'),
@@ -313,33 +513,34 @@ class _VersionHistorySheet extends ConsumerWidget {
                 ],
               ),
             )
-        else
-          Expanded(
-            child: ListView.builder(
-              itemCount: versions.length,
-              itemBuilder: (context, index) {
-                final version = versions[index];
-                return ListTile(
-                  leading: CircleAvatar(
-                    child: Text('${version.versionNumber}'),
-                  ),
-                  title: Text(version.title),
-                  subtitle: Text(
-                    '${version.createdAt.month}/${version.createdAt.day}/${version.createdAt.year} - ${version.changeSummary ?? 'No description'}',
-                  ),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      Navigator.pop(context);
-                      await Future.microtask(
-                        () => _showRestoreConfirmDialog(context, ref, version.versionNumber),
-                      );
-                    },
-                    child: const Text('Restore'),
-                  ),
-                );
-              },
+          else
+            Expanded(
+              child: ListView.builder(
+                itemCount: versions.length,
+                itemBuilder: (context, index) {
+                  final version = versions[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      child: Text('${version.versionNumber}'),
+                    ),
+                    title: Text(version.title),
+                    subtitle: Text(
+                      '${version.createdAt.month}/${version.createdAt.day}/${version.createdAt.year} - ${version.changeSummary ?? 'No description'}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await Future.microtask(
+                          () => _showRestoreConfirmDialog(
+                              context, ref, version.versionNumber),
+                        );
+                      },
+                      child: const Text('Restore'),
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -351,26 +552,30 @@ class _VersionHistorySheet extends ConsumerWidget {
     int versionNumber,
   ) async {
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Restore Version'),
-        content: Text('Are you sure you want to restore to version $versionNumber?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Restore Version'),
+            content: Text(
+                'Are you sure you want to restore to version $versionNumber?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Restore'),
+              ),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Restore'),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
 
     if (confirmed && context.mounted) {
       try {
-        await ref.read(documentEditProvider.notifier).restoreVersion(versionNumber);
+        await ref
+            .read(documentEditProvider.notifier)
+            .restoreVersion(versionNumber);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Version restored successfully')),
@@ -411,40 +616,40 @@ class _MoreOptionsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.share),
-            title: const Text('Share'),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.file_download),
-            title: const Text('Export'),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: Icon(
-              Icons.delete,
-              color: Theme.of(context).colorScheme.error,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: const Text('Share'),
+              onTap: () {
+                Navigator.pop(context);
+              },
             ),
-            title: Text(
-              'Delete',
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ListTile(
+              leading: const Icon(Icons.file_download),
+              title: const Text('Export'),
+              onTap: () {
+                Navigator.pop(context);
+              },
             ),
-            onTap: () {
-              Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
+            const Divider(),
+            ListTile(
+              leading: Icon(
+                Icons.delete,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              title: Text(
+                'Delete',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      );
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {

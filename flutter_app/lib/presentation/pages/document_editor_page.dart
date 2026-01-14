@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/dialogs/export_dialog.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
 import 'package:miniwiki/presentation/providers/export_provider.dart';
+import 'package:miniwiki/presentation/widgets/file_list.dart';
+import 'package:miniwiki/presentation/widgets/file_upload_widget.dart';
 import 'package:miniwiki/services/export_service.dart';
 import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
 
@@ -145,6 +147,11 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   List<Widget> _buildActions(BuildContext context, DocumentEditState state) => [
         if (widget.documentId != null)
           IconButton(
+            icon: const Icon(Icons.attach_file),
+            onPressed: () => _showFileAttachments(context),
+          ),
+        if (widget.documentId != null)
+          IconButton(
             icon: const Icon(Icons.history),
             onPressed: () => _showVersionHistory(context),
           ),
@@ -183,6 +190,15 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
               },
             ),
           ),
+          if (widget.documentId != null)
+            SizedBox(
+              height: 120,
+              child: FileListWidget(
+                spaceId: widget.spaceId,
+                documentId: widget.documentId,
+                showActions: true,
+              ),
+            ),
           if (state.hasUnsavedChanges)
             Container(
               padding: const EdgeInsets.all(8),
@@ -280,6 +296,16 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
             }
           }
         },
+      ),
+    );
+  }
+
+  void _showFileAttachments(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => _FileAttachmentsSheet(
+        spaceId: widget.spaceId,
+        documentId: widget.documentId!,
       ),
     );
   }
@@ -498,5 +524,50 @@ class _MoreOptionsSheet extends ConsumerWidget {
     properties.add(StringProperty('documentId', documentId));
     properties
         .add(ObjectFlagProperty<VoidCallback>.has('onDeleted', onDeleted));
+  }
+}
+
+class _FileAttachmentsSheet extends ConsumerWidget {
+  final String spaceId;
+  final String documentId;
+
+  const _FileAttachmentsSheet(
+      {required this.spaceId, required this.documentId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('Attachments',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: FileListWidget(
+              spaceId: spaceId,
+              documentId: documentId,
+              showActions: true,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FileUploadWidget(
+            spaceId: spaceId,
+            documentId: documentId,
+            showProgress: true,
+          ),
+        ],
+      ),
+    );
   }
 }
