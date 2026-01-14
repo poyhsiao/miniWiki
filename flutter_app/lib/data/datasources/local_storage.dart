@@ -123,6 +123,7 @@ class DocumentCacheService {
   /// Clear all cached documents
   Future<void> clearCache() async {
     await _storage.removeByPrefix(_docPrefix);
+    await _storage.removeByPrefix(_cachePrefix);
   }
 
   /// Cache document content for offline

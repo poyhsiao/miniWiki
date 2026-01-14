@@ -202,7 +202,7 @@ class SyncService {
         }
 
         if (success) {
-          _syncDatasource.removeFromQueue(entityType, entityId);
+          await _syncDatasource.removeFromQueue(entityType, entityId);
           successCount++;
         } else {
           throw Exception('Sync returned false');
@@ -305,5 +305,7 @@ class SyncService {
 final syncServiceProvider = Provider<SyncService>((ref) {
   final crdtService = ref.watch(crdtServiceProvider);
   final syncDatasource = ref.watch(pendingSyncDatasourceProvider);
-  return SyncService(crdtService, syncDatasource, ApiClient.defaultInstance());
+  final syncService = SyncService(crdtService, syncDatasource, ApiClient.defaultInstance());
+  ref.onDispose(syncService.dispose);
+  return syncService;
 });
