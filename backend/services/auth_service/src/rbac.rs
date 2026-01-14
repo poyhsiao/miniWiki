@@ -1,11 +1,17 @@
-use actix_web::{web, FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError};
+use actix_web::{HttpMessage, HttpRequest, HttpResponse, ResponseError};
 use actix_web::http::StatusCode;
 use jsonwebtoken::TokenData;
 use thiserror::Error;
-use serde::Deserialize;
+use lazy_static::lazy_static;
 
 use crate::jwt::Claims;
 use crate::permissions::{Role, Permission, ActionType};
+
+lazy_static! {
+    static ref JWT_SECRET: String = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    static ref JWT_DECODING_KEY: jsonwebtoken::DecodingKey =
+        jsonwebtoken::DecodingKey::from_secret(JWT_SECRET.as_bytes());
+}
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -18,19 +24,24 @@ pub enum Error {
 }
 
 impl ResponseError for Error {
+    fn status_code(&self) -> StatusCode {
+        match self {
+            Error::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            Error::Forbidden(_) => StatusCode::FORBIDDEN,
+            Error::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
     fn error_response(&self) -> HttpResponse {
         match self {
-            Error::Unauthorized(msg) => {
-                HttpResponse::build(StatusCode::UNAUTHORIZED)
-                    .body(msg.to_string())
+            Error::Unauthorized(_) => {
+                HttpResponse::build(StatusCode::UNAUTHORIZED).body("Unauthorized")
             }
-            Error::Forbidden(msg) => {
-                HttpResponse::build(StatusCode::FORBIDDEN)
-                    .body(msg.to_string())
+            Error::Forbidden(_) => {
+                HttpResponse::build(StatusCode::FORBIDDEN).body("Forbidden")
             }
             Error::InternalServerError(_) => {
-                HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body("Internal server error")
+                HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR).body("Internal server error")
             }
         }
     }

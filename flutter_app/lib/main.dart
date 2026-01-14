@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/core/theme/app_theme.dart';
+import 'package:miniwiki/data/datasources/local_storage.dart';
 import 'package:miniwiki/presentation/pages/auth/login_page.dart';
 import 'package:miniwiki/presentation/pages/home_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await initLocalStorage();
+
   final container = ProviderContainer();
-  // Initialize providers
   container.read(appConfigProvider);
 
   runApp(

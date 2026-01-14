@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 /// Dialog for email verification code input and submission
 class EmailVerificationDialog extends StatefulWidget {

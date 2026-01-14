@@ -15,7 +15,8 @@ class DocumentListState {
   final String spaceId;
 
   const DocumentListState({
-    required this.spaceId, this.documents = const [],
+    required this.spaceId,
+    this.documents = const [],
     this.total = 0,
     this.isLoading = false,
     this.error,
@@ -29,14 +30,15 @@ class DocumentListState {
     String? error,
     String? parentId,
     String? spaceId,
-  }) => DocumentListState(
-      documents: documents ?? this.documents,
-      total: total ?? this.total,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-      parentId: parentId ?? this.parentId,
-      spaceId: spaceId ?? this.spaceId,
-    );
+  }) =>
+      DocumentListState(
+        documents: documents ?? this.documents,
+        total: total ?? this.total,
+        isLoading: isLoading ?? this.isLoading,
+        error: error ?? this.error,
+        parentId: parentId ?? this.parentId,
+        spaceId: spaceId ?? this.spaceId,
+      );
 
   bool get hasMore => documents.length < total;
 }
@@ -72,16 +74,19 @@ class DocumentEditState {
     Object? error,
     List<DocumentVersion>? versions,
     int? selectedVersion,
-  }) => DocumentEditState(
-      document: document ?? this.document,
-      content: content ?? this.content,
-      isLoading: isLoading ?? this.isLoading,
-      isSaving: isSaving ?? this.isSaving,
-      hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
-      error: error == null ? null : (error is String ? error as String : this.error),
-      versions: versions ?? this.versions,
-      selectedVersion: selectedVersion ?? this.selectedVersion,
-    );
+  }) =>
+      DocumentEditState(
+        document: document ?? this.document,
+        content: content ?? this.content,
+        isLoading: isLoading ?? this.isLoading,
+        isSaving: isSaving ?? this.isSaving,
+        hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
+        error: error == null
+            ? null
+            : (error is String ? error as String : this.error),
+        versions: versions ?? this.versions,
+        selectedVersion: selectedVersion ?? this.selectedVersion,
+      );
 }
 
 /// Provider for document list state
@@ -141,8 +146,8 @@ class DocumentListNotifier extends StateNotifier<DocumentListState> {
 }
 
 /// Provider for document list
-final documentListProvider =
-    StateNotifierProvider.family<DocumentListNotifier, DocumentListState, String>(
+final documentListProvider = StateNotifierProvider.family<DocumentListNotifier,
+    DocumentListState, String>(
   (ref, spaceId) {
     final service = ref.watch(documentServiceProvider);
     return DocumentListNotifier(service, spaceId);
@@ -281,7 +286,8 @@ class DocumentEditNotifier extends StateNotifier<DocumentEditState> {
     state = state.copyWith(isSaving: true);
 
     try {
-      final restored = await _service.restoreVersion(document.id, versionNumber);
+      final restored =
+          await _service.restoreVersion(document.id, versionNumber);
       state = state.copyWith(
         document: restored,
         content: restored.content,

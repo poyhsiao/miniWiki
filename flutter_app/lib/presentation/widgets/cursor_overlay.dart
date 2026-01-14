@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/presence_provider.dart';
 import 'package:miniwiki/services/websocket_service.dart';
@@ -9,7 +10,8 @@ class CursorOverlay extends ConsumerWidget {
   final Function(CursorPosition)? onCursorMoved;
 
   const CursorOverlay({
-    required this.child, super.key,
+    required this.child,
+    super.key,
     this.onCursorMoved,
   });
 
@@ -49,7 +51,8 @@ class CursorOverlay extends ConsumerWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has('onCursorMoved', onCursorMoved));
+    properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has(
+        'onCursorMoved', onCursorMoved));
   }
 }
 
@@ -67,57 +70,58 @@ class _RemoteCursorWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Positioned(
-      left: cursor.x,
-      top: cursor.y,
-      child: MouseRegion(
-        onHover: (event) {
-          // Report local cursor position when hovering over this user's cursor
-          onCursorMoved?.call(CursorPosition(
-            x: event.localPosition.dx,
-            y: event.localPosition.dy,
-          ));
-        },
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Cursor indicator line
-            Container(
-              width: 2,
-              height: 20,
-              decoration: BoxDecoration(
-                color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
-                borderRadius: BorderRadius.circular(1),
-              ),
-            ),
-            const SizedBox(height: 2),
-            // User label
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                user.displayName,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+        left: cursor.x,
+        top: cursor.y,
+        child: MouseRegion(
+          onHover: (event) {
+            // Report local cursor position when hovering over this user's cursor
+            onCursorMoved?.call(CursorPosition(
+              x: event.localPosition.dx,
+              y: event.localPosition.dy,
+            ));
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cursor indicator line
+              Container(
+                width: 2,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
+                  borderRadius: BorderRadius.circular(1),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 2),
+              // User label
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  user.displayName,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
 
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
     properties.add(DiagnosticsProperty<ActiveUser>('user', user));
     properties.add(DiagnosticsProperty<CursorPosition>('cursor', cursor));
-    properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has('onCursorMoved', onCursorMoved));
+    properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has(
+        'onCursorMoved', onCursorMoved));
   }
 }
 
@@ -153,42 +157,43 @@ class ActiveUsersIndicator extends ConsumerWidget {
           Text(
             'Active Users',
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           ...presenceState.activeUsers.map((user) => Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                children: [
-                  // Color indicator
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Color(int.parse(user.color.replaceAll('#', '0xFF'))),
-                      shape: BoxShape.circle,
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    // Color indicator
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Color(
+                            int.parse(user.color.replaceAll('#', '0xFF'))),
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  // User name
-                  Expanded(
-                    child: Text(
-                      user.displayName,
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
+                    const SizedBox(width: 8),
+                    // User name
+                    Expanded(
+                      child: Text(
+                        user.displayName,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                  // Last active time
-                  Text(
-                    _formatTimeAgo(user.lastActive),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
+                    // Last active time
+                    Text(
+                      _formatTimeAgo(user.lastActive),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
                     ),
-                  ),
-                ],
-              ),
-            )),
+                  ],
+                ),
+              )),
         ],
       ),
     );
