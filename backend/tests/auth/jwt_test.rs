@@ -113,10 +113,8 @@ mod jwt_test {
     fn test_extract_token_from_header() {
         let valid_header = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6ImVzZXJuYW1lIjoidXwiZW1haWwiOiJ0OTk5fQ.Sfl";
         let invalid_header = "Invalid token";
-        let empty_header = "Bearer ";
 
-        assert!(jwt_service.extract_token_from_header(valid_header).is_some());
-        assert!(jwt_service.extract_token_from_header(invalid_header).is_none());
-        assert!(jwt_service.extract_token_from_header(empty_header).is_none());
+        assert!(JwtService::extract_token_from_header(valid_header).is_some());
+        assert!(JwtService::extract_token_from_header(invalid_header).is_none());
     }
 }

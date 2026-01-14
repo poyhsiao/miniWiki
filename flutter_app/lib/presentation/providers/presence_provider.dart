@@ -2,7 +2,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/services/websocket_service.dart';
 
-final presenceProvider = StateNotifierProvider<PresenceNotifier, PresenceState>((ref) {
+final presenceProvider =
+    StateNotifierProvider<PresenceNotifier, PresenceState>((ref) {
   final wsService = ref.watch(websocketServiceProvider);
   return PresenceNotifier(wsService);
 });
@@ -25,12 +26,13 @@ class PresenceState {
     Map<String, CursorPosition>? remoteCursors,
     bool? isLoading,
     String? error,
-  }) => PresenceState(
-      activeUsers: activeUsers ?? this.activeUsers,
-      remoteCursors: remoteCursors ?? this.remoteCursors,
-      isLoading: isLoading ?? this.isLoading,
-      error: error ?? this.error,
-    );
+  }) =>
+      PresenceState(
+        activeUsers: activeUsers ?? this.activeUsers,
+        remoteCursors: remoteCursors ?? this.remoteCursors,
+        isLoading: isLoading ?? this.isLoading,
+        error: error ?? this.error,
+      );
 }
 
 class PresenceNotifier extends StateNotifier<PresenceState> {
@@ -160,8 +162,10 @@ class PresenceNotifier extends StateNotifier<PresenceState> {
   void _handleUserLeave(Map<String, dynamic> message) {
     final userId = message['user_id'] as String;
 
-    final newUsers = state.activeUsers.where((u) => u.userId != userId).toList();
-    final newCursors = Map<String, CursorPosition>.from(state.remoteCursors)..remove(userId);
+    final newUsers =
+        state.activeUsers.where((u) => u.userId != userId).toList();
+    final newCursors = Map<String, CursorPosition>.from(state.remoteCursors)
+      ..remove(userId);
 
     state = state.copyWith(
       activeUsers: newUsers,

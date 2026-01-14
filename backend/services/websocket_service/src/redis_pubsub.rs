@@ -6,7 +6,6 @@
 
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use tokio::spawn;
 use redis::{AsyncCommands, Client as RedisClient};
 use uuid::Uuid;
 use chrono::Utc;

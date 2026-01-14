@@ -3,16 +3,19 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-final websocketServiceProvider = Provider<WebSocketService>((ref) => WebSocketService());
+final websocketServiceProvider =
+    Provider<WebSocketService>((ref) => WebSocketService());
 
 class WebSocketService {
   WebSocketChannel? _channel;
   final _messageController = StreamController<dynamic>.broadcast();
-  final _connectionStateController = StreamController<ConnectionState>.broadcast();
+  final _connectionStateController =
+      StreamController<ConnectionState>.broadcast();
   final _presenceController = StreamController<List<ActiveUser>>.broadcast();
 
   Stream<dynamic> get messages => _messageController.stream;
-  Stream<ConnectionState> get connectionState => _connectionStateController.stream;
+  Stream<ConnectionState> get connectionState =>
+      _connectionStateController.stream;
   Stream<List<ActiveUser>> get presence => _presenceController.stream;
 
   ConnectionState _currentState = ConnectionState.disconnected;
@@ -37,7 +40,8 @@ class WebSocketService {
     _updateConnectionState(ConnectionState.connecting);
 
     try {
-      final wsUrl = Uri.parse('$serverUrl/ws/documents/$documentId?user_id=$userId');
+      final wsUrl =
+          Uri.parse('$serverUrl/ws/documents/$documentId?user_id=$userId');
 
       if (authToken != null) {
         _channel = WebSocketChannel.connect(
@@ -191,7 +195,8 @@ class WebSocketService {
 
       _messageController.add(json);
     } catch (e) {
-      _messageController.addError(WebSocketException('Failed to parse message: $e'));
+      _messageController
+          .addError(WebSocketException('Failed to parse message: $e'));
     }
   }
 
@@ -205,11 +210,9 @@ class WebSocketService {
     }
   }
 
-  void _handleAwarenessMessage(Map<String, dynamic> json) {
-  }
+  void _handleAwarenessMessage(Map<String, dynamic> json) {}
 
-  void _handleCursorMessage(Map<String, dynamic> json) {
-  }
+  void _handleCursorMessage(Map<String, dynamic> json) {}
 
   void _handleDocumentUpdate(Map<String, dynamic> json) {
     final payload = json['payload'] as Map<String, dynamic>;
@@ -218,11 +221,11 @@ class WebSocketService {
     }
   }
 
-  void _handleUserJoin(Map<String, dynamic> json) {
-  }
+  void _handleUserJoin(Map<String, dynamic> json) {}
 
   void _handleUserLeave(Map<String, dynamic> json) {
-    json['payload'] as Map<String, dynamic>;
+    // final payload = json['payload'] as Map<String, dynamic>;
+    // TODO: Process user leave payload if needed
   }
 
   void _handleError(error) {
@@ -289,11 +292,11 @@ class CursorPosition {
   });
 
   Map<String, dynamic> toJson() => {
-    'x': x,
-    'y': y,
-    'selection_start': selectionStart,
-    'selection_end': selectionEnd,
-  };
+        'x': x,
+        'y': y,
+        'selection_start': selectionStart,
+        'selection_end': selectionEnd,
+      };
 }
 
 class ActiveUser {
@@ -307,7 +310,8 @@ class ActiveUser {
     required this.userId,
     required this.displayName,
     required this.color,
-    required this.lastActive, this.cursor,
+    required this.lastActive,
+    this.cursor,
   });
 
   ActiveUser copyWith({
@@ -316,28 +320,29 @@ class ActiveUser {
     String? color,
     CursorPosition? cursor,
     DateTime? lastActive,
-  }) => ActiveUser(
-      userId: userId ?? this.userId,
-      displayName: displayName ?? this.displayName,
-      color: color ?? this.color,
-      cursor: cursor ?? this.cursor,
-      lastActive: lastActive ?? this.lastActive,
-    );
+  }) =>
+      ActiveUser(
+        userId: userId ?? this.userId,
+        displayName: displayName ?? this.displayName,
+        color: color ?? this.color,
+        cursor: cursor ?? this.cursor,
+        lastActive: lastActive ?? this.lastActive,
+      );
 
   factory ActiveUser.fromJson(Map<String, dynamic> json) => ActiveUser(
-      userId: json['user_id'] as String,
-      displayName: json['display_name'] as String,
-      color: json['color'] as String,
-      cursor: json['cursor'] != null
-          ? CursorPosition(
-              x: (json['cursor']['x'] as num).toDouble(),
-              y: (json['cursor']['y'] as num).toDouble(),
-              selectionStart: json['cursor']['selection_start'] as int?,
-              selectionEnd: json['cursor']['selection_end'] as int?,
-            )
-          : null,
-      lastActive: DateTime.parse(json['last_active'] as String),
-    );
+        userId: json['user_id'] as String,
+        displayName: json['display_name'] as String,
+        color: json['color'] as String,
+        cursor: json['cursor'] != null
+            ? CursorPosition(
+                x: (json['cursor']['x'] as num).toDouble(),
+                y: (json['cursor']['y'] as num).toDouble(),
+                selectionStart: json['cursor']['selection_start'] as int?,
+                selectionEnd: json['cursor']['selection_end'] as int?,
+              )
+            : null,
+        lastActive: DateTime.parse(json['last_active'] as String),
+      );
 }
 
 class WebSocketException implements Exception {

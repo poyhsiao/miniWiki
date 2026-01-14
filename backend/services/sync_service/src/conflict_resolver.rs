@@ -283,7 +283,7 @@ mod tests {
 
         // Missing updates: client needs clock 6-10 from client 1, and clock 0-5 from client 2
         assert!(missing.contains(&(1, 6, 10)));
-        assert!(missing.contains &(2, 0, 5));
+        assert!(missing.contains(&(2, 0, 5)));
     }
 
     #[test]
