@@ -2,6 +2,8 @@ pub mod handlers;
 pub mod jwt;
 pub mod models;
 pub mod password;
+pub mod permissions;
+pub mod rbac;
 pub mod repository;
 
 pub fn config(cfg: &mut actix_web::web::ServiceConfig) {

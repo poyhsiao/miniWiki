@@ -7,6 +7,7 @@
       "name": "miniwiki",
       "version": "0.1.0",
       "dependencies": [
+        "collection",
         "connectivity_plus",
         "cupertino_icons",
         "device_info_plus",
@@ -270,6 +271,11 @@
     {
       "name": "cupertino_icons",
       "version": "1.0.8",
+      "dependencies": []
+    },
+    {
+      "name": "collection",
+      "version": "1.19.1",
       "dependencies": []
     },
     {
@@ -542,11 +548,6 @@
         "term_glyph",
         "test_api"
       ]
-    },
-    {
-      "name": "collection",
-      "version": "1.19.1",
-      "dependencies": []
     },
     {
       "name": "source_helper",

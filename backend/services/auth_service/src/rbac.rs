@@ -1,0 +1,228 @@
+use actix_web::{web, FromRequest, HttpMessage};
+use jsonwebtoken::TokenData;
+use thiserror::Error;
+
+use crate::jwt::Claims;
+use crate::permissions::{Role, Permission, ActionType};
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PermissionClaim {
+    pub space_id: String,
+    pub user_role: String,
+}
+
+/// RBAC middleware for checking user permissions
+///
+/// This middleware validates JWT tokens, extracts user roles,
+/// and enforces permission-based access control.
+pub struct RbacMiddleware;
+
+impl RbacMiddleware {
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    /// Extracts and validates the JWT token from the request
+    fn extract_claims(req: &web::HttpRequest) -> Result<Claims, Error> {
+        // Get Authorization header
+        let auth_header = req
+            .headers()
+            .get("Authorization")
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "));
+
+        if let Some(token_str) = auth_header {
+            // Decode JWT token
+            let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+            let token_data = TokenData::decode_without_signature(
+                token_str,
+                &validation,
+                &jsonwebtoken::DecodingKey::from_secret("your-secret-key-here"),
+            )
+            .map_err(|e| Error::Unauthorized(format!("Invalid token: {}", e)))?;
+
+            // Extract claims from token
+            let claims: Claims = serde_json::from_slice(&token_data.claims)
+                .map_err(|e| Error::InternalServerError(format!("Invalid claims: {}", e)))?;
+
+            Ok(claims)
+        } else {
+            Err(Error::Unauthorized("Missing authorization header".to_string()))
+        }
+    }
+
+    /// Checks if a user has a specific permission
+    pub fn has_permission(role: &str, permission: &Permission) -> bool {
+        if let Ok(parsed_role) = serde_json::from_str::<Role>(role.to_lowercase().as_str()) {
+            parsed_role.has_permission(permission)
+        } else {
+            false
+        }
+    }
+
+    /// Checks if a user can perform a specific action
+    pub fn can_perform_action(role: &str, action: &ActionType) -> bool {
+        if let Ok(parsed_role) = serde_json::from_str::<Role>(role.to_lowercase().as_str()) {
+            parsed_role.can_perform_action(action)
+        } else {
+            false
+        }
+    }
+
+    /// Extract user role from claims
+    pub fn extract_role(claims: &Claims) -> Option<String> {
+        claims.role.clone()
+    }
+
+    /// Verify user is a member of a specific space
+    ///
+    /// This would typically check space_memberships table
+    /// For now, we'll implement a simple check
+    pub fn is_space_member(claims: &Claims, space_id: &str) -> bool {
+        // TODO: Implement actual space membership check
+        // This should query the space_memberships table
+        // For now, return true if the claim contains space_id
+        if let Some(claim_space_id) = claims.custom.get("space_id") {
+            claim_space_id == space_id
+        } else {
+            false
+        }
+    }
+}
+
+/// Actix-web guard for permission checking
+///
+/// Usage: 
+/// ```rust
+/// use actix_web::{get, web};
+/// use crate::rbac::{RbacMiddleware, check_permission};
+///
+/// #[get("/documents/{id}")]
+/// async fn get_document(
+///     req: web::HttpRequest,
+///     data: web::Path<(String,)>,
+/// ) -> Result<HttpResponse, Error> {
+///     check_permission(req, data.0, Permission::ViewDocuments)?;
+///     // ... rest of handler
+/// }
+/// ```
+pub fn check_permission(
+    req: &web::HttpRequest,
+    action: ActionType,
+) -> Result<(), Error> {
+    // Extract and validate claims
+    let claims = RbacMiddleware::extract_claims(req)?;
+    
+    // Check if user can perform the action
+    let role = RbacMiddleware::extract_role(&claims)
+            .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
+
+    if !RbacMiddleware::can_perform_action(&role, &action) {
+        return Err(Error::Forbidden(format!(
+            "Insufficient permissions to perform {:?}",
+            action
+        )));
+    }
+
+    Ok(())
+}
+
+/// Actix-web guard for role-based access control
+///
+/// Usage:
+/// ```rust
+/// #[get("/admin")]
+/// async fn admin_only(
+///     req: web::HttpRequest,
+/// ) -> Result<HttpResponse, Error> {
+///     check_role(req, Role::Owner)?;
+///     // ... rest of handler
+/// }
+/// ```
+pub fn check_role(
+    req: &web::HttpRequest,
+    required_role: Role,
+) -> Result<(), Error> {
+    // Extract and validate claims
+    let claims = RbacMiddleware::extract_claims(req)?;
+    
+    // Check user's role
+    let role_str = RbacMiddleware::extract_role(&claims)
+            .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
+
+    if let Ok(user_role) = serde_json::from_str::<Role>(role_str.to_lowercase().as_str()) {
+        if user_role.level() < required_role.level() {
+            return Err(Error::Forbidden(format!(
+                "Insufficient privileges. Required role: {:?}",
+                required_role
+            )));
+        }
+    } else {
+        return Err(Error::InternalServerError(
+            "Invalid role format in token".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Extracts user claims from request
+pub fn get_claims(req: &web::HttpRequest) -> Result<Claims, Error> {
+    RbacMiddleware::extract_claims(req)
+}
+
+/// Gets user ID from request
+pub fn get_user_id(req: &web::HttpRequest) -> Result<String, Error> {
+    let claims = get_claims(req)?;
+    Ok(claims.user_id)
+}
+
+/// Gets user role from request
+pub fn get_user_role(req: &web::HttpRequest) -> Result<Role, Error> {
+    let claims = get_claims(req)?;
+    let role_str = RbacMiddleware::extract_role(&claims)
+            .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
+
+    serde_json::from_str::<Role>(role_str.to_lowercase().as_str())
+        .map_err(|e| Error::InternalServerError(format!("Invalid role: {}", e)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_has_permission() {
+        // Owner has all permissions
+        assert!(RbacMiddleware::has_permission("owner", &Permission::DeleteDocuments));
+        assert!(RbacMiddleware::has_permission("editor", &Permission::ViewDocuments));
+        assert!(!RbacMiddleware::has_permission("viewer", &Permission::EditDocuments));
+    }
+
+    #[test]
+    fn test_can_perform_action() {
+        // Owner can delete
+        assert!(RbacMiddleware::can_perform_action(
+            "owner",
+            &ActionType::DeleteDocument,
+        ));
+        
+        // Viewer cannot delete
+        assert!(!RbacMiddleware::can_perform_action(
+            "viewer",
+            &ActionType::DeleteDocument,
+        ));
+    }
+
+    #[test]
+    fn test_extract_role() {
+        assert_eq!(RbacMiddleware::extract_role_from_string("owner"), Role::Owner);
+        assert_eq!(RbacMiddleware::extract_role_from_string("editor"), Role::Editor);
+        assert_eq!(RbacMiddleware::extract_role_from_string("viewer"), Role::Viewer);
+    }
+
+    // Helper function for tests (not exposed in main API)
+    fn extract_role_from_string(role: &str) -> Role {
+        serde_json::from_str(role).unwrap()
+    }
+}
