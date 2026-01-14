@@ -111,6 +111,9 @@ class SyncService {
   /// Whether the queue worker is running
   bool _queueWorkerRunning = false;
 
+  /// Whether queue processing is in progress (prevents concurrent execution)
+  bool _isProcessing = false;
+
   /// Failed sync count (current session)
   int _failedCount = 0;
 
@@ -171,58 +174,64 @@ class SyncService {
   /// Process sync queue
   Future<void> _processQueue() async {
     if (!_isOnline) return;
+    if (_isProcessing) return;
+    _isProcessing = true;
 
-    final items = _syncDatasource.getPendingItems();
-    if (items.isEmpty) return;
+    try {
+      final items = _syncDatasource.getPendingItems();
+      if (items.isEmpty) return;
 
-    _syncEventsController.add(SyncEvent(
-      type: SyncEventType.started,
-      timestamp: DateTime.now(),
-      message: 'Processing ${items.length} items',
-    ));
+      _syncEventsController.add(SyncEvent(
+        type: SyncEventType.started,
+        timestamp: DateTime.now(),
+        message: 'Processing ${items.length} items',
+      ));
 
-    int successCount = 0;
-    int failedCount = 0;
+      int successCount = 0;
+      int failedCount = 0;
 
-    for (final item in items) {
-      final entityType = item['entityType'] as String;
-      final entityId = item['entityId'] as String;
-      final operation = item['operation'] as String;
-      final data = item['data'] as Map<String, dynamic>?;
+      for (final item in items) {
+        final entityType = item['entityType'] as String;
+        final entityId = item['entityId'] as String;
+        final operation = item['operation'] as String;
+        final data = item['data'] as Map<String, dynamic>?;
 
-      try {
-        bool success = false;
+        try {
+          bool success = false;
 
-        switch (entityType) {
-          case 'document':
-            success = await _syncDocument(entityId, operation, data ?? {});
-            break;
-          default:
-            print('[SyncService] Unknown entity type: $entityType');
-        }
+          switch (entityType) {
+            case 'document':
+              success = await _syncDocument(entityId, operation, data ?? {});
+              break;
+            default:
+              print('[SyncService] Unknown entity type: $entityType');
+          }
 
-        if (success) {
+          if (success) {
+            await _syncDatasource.removeFromQueue(entityType, entityId);
+            successCount++;
+          } else {
+            throw Exception('Sync returned false');
+          }
+        } catch (e) {
+          print('[SyncService] Failed to sync $entityType:$entityId - $e');
           await _syncDatasource.removeFromQueue(entityType, entityId);
-          successCount++;
-        } else {
-          throw Exception('Sync returned false');
+          await _syncDatasource.addToFailedQueue(
+              entityType, entityId, operation, data ?? {}, e.toString());
+          failedCount++;
+          _failedCount++;
+          _totalFailedCount++;
         }
-      } catch (e) {
-        print('[SyncService] Failed to sync $entityType:$entityId - $e');
-        await _syncDatasource.removeFromQueue(entityType, entityId);
-        await _syncDatasource.addToFailedQueue(
-            entityType, entityId, operation, data ?? {}, e.toString());
-        failedCount++;
-        _failedCount++;
-        _totalFailedCount++;
       }
-    }
 
-    _syncEventsController.add(SyncEvent(
-      type: SyncEventType.completed,
-      timestamp: DateTime.now(),
-      message: 'Success: $successCount, Failed: $failedCount',
-    ));
+      _syncEventsController.add(SyncEvent(
+        type: SyncEventType.completed,
+        timestamp: DateTime.now(),
+        message: 'Success: $successCount, Failed: $failedCount',
+      ));
+    } finally {
+      _isProcessing = false;
+    }
   }
 
   /// Sync a document item
@@ -305,7 +314,8 @@ class SyncService {
 final syncServiceProvider = Provider<SyncService>((ref) {
   final crdtService = ref.watch(crdtServiceProvider);
   final syncDatasource = ref.watch(pendingSyncDatasourceProvider);
-  final syncService = SyncService(crdtService, syncDatasource, ApiClient.defaultInstance());
+  final syncService =
+      SyncService(crdtService, syncDatasource, ApiClient.defaultInstance());
   ref.onDispose(syncService.dispose);
   return syncService;
 });
