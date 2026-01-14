@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:miniwiki/presentation/dialogs/export_dialog.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
+import 'package:miniwiki/presentation/providers/export_provider.dart';
+import 'package:miniwiki/services/export_service.dart';
 import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
@@ -147,6 +150,11 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
           ),
         if (widget.documentId != null)
           IconButton(
+            icon: const Icon(Icons.file_download),
+            onPressed: () => _showExportDialog(context),
+          ),
+        if (widget.documentId != null)
+          IconButton(
             icon: const Icon(Icons.more_vert),
             onPressed: () => _showMoreOptions(context),
           ),
@@ -237,6 +245,42 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
       context: context,
       builder: (context) =>
           _VersionHistorySheet(documentId: widget.documentId!),
+    );
+  }
+
+  void _showExportDialog(BuildContext context) {
+    final document = ref.read(documentEditProvider).document;
+    final documentTitle = document?.title ??
+        (_titleController.text.isEmpty ? 'Untitled' : _titleController.text);
+    showDialog(
+      context: context,
+      builder: (context) => ExportDialog(
+        documentId: widget.documentId!,
+        documentTitle: documentTitle,
+        onExportComplete: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Document exported successfully')),
+          );
+        },
+        onShare: () async {
+          try {
+            final path =
+                await ref.read(exportNotifierProvider.notifier).shareExport(
+                      documentId: widget.documentId!,
+                      format: ExportFormat.markdown,
+                    );
+            if (path != null && context.mounted) {
+              // TODO: Implement native share
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to share: $e')),
+              );
+            }
+          }
+        },
+      ),
     );
   }
 

@@ -348,37 +348,37 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 5
 
-- [ ] T172 [P] [US5] Create backend/tests/documents/version_restore_test.rs for version restore
-- [ ] T173 [P] [US5] Create flutter_app/test/version_service_test.dart for version service tests
+- [x] T172 [P] [US5] Create backend/tests/documents/version_restore_test.rs for version restore
+- [x] T173 [P] [US5] Create flutter_app/test/version_service_test.dart for version service tests
 
 ### Backend Implementation for User Story 5
 
-- [ ] T174 [US5] Create document_versions table migration in backend/migrations/006_document_versions.sql
-- [ ] T175 [US5] Create backend/services/document_service/src/versions.rs with version handlers
-- [ ] T176 [US5] Implement GET /documents/{documentId}/versions endpoint
-- [ ] T177 [US5] Implement GET /documents/{documentId}/versions/{versionId} endpoint
-- [ ] T178 [US5] Implement POST /documents/{documentId}/versions/{versionId}/restore endpoint
-- [ ] T179 [US5] Implement automatic version creation on significant changes
+- [x] T174 [US5] Create document_versions table migration in backend/migrations/006_document_versions.sql (exists in 001_initial_schema.sql)
+- [x] T175 [US5] Create backend/services/document_service/src/versions.rs with version handlers (integrated in handlers.rs)
+- [x] T176 [US5] Implement GET /documents/{documentId}/versions endpoint
+- [x] T177 [US5] Implement GET /documents/{documentId}/versions/{versionId} endpoint
+- [x] T178 [US5] Implement POST /documents/{documentId}/versions/{versionId}/restore endpoint
+- [x] T179 [US5] Implement automatic version creation on significant changes
 
 ### Frontend Implementation for User Story 5
 
-- [ ] T180 [US5] Create flutter_app/lib/domain/entities/document_version.dart with version entity
-- [ ] T181 [US5] Create flutter_app/lib/domain/repositories/version_repository.dart interface
-- [ ] T182 [US5] Create flutter_app/lib/data/repositories/version_repository_impl.dart
-- [ ] T183 [US5] Create flutter_app/lib/services/version_service.dart with version operations
-- [ ] T184 [US5] Create flutter_app/lib/presentation/providers/version_provider.dart with version state
-- [ ] T185 [US5] Create flutter_app/lib/presentation/pages/documents/version_history_page.dart
-- [ ] T186 [US5] Create flutter_app/lib/presentation/widgets/version_comparison_widget.dart
-- [ ] T187 [US5] Implement version list display in version_history_page.dart
-- [ ] T188 [US5] Implement version comparison view
-- [ ] T189 [US5] Implement version restore flow
+- [x] T180 [US5] Create flutter_app/lib/domain/entities/document_version.dart with version entity
+- [x] T181 [US5] Create flutter_app/lib/domain/repositories/version_repository.dart interface
+- [x] T182 [US5] Create flutter_app/lib/data/repositories/version_repository_impl.dart
+- [x] T183 [US5] Create flutter_app/lib/services/version_service.dart with version operations
+- [x] T184 [US5] Create flutter_app/lib/presentation/providers/version_provider.dart with version state
+- [x] T185 [US5] Create flutter_app/lib/presentation/pages/documents/version_history_page.dart
+- [x] T186 [US5] Create flutter_app/lib/presentation/widgets/version_comparison_widget.dart
+- [x] T187 [US5] Implement version list display in version_history_page.dart
+- [x] T188 [US5] Implement version comparison view
+- [x] T189 [US5] Implement version restore flow
 
 ### Integration for User Story 5
 
-- [ ] T190 [US5] Verify version creation works correctly
-- [ ] T191 [US5] Verify version restore creates new version (doesn't overwrite)
-- [ ] T192 [US5] Test version list loading performance
-- [ ] T193 [US5] Verify flutter_app version history integrates correctly
+- [x] T190 [US5] Verify version creation works correctly
+- [x] T191 [US5] Verify version restore creates new version (doesn't overwrite)
+- [x] T192 [US5] Test version list loading performance
+- [x] T193 [US5] Verify flutter_app version history integrates correctly
 
 **Checkpoint**: User Story 5 complete - version history and restore is fully functional
 
@@ -392,32 +392,32 @@ Based on `plan.md` structure:
 
 ### Tests for User Story 7
 
-- [ ] T194 [P] [US7] Create backend/tests/rbac/permissions_test.rs for RBAC operations
-- [ ] T195 [P] [US7] Create flutter_app/test/rbac_service_test.dart for RBAC service tests
+- [x] T194 [P] [US7] Create backend/tests/rbac/permissions_test.rs for RBAC operations
+- [x] T195 [P] [US7] Create flutter_app/test/rbac_service_test.dart for RBAC service tests
 
 ### Backend Implementation for User Story 7
 
-- [ ] T196 [US7] Create backend/services/auth_service/src/permissions.rs with permission definitions
-- [ ] T197 [US7] Create backend/services/auth_service/src/rbac.rs with RBAC middleware
-- [ ] T198 [US7] Implement permission checking in document handlers
-- [ ] T199 [US7] Implement permission checking in space handlers
-- [ ] T200 [US7] Add role validation to all endpoints
+- [x] T196 [US7] Create backend/services/auth_service/src/permissions.rs with permission definitions
+- [x] T197 [US7] Create backend/services/auth_service/src/rbac.rs with RBAC middleware
+- [x] T198 [US7] Implement permission checking in document handlers
+- [x] T199 [US7] Implement permission checking in space handlers
+- [x] T200 [US7] Add role validation to all endpoints
 
 ### Frontend Implementation for User Story 7
 
-- [ ] T201 [US7] Create flutter_app/lib/domain/value_objects/role.dart with role types
-- [ ] T202 [US7] Create flutter_app/lib/services/rbac_service.dart with permission checks
-- [ ] T203 [US7] Create flutter_app/lib/presentation/providers/permission_provider.dart with permission state
-- [ ] T204 [US7] Create flutter_app/lib/presentation/widgets/permission_aware_widget.dart for UI filtering
-- [ ] T205 [US7] Implement role-based UI in document_editor_page.dart
-- [ ] T206 [US7] Implement role-based UI in member_management_page.dart
+- [x] T201 [US7] Create flutter_app/lib/domain/value_objects/role.dart with role types
+- [x] T202 [US7] Create flutter_app/lib/services/rbac_service.dart with permission checks
+- [x] T203 [US7] Create flutter_app/lib/presentation/providers/permission_provider.dart with permission state
+- [x] T204 [US7] Create flutter_app/lib/presentation/widgets/permission_aware_widget.dart for UI filtering
+- [x] T205 [US7] Implement role-based UI in document_editor_page.dart
+- [x] T206 [US7] Implement role-based UI in member_management_page.dart
 
 ### Integration for User Story 7
 
-- [ ] T207 [US7] Verify permission checking works correctly for all roles
-- [ ] T208 [US7] Test unauthorized access is properly blocked
-- [ ] T209 [US7] Verify flutter_app UI updates based on user role
-- [ ] T210 [US7] Test role escalation scenarios
+- [x] T207 [US7] Verify permission checking works correctly for all roles
+- [x] T208 [US7] Test unauthorized access is properly blocked
+- [x] T209 [US7] Verify flutter_app UI updates based on user role
+- [x] T210 [US7] Test role escalation scenarios
 
 **Checkpoint**: User Story 7 complete - RBAC is fully functional
 

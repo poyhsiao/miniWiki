@@ -2,6 +2,7 @@ use actix_web::{web, Responder, HttpResponse};
 use tracing::error;
 use crate::models::*;
 use crate::repository::DocumentRepository;
+use crate::export::{ExportService, ExportFormat};
 use shared_errors::AppError;
 use validator::Validate;
 
@@ -648,6 +649,111 @@ pub async fn get_version_diff(
                 .json(ApiResponse::<()>::error("VERSION_NOT_FOUND", "One or both versions not found"))
         }
         Err(_) => {
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
+        }
+    }
+}
+
+// Export document handler
+pub async fn export_document(
+    document_id: web::Path<String>,
+    query: web::Query<ExportQuery>,
+    repo: web::Data<DocumentRepository>,
+    http_req: actix_web::HttpRequest,
+) -> impl Responder {
+    let document_id = document_id.into_inner();
+
+    // Parse format from query parameter
+    let format = match query.format.as_deref() {
+        Some("markdown") | Some("md") => ExportFormat::Markdown,
+        Some("html") | Some("htm") => ExportFormat::Html,
+        Some("pdf") => ExportFormat::Pdf,
+        Some("json") => ExportFormat::Json,
+        Some(fmt) => {
+            return HttpResponse::BadRequest()
+                .json(ApiResponse::<()>::error("INVALID_FORMAT", &format!("Unknown export format: {}. Supported formats: markdown, html, pdf, json", fmt)));
+        }
+        None => ExportFormat::Markdown, // Default to markdown
+    };
+
+    let user_id = match extract_user_id(&http_req) {
+        Ok(id) => id,
+        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
+    };
+
+    // Check document access
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {}
+        Ok(false) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this document"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    // Get document
+    match repo.get_by_id(&document_id).await {
+        Ok(Some(document)) => {
+            // Create export service with temp directory
+            let temp_dir = std::env::temp_dir().join("miniwiki_exports");
+            let export_service = ExportService::new(temp_dir);
+
+            // Create metadata
+            let metadata = Some(crate::export::DocumentMetadata {
+                id: document.id.to_string(),
+                title: document.title.clone(),
+                created_at: Some(document.created_at),
+                updated_at: Some(document.updated_at),
+                created_by: Some(document.created_by.to_string()),
+                icon: document.icon.clone(),
+            });
+
+            // Export the document
+            match export_service.export_document(
+                &document_id,
+                &document.title,
+                &document.content.0,
+                metadata,
+                format,
+            ).await {
+                Ok(export_response) => {
+                    // Read the file and return as response
+                    let file_path = export_service.output_dir().join(&export_response.file_name);
+                    match std::fs::read(&file_path) {
+                        Ok(file_content) => {
+                            // Simple filename escaping for Content-Disposition
+                            let safe_filename = export_response.file_name.replace('"', "\\\"");
+                            let content_disposition = format!("attachment; filename=\"{}\"", safe_filename);
+
+                            HttpResponse::Ok()
+                                .content_type(export_response.content_type)
+                                .header("Content-Disposition", content_disposition)
+                                .body(file_content)
+                        }
+                        Err(e) => {
+                            error!("Error reading exported file: {:?}", e);
+                            HttpResponse::InternalServerError()
+                                .json(ApiResponse::<()>::error("EXPORT_ERROR", "Failed to read exported file"))
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("Export error: {:?}", e);
+                    HttpResponse::InternalServerError()
+                        .json(ApiResponse::<()>::error("EXPORT_ERROR", &format!("Export failed: {}", e)))
+                }
+            }
+        }
+        Ok(None) => {
+            HttpResponse::NotFound()
+                .json(ApiResponse::<()>::error("DOC_NOT_FOUND", "Document not found"))
+        }
+        Err(e) => {
+            error!("Database error getting document for export: {:?}", e);
             HttpResponse::InternalServerError()
                 .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."))
         }

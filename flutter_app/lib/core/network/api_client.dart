@@ -79,6 +79,9 @@ class ApiClient {
 
   ApiClient(this._dio);
 
+  /// Expose the Dio instance for advanced usage
+  Dio get dio => _dio;
+
   factory ApiClient.defaultInstance({String? baseUrl}) {
     final envBaseUrl = const String.fromEnvironment('API_BASE_URL',
         defaultValue: 'http://localhost:8080/api/v1');
