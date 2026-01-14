@@ -9,7 +9,6 @@
 //! - DELETE /comments/{commentId} - Delete comment
 
 use actix_web::{web, Responder, HttpResponse, HttpRequest};
-use serde::{Deserialize, Serialize};
 use validator::Validate;
 use tracing::error;
 use shared_errors::AppError;
