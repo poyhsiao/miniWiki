@@ -233,11 +233,13 @@ class SyncService {
       switch (operation) {
         case 'create':
           final spaceId = data['spaceId'] as String?;
-          if (spaceId != null) {
-            await _apiClient.post('/spaces/$spaceId/documents', data: data);
-            return true;
+          if (spaceId == null) {
+            print(
+                '[SyncService] Cannot create document: missing spaceId in data: $data');
+            return false;
           }
-          return false;
+          await _apiClient.post('/spaces/$spaceId/documents', data: data);
+          return true;
 
         case 'update':
           await _apiClient.patch('/documents/$documentId', data: data);

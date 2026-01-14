@@ -45,6 +45,36 @@ class PendingSyncDatasource {
   }
 
   // ============================================
+  // FAILED QUEUE OPERATIONS
+  // ============================================
+
+  /// Add item to failed queue
+  Future<void> addToFailedQueue(
+      String entityType, String entityId, String error) async {
+    await _syncQueue.addFailedItem(entityType, entityId, error);
+  }
+
+  /// Get all failed items
+  List<Map<String, dynamic>> getFailedItems() {
+    return _syncQueue.getFailedItems();
+  }
+
+  /// Remove item from failed queue
+  Future<void> removeFromFailedQueue(String entityType, String entityId) async {
+    await _syncQueue.removeFailedItem(entityType, entityId);
+  }
+
+  /// Clear failed queue
+  Future<void> clearFailedQueue() async {
+    await _syncQueue.clearFailedQueue();
+  }
+
+  /// Get failed queue size
+  int getFailedQueueSize() {
+    return _syncQueue.getFailedQueueSize();
+  }
+
+  // ============================================
   // DOCUMENT CACHE OPERATIONS
   // ============================================
 

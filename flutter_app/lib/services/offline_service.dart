@@ -157,11 +157,34 @@ class OfflineService {
   Future<void> markQueueItemFailed(
       String entityType, String entityId, String error) async {
     print('[OfflineService] Sync failed for $entityType:$entityId - $error');
-    await _syncDatasource.removeFromQueue(entityType, entityId);
+    await _syncDatasource.addToFailedQueue(entityType, entityId, error);
     _state = _state.copyWith(
       failedQueueCount: _state.failedQueueCount + 1,
     );
     _stateController.add(_state);
+  }
+
+  /// Get failed queue items
+  List<Map<String, dynamic>> getFailedItems() {
+    return _syncDatasource.getFailedItems();
+  }
+
+  /// Retry failed items
+  Future<void> retryFailedItems() async {
+    final failedItems = _syncDatasource.getFailedItems();
+    for (final item in failedItems) {
+      await _syncDatasource.removeFromFailedQueue(
+        item['entityType'] as String,
+        item['entityId'] as String,
+      );
+      await _syncDatasource.addToQueue(
+        item['entityType'] as String,
+        item['entityId'] as String,
+        item['operation'] as String,
+        item['data'] as Map<String, dynamic>,
+      );
+    }
+    await _updateState();
   }
 
   /// Clear all queue items

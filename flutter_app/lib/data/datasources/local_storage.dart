@@ -139,6 +139,7 @@ class DocumentCacheService {
 /// Sync queue service using local storage
 class SyncQueueService {
   static const String _queuePrefix = 'sync_queue_';
+  static const String _failedPrefix = 'sync_failed_';
 
   final LocalStorageService _storage;
 
@@ -187,6 +188,53 @@ class SyncQueueService {
   /// Get queue size
   int getQueueSize() {
     return getQueueItems().length;
+  }
+
+  // ============================================
+  // FAILED QUEUE OPERATIONS
+  // ============================================
+
+  /// Add item to failed queue
+  Future<void> addFailedItem(
+      String entityType, String entityId, String error) async {
+    final item = {
+      'entityType': entityType,
+      'entityId': entityId,
+      'error': error,
+      'failedAt': DateTime.now().toIso8601String(),
+    };
+    final json = jsonEncode(item);
+    await _storage.setString('$_failedPrefix${entityType}_$entityId', json);
+  }
+
+  /// Get all failed items
+  List<Map<String, dynamic>> getFailedItems() {
+    final items = _storage.getValuesByPrefix(_failedPrefix);
+    return items
+        .map((json) {
+          try {
+            return jsonDecode(json) as Map<String, dynamic>;
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  /// Remove item from failed queue
+  Future<void> removeFailedItem(String entityType, String entityId) async {
+    await _storage.remove('$_failedPrefix${entityType}_$entityId');
+  }
+
+  /// Clear failed queue
+  Future<void> clearFailedQueue() async {
+    await _storage.removeByPrefix(_failedPrefix);
+  }
+
+  /// Get failed queue size
+  int getFailedQueueSize() {
+    return getFailedItems().length;
   }
 }
 
