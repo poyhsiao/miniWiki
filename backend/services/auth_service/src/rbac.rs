@@ -1,4 +1,5 @@
-use actix_web::{web, FromRequest, HttpMessage, HttpRequest};
+use actix_web::{web, FromRequest, HttpMessage, HttpRequest, HttpResponse, ResponseError};
+use actix_web::http::StatusCode;
 use jsonwebtoken::TokenData;
 use thiserror::Error;
 use serde::Deserialize;
@@ -14,6 +15,25 @@ pub enum Error {
     Forbidden(String),
     #[error("Internal server error: {0}")]
     InternalServerError(String),
+}
+
+impl ResponseError for Error {
+    fn error_response(&self) -> HttpResponse {
+        match self {
+            Error::Unauthorized(msg) => {
+                HttpResponse::build(StatusCode::UNAUTHORIZED)
+                    .body(msg.to_string())
+            }
+            Error::Forbidden(msg) => {
+                HttpResponse::build(StatusCode::FORBIDDEN)
+                    .body(msg.to_string())
+            }
+            Error::InternalServerError(msg) => {
+                HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body("Internal server error")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -87,35 +107,41 @@ impl RbacMiddleware {
     ///
     /// This would typically check space_memberships table
     /// For now, we'll implement a simple check
+    /// 
+    /// IMPORTANT: This is a stub implementation that always returns false
+    /// to enforce authorization until actual DB-backed membership checking is implemented.
+    /// Once space_memberships table is available, this should query it
+    /// to verify that Claims::user_id is actually a member of the space.
     pub fn is_space_member(claims: &Claims, space_id: &str) -> bool {
         // TODO: Implement actual space membership check
         // This should query space_memberships table
-        // For now, return true for all users (simplified implementation)
-        true
+        // SECURITY: Return false by default to prevent auth bypass
+        // until real implementation is added
+        false
     }
 }
 
-/// Actix-web guard for permission checking
-///
-/// Usage: 
-/// ```rust,ignore
-/// use actix_web::{get, web};
-/// use crate::rbac::{RbacMiddleware, check_permission};
-/// use crate::permissions::Permission;
-///
-/// #[get("/documents/{id}")]
-/// async fn get_document(
-///     req: web::HttpRequest,
-///     data: web::Path<(String,)>,
-/// ) -> Result<HttpResponse, Error> {
-///     check_permission(req, data.0, Permission::ViewDocuments)?;
-///     // ... rest of handler
-/// }
-/// ```
-pub fn check_permission(
-    req: &HttpRequest,
-    action: ActionType,
-) -> Result<(), Error> {
+ /// Actix-web guard for permission checking
+ ///
+ /// Usage: 
+ /// ```rust,ignore
+ /// use actix_web::{get, web};
+ /// use crate::rbac::{RbacMiddleware, check_permission};
+ /// use crate::permissions::ActionType;
+ ///
+ /// #[get("/documents/{id}")]
+ /// async fn get_document(
+ ///     req: web::HttpRequest,
+ ///     data: web::Path<(String,)>,
+ /// ) -> Result<HttpResponse, Error> {
+ ///     check_permission(req, ActionType::ViewDocument)?;
+ ///     // ... rest of handler
+ /// }
+ /// ```
+ pub fn check_permission(
+     req: &HttpRequest,
+     action: ActionType,
+ ) -> Result<(), Error> {
     // Extract and validate claims
     let claims = RbacMiddleware::extract_claims(req)?;
     
