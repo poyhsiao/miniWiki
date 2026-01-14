@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
+use chrono::{NaiveDateTime, Utc, DateTime};
 use sqlx::FromRow;
 
 /// File entity from database
@@ -17,8 +17,8 @@ pub struct File {
     pub storage_bucket: String,
     pub checksum: String,
     pub is_deleted: bool,
-    pub deleted_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
+    pub deleted_at: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
 }
 
 /// File with uploader info (for detail responses)
@@ -47,7 +47,7 @@ pub struct FileListQuery {
 /// File list response
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileListResponse {
-    pub files: Vec<File>,
+    pub files: Vec<FileResponse>,
     pub total: i64,
     pub limit: i64,
     pub offset: i64,
@@ -63,7 +63,7 @@ pub struct FileResponse {
     pub file_type: String,
     pub file_size: i64,
     pub download_url: String,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
 }
 
 /// Detailed file response
@@ -73,7 +73,7 @@ pub struct FileDetailResponse {
     pub uploaded_by: UploaderInfo,
     pub checksum: String,
     pub storage_path: String,
-    pub deleted_at: Option<DateTime<Utc>>,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 /// Chunked upload session response
@@ -83,7 +83,7 @@ pub struct ChunkedUploadInitResponse {
     pub upload_url: String,
     pub chunk_size: u64,
     pub total_chunks: u32,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: NaiveDateTime,
 }
 
 /// Chunk upload response
@@ -93,7 +93,7 @@ pub struct ChunkUploadResponse {
     pub uploaded_bytes: u64,
     pub chunks_uploaded: u32,
     pub total_chunks: u32,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: NaiveDateTime,
 }
 
 /// Presigned URL response

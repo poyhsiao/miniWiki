@@ -1,12 +1,11 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use uuid::Uuid;
-use std::sync::Arc;
 use std::collections::HashMap;
 use crate::models::*;
 use crate::storage::{S3Storage, StorageError};
 use sqlx::PgPool;
-use chrono::{DateTime, Utc, NaiveDateTime};
+use chrono::Utc;
 use futures_util::stream::StreamExt;
 use actix_web::http::header::HeaderMap;
 
@@ -28,7 +27,7 @@ pub struct FileListQuery {
 fn extract_boundary(headers: &HeaderMap) -> Option<String> {
     let content_type = headers.get("content-type")?.to_str().ok()?;
     let mime = content_type.parse::<mime::Mime>().ok()?;
-    let boundary = mime.params().find(|(k, _)| k == "boundary")?.1.to_string();
+    let boundary = mime.params().find(|(k, _)| *k == "boundary")?.1.to_string();
     Some(boundary)
 }
 
@@ -73,7 +72,7 @@ pub async fn upload_file(
             }
         };
 
-        let content_disposition = match field.content_disposition {
+        let content_disposition = match field.content_disposition() {
             Some(cd) => cd,
             None => continue,
         };
@@ -87,7 +86,7 @@ pub async fn upload_file(
             FIELD_SPACE_ID => {
                 if let Some(data) = field.next().await {
                     if let Ok(data) = data {
-                        if let Ok(s) = data.to_str() {
+                        if let Ok(s) = std::str::from_utf8(&data) {
                             space_id = Uuid::parse_str(s).ok();
                         }
                     }
@@ -96,7 +95,7 @@ pub async fn upload_file(
             FIELD_DOCUMENT_ID => {
                 if let Some(data) = field.next().await {
                     if let Ok(data) = data {
-                        if let Ok(s) = data.to_str() {
+                        if let Ok(s) = std::str::from_utf8(&data) {
                             document_id = Uuid::parse_str(s).ok();
                         }
                     }
@@ -105,12 +104,12 @@ pub async fn upload_file(
             FIELD_FILE_NAME => {
                 if let Some(data) = field.next().await {
                     if let Ok(data) = data {
-                        file_name = Some(data.to_str().unwrap_or("").to_string());
+                        file_name = Some(std::str::from_utf8(&data).unwrap_or("").to_string());
                     }
                 }
             }
             FIELD_FILE => {
-                let ct = field.content_type.map(|ct| ct.to_string());
+                let ct: Option<String> = field.content_type().map(|ct: &mime::Mime| ct.to_string());
                 content_type = ct;
 
                 let mut bytes = Vec::new();
@@ -124,7 +123,6 @@ pub async fn upload_file(
                 file_content = Some(bytes);
             }
             _ => {
-                // Skip unknown fields
                 while let Some(_chunk) = field.next().await {}
             }
         }
@@ -258,7 +256,7 @@ pub async fn init_chunked_upload(
 ) -> impl Responder {
     let upload_id = Uuid::new_v4();
     let now = Utc::now();
-    let expires_at = now + chrono::Duration::hours(24);
+    let expires_at = now.naive_utc() + chrono::Duration::hours(24);
 
     let chunk_size = req.chunk_size.unwrap_or(5 * 1024 * 1024);
     let total_chunks = ((req.total_size + chunk_size - 1) / chunk_size) as u32;
@@ -399,7 +397,7 @@ pub async fn upload_chunk(
         uploaded_bytes: body.len() as u64,
         chunks_uploaded: new_uploaded_count,
         total_chunks: session.total_chunks as u32,
-        expires_at: session.expires_at.map(|dt| DateTime::from_naive_utc(dt)).unwrap_or_else(|| Utc::now() + chrono::Duration::hours(24)),
+        expires_at: session.expires_at.unwrap_or_else(|| Utc::now().naive_utc() + chrono::Duration::hours(24)),
     })
 }
 
@@ -508,7 +506,7 @@ pub async fn complete_chunked_upload(
         file_type: session.content_type,
         file_size: session.total_size,
         download_url,
-        created_at: Utc::now(),
+        created_at: Utc::now().naive_utc(),
     })
 }
 
@@ -1001,7 +999,7 @@ pub async fn list_space_files(
     let total_result = match query.document_id {
         Some(doc_id) => {
             sqlx::query!(
-                "SELECT COUNT(*) as count FROM files WHERE space_id = $1 AND document_id = $2 AND is_deleted = false",
+                r#"SELECT COUNT(*) as "count!: i64" FROM files WHERE space_id = $1 AND document_id = $2 AND is_deleted = false"#,
                 space_id, doc_id
             )
             .fetch_one(pool.as_ref())
@@ -1009,7 +1007,7 @@ pub async fn list_space_files(
         }
         None => {
             sqlx::query!(
-                "SELECT COUNT(*) as count FROM files WHERE space_id = $1 AND is_deleted = false",
+                r#"SELECT COUNT(*) as "count!: i64" FROM files WHERE space_id = $1 AND is_deleted = false"#,
                 space_id
             )
             .fetch_one(pool.as_ref())

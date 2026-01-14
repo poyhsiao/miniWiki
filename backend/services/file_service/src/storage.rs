@@ -7,7 +7,8 @@ use aws_sdk_s3::Client as S3Client;
 use aws_sdk_s3::primitives::ByteStream;
 use aws_sdk_s3::types::{CompletedPart};
 use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Region};
-use aws_config::{SdkConfig, Credentials};
+use aws_config::BehaviorVersion;
+use aws_credential_types::credentials::Credentials;
 use std::time::Duration;
 
 /// File storage errors
@@ -129,13 +130,13 @@ impl S3Storage {
         content_type: &str,
         expires_seconds: i32,
     ) -> Result<String, StorageError> {
-        let presigning_config = s3::config::PresigningConfig::expires_in(Duration::from_secs(expires_seconds as u64));
+        let expires_in = Duration::from_secs(expires_seconds as u64);
         
         let presigned = self.client.put_object()
             .bucket(&self.bucket)
             .key(object_name)
             .content_type(content_type)
-            .presigned(presigning_config)
+            .presigned(s3::presigning::PresigningConfig::expires_in(expires_in).map_err(|e| StorageError::UploadFailed(e.to_string()))?)
             .await
             .map_err(|e| StorageError::UploadFailed(e.to_string()))?;
 
@@ -148,12 +149,12 @@ impl S3Storage {
         object_name: &str,
         expires_seconds: i32,
     ) -> Result<String, StorageError> {
-        let presigning_config = s3::config::PresigningConfig::expires_in(Duration::from_secs(expires_seconds as u64));
+        let expires_in = Duration::from_secs(expires_seconds as u64);
         
         let presigned = self.client.get_object()
             .bucket(&self.bucket)
             .key(object_name)
-            .presigned(presigning_config)
+            .presigned(s3::presigning::PresigningConfig::expires_in(expires_in).map_err(|e| StorageError::DownloadFailed(e.to_string()))?)
             .await
             .map_err(|e| StorageError::DownloadFailed(e.to_string()))?;
 
@@ -252,13 +253,13 @@ impl S3Storage {
             .await {
             Ok(_) => Ok(true),
             Err(e) => {
-                // Check if it's a "not found" error
-                if let Some(status) = e.as_ref().http_status() {
+                let err_ref = &e;
+                if let Some(status) = err_ref.service_error().map(|se| se.http_status()) {
                     if status == 404 {
                         return Ok(false);
                     }
                 }
-                Err(StorageError::DownloadFailed(e.to_string()))
+                Err(StorageError::DownloadFailed(err_ref.to_string()))
             }
         }
     }
