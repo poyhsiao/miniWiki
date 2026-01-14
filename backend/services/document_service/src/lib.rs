@@ -1,3 +1,4 @@
+pub mod export;
 pub mod handlers;
 pub mod models;
 pub mod repository;
@@ -22,6 +23,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{documentId}", web::delete().to(delete_document))
             .route("/{documentId}/children", web::get().to(get_document_children))
             .route("/{documentId}/path", web::get().to(get_document_path))
+            // Export endpoint
+            .route("/{documentId}/export", web::get().to(export_document))
             // Version endpoints
             .route("/{documentId}/versions", web::post().to(create_version))
             .route("/{documentId}/versions", web::get().to(list_versions))

@@ -58,6 +58,11 @@ pub struct RestoreVersionRequest {
     pub version_number: i32,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExportQuery {
+    pub format: Option<String>,
+}
+
 // ============================================
 // Response Types
 // ============================================
