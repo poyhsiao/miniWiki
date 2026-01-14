@@ -2,6 +2,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/value_objects/role.dart';
 import 'package:miniwiki/services/rbac_service.dart';
 
+class _Undefined {
+  const _Undefined();
+}
+
+const _undefined = _Undefined();
+
 final permissionProvider =
     StateNotifierProvider.family<PermissionNotifier, PermissionState, String>(
   (ref, spaceId) => PermissionNotifier(
@@ -34,17 +40,17 @@ class PermissionState {
 
   PermissionState copyWith({
     bool? isLoading,
-    Role? userRole,
+    Object? userRole = _undefined,
     Set<Permission>? permissions,
     Set<ActionType>? allowedActions,
-    String? error,
+    Object? error = _undefined,
   }) {
     return PermissionState(
       isLoading: isLoading ?? this.isLoading,
-      userRole: userRole ?? this.userRole,
+      userRole: userRole == _undefined ? this.userRole : (userRole as Role?),
       permissions: permissions ?? this.permissions,
       allowedActions: allowedActions ?? this.allowedActions,
-      error: error ?? this.error,
+      error: error == _undefined ? this.error : (error as String?),
     );
   }
 
@@ -217,9 +223,10 @@ final class CurrentSpacePermissionProvider
   bool get isCommenter => state.isCommenter;
 }
 
-ProviderFamily<CurrentSpacePermissionProvider, PermissionState, String>
-    currentSpacePermissionProvider = StateNotifierProvider.family<
-    CurrentSpacePermissionProvider, PermissionState, String>((ref, String spaceId) {
+StateNotifierProviderFamily<CurrentSpacePermissionProvider, PermissionState,
+        String> currentSpacePermissionProvider =
+    StateNotifierProvider.family<CurrentSpacePermissionProvider,
+        PermissionState, String>((ref, String spaceId) {
   final rbacService = ref.read(rbacServiceProvider);
   final userId = ref.watch(currentUserIdProvider);
 
