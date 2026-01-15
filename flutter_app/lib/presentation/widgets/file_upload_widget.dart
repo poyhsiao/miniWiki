@@ -36,7 +36,7 @@ class FileUploadWidget extends ConsumerWidget {
         else
           _buildUploadButton(context, ref, theme),
         if (uploadState.uploads.isNotEmpty)
-          _buildUploadList(context, uploadState, theme, ref),
+          _buildUploadList(context, uploadState, theme, ref, uploadKey),
       ],
     );
   }
@@ -95,13 +95,14 @@ class FileUploadWidget extends ConsumerWidget {
     FileUploadState uploadState,
     ThemeData theme,
     WidgetRef ref,
+    String uploadKey,
   ) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: uploadState.uploads.entries.map((entry) {
         final progress = entry.value;
-        return _buildUploadItem(context, progress, theme, ref);
+        return _buildUploadItem(context, progress, theme, ref, uploadKey);
       }).toList(),
     );
   }
@@ -111,6 +112,7 @@ class FileUploadWidget extends ConsumerWidget {
     FileUploadProgress progress,
     ThemeData theme,
     WidgetRef ref,
+    String uploadKey,
   ) {
     final statusColor = switch (progress.status) {
       FileUploadStatus.pending => theme.colorScheme.outline,
@@ -161,7 +163,11 @@ class FileUploadWidget extends ConsumerWidget {
               progress.status == FileUploadStatus.failed)
             IconButton(
               icon: const Icon(Icons.close, size: 18),
-              onPressed: () {},
+              onPressed: () {
+                ref
+                    .read(fileUploadNotifierProvider(uploadKey).notifier)
+                    .removeUpload(progress.fileName);
+              },
             ),
         ],
       ),

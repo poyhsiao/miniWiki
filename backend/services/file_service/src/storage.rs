@@ -1,15 +1,16 @@
-use std::sync::Arc;
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use thiserror::Error;
-use aws_sdk_s3 as s3;
-use aws_sdk_s3::Client as S3Client;
-use aws_sdk_s3::primitives::ByteStream;
-use aws_sdk_s3::types::{CompletedPart};
-use aws_sdk_s3::config::{Builder as S3ConfigBuilder, Region};
-use aws_config::BehaviorVersion;
-use aws_credential_types::credentials::Credentials;
-use std::time::Duration;
+ use std::sync::Arc;
+ use uuid::Uuid;
+ use chrono::{DateTime, Utc};
+ use thiserror::Error;
+ use aws_sdk_s3 as s3;
+ use aws_sdk_s3::Client as S3Client;
+ use aws_sdk_s3::primitives::ByteStream;
+ use aws_sdk_s3::types::{CompletedPart};
+ use aws_sdk_s3::config::Builder as S3ConfigBuilder;
+ use aws_config::{self, BehaviorVersion};
+ use aws_credential_types::Credentials;
+ use aws_types::region::Region;
+ use std::time::Duration;
 
 /// File storage errors
 #[derive(Error, Debug)]
@@ -86,7 +87,7 @@ impl S3Storage {
         let region = Region::new(config.region.clone());
         
         // Load AWS config from environment
-        let aws_config: SdkConfig = aws_config::load_from_env().await;
+        let aws_config = aws_config::load_from_env().await;
         
         // Create credentials
         let credentials = Credentials::new(
@@ -316,27 +317,21 @@ impl S3Storage {
     }
 }
 
-/// Create S3 storage from environment
-impl S3Storage {
-    pub fn from_env() -> Result<Self, StorageError> {
-        let config = S3StorageConfig {
-            endpoint: std::env::var("S3_ENDPOINT")
-                .unwrap_or_else(|_| "localhost:9000".to_string()),
-            access_key: std::env::var("S3_ACCESS_KEY")
-                .unwrap_or_else(|_| "minioadmin".to_string()),
-            secret_key: std::env::var("S3_SECRET_KEY")
-                .unwrap_or_else(|_| "minioadmin".to_string()),
-            bucket: std::env::var("S3_BUCKET")
-                .unwrap_or_else(|_| "miniwiki-files".to_string()),
-            region: std::env::var("S3_REGION")
-                .unwrap_or_else(|_| "us-east-1".to_string()),
-            use_ssl: std::env::var("S3_USE_SSL")
-                .map(|v| v.to_lowercase() == "true")
-                .unwrap_or(false),
-        };
-
-        Err(StorageError::ConnectionFailed(
-            "S3Storage::from_env() requires async runtime. Use S3Storage::new() instead.".to_string()
-        ))
+/// Get S3 storage configuration from environment
+pub fn config_from_env() -> S3StorageConfig {
+    S3StorageConfig {
+        endpoint: std::env::var("S3_ENDPOINT")
+            .unwrap_or_else(|_| "localhost:9000".to_string()),
+        access_key: std::env::var("S3_ACCESS_KEY")
+            .unwrap_or_else(|_| "minioadmin".to_string()),
+        secret_key: std::env::var("S3_SECRET_KEY")
+            .unwrap_or_else(|_| "minioadmin".to_string()),
+        bucket: std::env::var("S3_BUCKET")
+            .unwrap_or_else(|_| "miniwiki-files".to_string()),
+        region: std::env::var("S3_REGION")
+            .unwrap_or_else(|_| "us-east-1".to_string()),
+        use_ssl: std::env::var("S3_USE_SSL")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(false),
     }
 }
