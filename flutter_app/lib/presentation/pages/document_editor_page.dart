@@ -565,6 +565,7 @@ class _FileAttachmentsSheet extends ConsumerWidget {
             spaceId: spaceId,
             documentId: documentId,
             showProgress: true,
+            onDismiss: () => Navigator.pop(context),
           ),
         ],
       ),

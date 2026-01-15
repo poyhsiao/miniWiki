@@ -12,6 +12,7 @@ class FileUploadWidget extends ConsumerWidget {
   final String documentId;
   final bool showProgress;
   final VoidCallback? onUploadComplete;
+  final VoidCallback? onDismiss;
 
   const FileUploadWidget({
     super.key,
@@ -19,6 +20,7 @@ class FileUploadWidget extends ConsumerWidget {
     required this.documentId,
     this.showProgress = true,
     this.onUploadComplete,
+    this.onDismiss,
   });
 
   @override
@@ -167,6 +169,7 @@ class FileUploadWidget extends ConsumerWidget {
                 ref
                     .read(fileUploadNotifierProvider(uploadKey).notifier)
                     .removeUpload(progress.fileName);
+                onDismiss?.call();
               },
             ),
         ],
