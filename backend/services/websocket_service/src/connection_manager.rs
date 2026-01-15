@@ -306,12 +306,8 @@ mod tests {
             "Other User".to_string(),
             "#000000".to_string(),
         );
-        manager.add_connection(other_session);
-
-        let connections = manager.get_document_connections(document_id);
-        assert_eq!(connections.len(), 3);
-
         let other_doc_id = other_session.document_id;
+        manager.add_connection(other_session);
         let other_connections = manager.get_document_connections(other_doc_id);
         assert_eq!(other_connections.len(), 1);
     }

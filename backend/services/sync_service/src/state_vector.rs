@@ -85,12 +85,21 @@ impl StateVector {
         Ok(sv)
     }
 
+    /// Compares this state vector with another to determine their ordering.
+    ///
+    /// Returns `Ordering::Greater` if this vector has entries the other lacks
+    /// (indicating this is newer), `Ordering::Less` if the other has higher
+    /// clock values for shared entries, or `Ordering::Equal` if they are
+    /// equivalent.
+    ///
+    /// This follows CRDT semantics where a vector with more information is
+    /// considered "greater" for synchronization purposes.
     pub fn compare(&self, other: &StateVector) -> Ordering {
         for (&client_id, &clock) in &self.0 {
             match other.get(client_id) {
                 Some(other_clock) if *other_clock > clock => return Ordering::Less,
                 Some(other_clock) if *other_clock < clock => return Ordering::Greater,
-                None => return Ordering::Less,
+                None => return Ordering::Greater,
                 _ => {}
             }
         }
@@ -108,8 +117,21 @@ impl StateVector {
         true
     }
 
+    /// Returns entries that are missing or have lower clocks in this vector
+    /// compared to the other vector.
+    ///
+    /// For each entry in `other`, if `self` doesn't have it or has a lower
+    /// clock value, returns a tuple of (client_id, starting_clock) indicating
+    /// the client needs to sync from `starting_clock`.
+    ///
+    /// # Arguments
+    /// * `other` - The state vector to compare against
+    ///
+    /// # Returns
+    /// A vector of (client_id, from_clock) tuples representing missing entries
     pub fn get_missing(&self, other: &StateVector) -> Vec<(ClientId, Clock)> {
         let mut missing = Vec::new();
+        // Check entries in other that self doesn't have or has lower clock
         for (&client_id, &clock) in other.0.iter() {
             match self.get(client_id) {
                 Some(self_clock) if *self_clock < clock => {

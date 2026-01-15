@@ -18,7 +18,7 @@ pub use connection_manager::*;
 pub use actor::*;
 pub use redis_pubsub::*;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct CursorPosition {
     pub x: f64,
     pub y: f64,

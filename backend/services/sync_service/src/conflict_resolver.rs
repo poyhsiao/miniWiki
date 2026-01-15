@@ -155,7 +155,7 @@ impl ConflictResolver {
         client_sv: &StateVector,
         server_sv: &StateVector,
     ) -> Vec<(ClientId, Clock, Clock)> {
-        let missing = server_sv.get_missing(client_sv);
+        let missing = client_sv.get_missing(server_sv);
         missing
             .into_iter()
             .map(|(client_id, from_clock)| {
