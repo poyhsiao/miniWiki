@@ -68,14 +68,6 @@ impl TestApp {
             .delete(&format!("http://localhost:{}{}", self.port, path))
     }
 
-    pub async fn get_response(&self, path: &str) -> reqwest::Response {
-        self.get(path).send().await.expect("GET request failed")
-    }
-
-    pub async fn post_response(&self, path: &str) -> reqwest::Response {
-        self.post(path).send().await.expect("POST request failed")
-    }
-
     pub async fn create_test_user(&self) -> TestUser {
         let id = Uuid::new_v4();
         let email = format!("test_{}@example.com", id.to_string().replace('-', ""));

@@ -7,26 +7,23 @@ mod auth_integration_test {
     };
     use auth_service::jwt::JwtConfig;
 
-    fn create_test_app() -> App {
+    #[actix_web::test]
+    async fn test_register_endpoint_returns_201() {
         let jwt_service = web::Data::new(JwtService::new(JwtConfig {
             secret: "test_secret".to_string(),
             access_expiry: 3600,
             refresh_expiry: 86400,
         }));
 
-        App::new()
+        let app = App::new()
             .app_data(jwt_service)
             .service(
                 web::scope("/auth")
                     .route("/register", web::post().to(register))
                     .route("/login", web::post().to(login))
-            )
-    }
+            );
 
-    #[actix_web::test]
-    async fn test_register_endpoint_returns_201() {
-        let app = create_test_app();
-        let mut app = test::init_service(app).await;
+        let app = test::init_service(app).await;
 
         let req = test::TestRequest::post()
             .uri("/auth/register")
@@ -37,15 +34,28 @@ mod auth_integration_test {
             }))
             .to_request();
 
-        let resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
 
         assert_eq!(resp.status().as_u16(), 201);
     }
 
     #[actix_web::test]
     async fn test_register_endpoint_returns_400() {
-        let app = create_test_app();
-        let mut app = test::init_service(app).await;
+        let jwt_service = web::Data::new(JwtService::new(JwtConfig {
+            secret: "test_secret".to_string(),
+            access_expiry: 3600,
+            refresh_expiry: 86400,
+        }));
+
+        let app = App::new()
+            .app_data(jwt_service)
+            .service(
+                web::scope("/auth")
+                    .route("/register", web::post().to(register))
+                    .route("/login", web::post().to(login))
+            );
+
+        let app = test::init_service(app).await;
 
         let req = test::TestRequest::post()
             .uri("/auth/register")
@@ -56,7 +66,7 @@ mod auth_integration_test {
             }))
             .to_request();
 
-        let resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
 
         assert_eq!(resp.status().as_u16(), 400);
     }

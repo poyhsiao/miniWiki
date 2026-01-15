@@ -139,8 +139,8 @@ async fn test_export_with_metadata() {
     let metadata = document_service::export::DocumentMetadata {
         id: document_id.clone(),
         title: title.to_string(),
-        created_at: Some(chrono::NaiveDateTime::from_timestamp_opt(1704067200, 0).unwrap()),
-        updated_at: Some(chrono::NaiveDateTime::from_timestamp_opt(1704153600, 0).unwrap()),
+        created_at: chrono::DateTime::<chrono::Utc>::from_timestamp(1704067200, 0).map(|dt| dt.naive_utc()).unwrap(),
+        updated_at: chrono::DateTime::<chrono::Utc>::from_timestamp(1704153600, 0).map(|dt| dt.naive_utc()).unwrap(),
         created_by: Some("test-user-id".to_string()),
         icon: Some("📄".to_string()),
     };
