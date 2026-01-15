@@ -83,3 +83,23 @@ pub struct RefreshToken {
     pub revoked_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct ShareLink {
+    pub id: Uuid,
+    pub document_id: Uuid,
+    pub created_by: Uuid,
+    /// Share token - sensitive, should not be serialized in general responses
+    #[serde(skip_serializing)]
+    pub token: String,
+    /// Access code hash - sensitive, should not be serialized
+    #[serde(skip_serializing)]
+    pub access_code: Option<String>,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub permission: String,
+    pub is_active: bool,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub click_count: i32,
+    pub max_access_count: Option<i32>,
+}

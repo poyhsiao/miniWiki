@@ -7,6 +7,7 @@ mod config;
 
 use config::Config;
 use shared_database::connection::init_database;
+use file_service::storage::{S3Storage, S3StorageConfig};
 
 async fn health() -> impl Responder {
     actix_web::web::Json(serde_json::json!({
@@ -33,9 +34,26 @@ async fn main() -> std::io::Result<()> {
             .expect("Failed to connect to database")
     );
 
+    // Initialize S3/MinIO storage
+    let s3_config = S3StorageConfig {
+        endpoint: config.minio_endpoint.clone(),
+        access_key: config.minio_access_key.clone(),
+        secret_key: config.minio_secret_key.clone(),
+        bucket: config.minio_bucket.clone(),
+        region: config.minio_region.clone(),
+        use_ssl: config.minio_use_ssl,
+    };
+    
+    let s3_storage = Arc::new(
+        S3Storage::new(s3_config)
+            .await
+            .expect("Failed to connect to S3/MinIO storage")
+    );
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db.clone()))
+            .app_data(web::Data::new(s3_storage.clone()))
             .configure(routes::config)
             .route("/health", web::get().to(health))
     })

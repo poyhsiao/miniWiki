@@ -45,6 +45,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 aws-config = "1.1"
 aws-sdk-s3 = "1.35"
 aws-types = "1.1"
+aws-credential-types = "1.2"
 
 # MIME types
 mime = "0.3"

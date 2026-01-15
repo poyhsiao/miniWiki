@@ -546,11 +546,11 @@ Based on `plan.md` structure:
 - [x] T265 Create backend/services/file_service/src/handlers.rs with file handlers
 - [x] T266 Create backend/services/file_service/src/storage.rs with S3/MinIO integration
 - [x] T267 Create files table migration in backend/migrations/008_files.sql
-- [ ] T268 Implement POST /files/upload endpoint (stub in handlers.rs)
-- [ ] T269 Implement GET /files/{fileId}/download endpoint (stub in handlers.rs)
-- [ ] T270 Implement GET /files/{fileId} endpoint for metadata (stub in handlers.rs)
-- [ ] T271 Implement DELETE /files/{fileId} endpoint (stub in handlers.rs)
-- [ ] T272 Implement chunked upload for large files (stub in handlers.rs)
+- [x] T268 Implement POST /files/upload endpoint
+- [x] T269 Implement GET /files/{fileId}/download endpoint
+- [x] T270 Implement GET /files/{fileId} endpoint for metadata
+- [x] T271 Implement DELETE /files/{fileId} endpoint
+- [x] T272 Implement chunked upload for large files
 
 ### Frontend Implementation for Files
 
@@ -573,12 +573,12 @@ Based on `plan.md` structure:
 
 ### Backend Implementation for Share Links
 
-- [ ] T281 Create share_links table migration in backend/migrations/009_share_links.sql
-- [ ] T282 Create backend/services/document_service/src/sharing.rs with share link handlers
-- [ ] T283 Implement POST /documents/{documentId}/share endpoint
-- [ ] T284 Implement GET /documents/{documentId}/share endpoint
-- [ ] T285 Implement GET /share/{token} endpoint for external access
-- [ ] T286 Implement DELETE /documents/{documentId}/share/{token} endpoint
+- [x] T281 Create share_links table migration in backend/migrations/010_share_links.sql
+- [x] T282 Create backend/services/document_service/src/sharing.rs with share link handlers
+- [x] T283 Implement POST /documents/{documentId}/share endpoint
+- [x] T284 Implement GET /documents/{documentId}/share endpoint
+- [x] T285 Implement GET /share/{token} endpoint for external access
+- [x] T286 Implement DELETE /documents/{documentId}/share/{token} endpoint
 
 ### Frontend Implementation for Share Links
 
