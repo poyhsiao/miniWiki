@@ -13,9 +13,9 @@ use uuid::Uuid;
 #[tokio::test]
 async fn test_create_version_success() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     let request = CreateVersionRequest {
         content: serde_json::json!({
@@ -34,10 +34,11 @@ async fn test_create_version_success() {
         .post(&format!("/api/v1/documents/{}/versions", document.id))
         .json(&request)
         .send()
-        .await;
+        .await
+        .expect("Create version request failed");
 
     assert!(response.status().is_success());
-    let version: serde_json::Value = response.json().await;
+    let version: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(version["data"]["version_number"], 1);
     assert_eq!(version["data"]["change_summary"], "First edit");
     assert_eq!(version["success"], true);
@@ -47,9 +48,9 @@ async fn test_create_version_success() {
 #[tokio::test]
 async fn test_create_version_auto_increments() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create multiple versions
     for i in 1..=3 {
@@ -63,10 +64,11 @@ async fn test_create_version_auto_increments() {
             .post(&format!("/api/v1/documents/{}/versions", document.id))
             .json(&request)
             .send()
-            .await;
+            .await
+            .expect("Create version request failed");
 
         assert!(response.status().is_success());
-        let version: serde_json::Value = response.json().await;
+        let version: serde_json::Value = response.json().await.expect("Parse response failed");
         assert_eq!(version["data"]["version_number"], i);
         assert_eq!(version["success"], true);
         assert!(version["error"].is_null());
@@ -76,9 +78,9 @@ async fn test_create_version_auto_increments() {
 #[tokio::test]
 async fn test_list_document_versions() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create some versions
     for i in 1..=5 {
@@ -92,16 +94,18 @@ async fn test_list_document_versions() {
             .post(&format!("/api/v1/documents/{}/versions", document.id))
             .json(&request)
             .send()
-            .await;
+            .await
+            .expect("Create version request failed");
     }
 
     let response = app
         .get(&format!("/api/v1/documents/{}/versions", document.id))
         .send()
-        .await;
+        .await
+        .expect("List versions request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert!(result["data"]["versions"].is_array());
     assert_eq!(result["data"]["versions"].as_array().unwrap().len(), 5);
     assert_eq!(result["success"], true);
@@ -111,9 +115,9 @@ async fn test_list_document_versions() {
 #[tokio::test]
 async fn test_get_specific_version() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create versions
     for i in 1..=3 {
@@ -127,17 +131,19 @@ async fn test_get_specific_version() {
             .post(&format!("/api/v1/documents/{}/versions", document.id))
             .json(&request)
             .send()
-            .await;
+            .await
+            .expect("Create version request failed");
     }
 
     // Get version 2
     let response = app
         .get(&format!("/api/v1/documents/{}/versions/2", document.id))
         .send()
-        .await;
+        .await
+        .expect("Get version request failed");
 
     assert!(response.status().is_success());
-    let version: serde_json::Value = response.json().await;
+    let version: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(version["data"]["version_number"], 2);
     assert_eq!(version["data"]["title"], "Version 2");
     assert_eq!(version["success"], true);
@@ -147,14 +153,15 @@ async fn test_get_specific_version() {
 #[tokio::test]
 async fn test_get_version_not_found() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     let response = app
         .get(&format!("/api/v1/documents/{}/versions/999", document.id))
         .send()
-        .await;
+        .await
+        .expect("Get version request failed");
 
     assert_eq!(response.status(), 404);
 }
@@ -162,9 +169,9 @@ async fn test_get_version_not_found() {
 #[tokio::test]
 async fn test_restore_version() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create initial version
     let request = CreateVersionRequest {
@@ -177,7 +184,8 @@ async fn test_restore_version() {
         .post(&format!("/api/v1/documents/{}/versions", document.id))
         .json(&request)
         .send()
-        .await;
+        .await
+        .expect("Create version request failed");
 
     // Update document
     let update_response = app
@@ -187,17 +195,19 @@ async fn test_restore_version() {
             "content": {"content": "modified"}
         }))
         .send()
-        .await;
+        .await
+        .expect("Update document request failed");
     assert!(update_response.status().is_success());
 
     // Restore to version 1
     let restore_response = app
         .post(&format!("/api/v1/documents/{}/versions/1/restore", document.id))
         .send()
-        .await;
+        .await
+        .expect("Restore version request failed");
 
     assert!(restore_response.status().is_success());
-    let restored: serde_json::Value = restore_response.json().await;
+    let restored: serde_json::Value = restore_response.json().await.expect("Parse response failed");
     assert_eq!(restored["data"]["title"], "Original Title");
     assert_eq!(restored["success"], true);
     assert!(restored["error"].is_null());
@@ -206,19 +216,20 @@ async fn test_restore_version() {
     let get_response = app
         .get(&format!("/api/v1/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("Get document request failed");
 
     assert!(get_response.status().is_success());
-    let current: serde_json::Value = get_response.json().await;
+    let current: serde_json::Value = get_response.json().await.expect("Parse response failed");
     assert_eq!(current["data"]["title"], "Original Title");
 }
 
 #[tokio::test]
 async fn test_version_pagination() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create 15 versions
     for i in 1..=15 {
@@ -232,7 +243,8 @@ async fn test_version_pagination() {
             .post(&format!("/api/v1/documents/{}/versions", document.id))
             .json(&request)
             .send()
-            .await;
+            .await
+            .expect("Create version request failed");
     }
 
     // Get first page
@@ -242,10 +254,11 @@ async fn test_version_pagination() {
             document.id
         ))
         .send()
-        .await;
+        .await
+        .expect("List versions request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(result["data"]["versions"].as_array().unwrap().len(), 5);
     assert_eq!(result["data"]["total"], 15);
     assert_eq!(result["data"]["limit"], 5);
@@ -256,9 +269,9 @@ async fn test_version_pagination() {
 #[tokio::test]
 async fn test_version_diff() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create version 1
     let request1 = CreateVersionRequest {
@@ -271,7 +284,8 @@ async fn test_version_diff() {
         .post(&format!("/api/v1/documents/{}/versions", document.id))
         .json(&request1)
         .send()
-        .await;
+        .await
+        .expect("Create version request failed");
 
     // Create version 2
     let request2 = CreateVersionRequest {
@@ -284,7 +298,8 @@ async fn test_version_diff() {
         .post(&format!("/api/v1/documents/{}/versions", document.id))
         .json(&request2)
         .send()
-        .await;
+        .await
+        .expect("Create version request failed");
 
     // Get diff between versions
     let response = app
@@ -293,19 +308,20 @@ async fn test_version_diff() {
             document.id
         ))
         .send()
-        .await;
+        .await
+        .expect("Get version diff request failed");
 
     assert!(response.status().is_success());
-    let diff: serde_json::Value = response.json().await;
+    let diff: serde_json::Value = response.json().await.expect("Parse response failed");
     assert!(diff.is_object());
 }
 
 #[tokio::test]
 async fn test_version_retention_enforced() {
     let app = create_test_app().await;
-    let user = create_test_user(&app).await;
-    let space = create_test_space(&app, &user.id).await;
-    let document = create_test_document(&app, &space.id, None).await;
+    let user = create_test_user(&app).await.expect("Create test user failed");
+    let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
+    let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
 
     // Create many versions (more than retention limit)
     for i in 1..=50 {
@@ -319,7 +335,8 @@ async fn test_version_retention_enforced() {
             .post(&format!("/api/v1/documents/{}/versions", document.id))
             .json(&request)
             .send()
-            .await;
+            .await
+            .expect("Create version request failed");
 
         // Should succeed - old versions are cleaned up asynchronously
         assert!(response.status().is_success() || response.status() == 500);
@@ -332,10 +349,11 @@ async fn test_version_retention_enforced() {
             document.id
         ))
         .send()
-        .await;
+        .await
+        .expect("List versions request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     let count = result["data"]["versions"].as_array().unwrap().len();
 
     // After retention, should have fewer versions (old ones cleaned up)

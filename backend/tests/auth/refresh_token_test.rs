@@ -65,7 +65,7 @@ mod refresh_token_test {
         use chrono::{Utc, Duration};
         let now = Utc::now();
         let expected_expiry = now + Duration::seconds(86400);
-        let actual_expiry = chrono::DateTime::<Utc>::from_timestamp(claims.exp, 0).unwrap();
+        let actual_expiry = chrono::DateTime::<Utc>::from_timestamp(claims.exp.try_into().unwrap(), 0).unwrap();
 
         let diff = (actual_expiry - expected_expiry).num_seconds().abs();
         assert!(diff < 10);
