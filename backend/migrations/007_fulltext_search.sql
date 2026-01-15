@@ -15,29 +15,29 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
 -- Create GIN index on documents for full-text search
 -- This dramatically improves search performance for both ILIKE and full-text queries
-CREATE INDEX IF NOT EXISTS idx_documents_search_title 
+CREATE INDEX IF NOT EXISTS idx_documents_search_title
 ON documents USING gin (title gin_trgm_ops);
 
-CREATE INDEX IF NOT EXISTS idx_documents_search_content 
+CREATE INDEX IF NOT EXISTS idx_documents_search_content
 ON documents USING gin (content_text gin_trgm_ops);
 
 -- Composite index for combined title + content search
-CREATE INDEX IF NOT EXISTS idx_documents_search_combined 
+CREATE INDEX IF NOT EXISTS idx_documents_search_combined
 ON documents USING gin (to_tsvector('english', COALESCE(title, '') || ' ' || COALESCE(content_text, '')));
 
 -- Create GIN index on spaces for search
-CREATE INDEX IF NOT EXISTS idx_spaces_search_name 
+CREATE INDEX IF NOT EXISTS idx_spaces_search_name
 ON spaces USING gin (name gin_trgm_ops);
 
 -- Create GIN index on users for search
-CREATE INDEX IF NOT EXISTS idx_users_search_email 
+CREATE INDEX IF NOT EXISTS idx_users_search_email
 ON users USING gin (email gin_trgm_ops);
 
-CREATE INDEX IF NOT EXISTS idx_users_search_name 
+CREATE INDEX IF NOT EXISTS idx_users_search_name
 ON users USING gin (display_name gin_trgm_ops);
 
 -- Create GIN index on comments for search
-CREATE INDEX IF NOT EXISTS idx_comments_search 
+CREATE INDEX IF NOT EXISTS idx_comments_search
 ON comments USING gin (content gin_trgm_ops);
 
 -- ============================================
@@ -47,25 +47,20 @@ ON comments USING gin (content gin_trgm_ops);
 -- Create a materialized view for search statistics (optional, for large datasets)
 -- This can be refreshed periodically for better search performance
 CREATE MATERIALIZED VIEW IF NOT EXISTS search_document_stats AS
-SELECT 
+SELECT
     d.id as document_id,
     d.space_id,
     d.title,
     d.content_text,
     COALESCE(d.updated_at, d.created_at) as last_activity,
-    s.name as space_name,
-    ts_rank(
-        setweight(to_tsvector('english', COALESCE(d.title, '')), 'A') ||
-        setweight(to_tsvector('english', COALESCE(d.content_text, '')), 'B'),
-        to_tsquery('english', regexp_replace('rust|flutter|dart|programming', '\s+', ' & ', 'g'))
-    ) as search_rank
+    s.name as space_name
 FROM documents d
 JOIN spaces s ON d.space_id = s.id
 WHERE d.is_archived = false;
 
--- Create index on the materialized view
-CREATE INDEX IF NOT EXISTS idx_search_doc_stats_rank 
-ON search_document_stats (search_rank DESC);
+-- Create index on the materialized view for last activity
+CREATE INDEX IF NOT EXISTS idx_search_doc_stats_activity
+ON search_document_stats (last_activity DESC);
 
 -- ============================================
 -- FUNCTION: Optimized search function
@@ -92,19 +87,19 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 DECLARE
-    v_query_tsvector tsvector;
+    v_query_tsquery tsquery;
     v_query_pattern TEXT;
 BEGIN
-    -- Convert user query to tsvector for full-text search
-    v_query_tsvector := to_tsvector('english', p_query);
-    
-    -- Also create a pattern for ILIKE fallback
-    v_query_pattern := '%' || p_query || '%';
+    -- Convert user query to tsquery for full-text search
+    v_query_tsquery := plainto_tsquery('english', p_query);
+
+    -- Also create a pattern for ILIKE fallback, escaping special characters
+    v_query_pattern := '%' || replace(replace(replace(p_query, '\', '\\'), '%', '\%'), '_', '\_') || '%';
 
     -- Return results with ranking
     RETURN QUERY
     WITH ranked_results AS (
-        SELECT 
+        SELECT
             d.id as document_id,
             d.space_id,
             s.name as space_name,
@@ -115,15 +110,15 @@ BEGIN
                 ts_rank(
                     setweight(to_tsvector('english', COALESCE(d.title, '')), 'A') ||
                     setweight(to_tsvector('english', COALESCE(d.content_text, '')), 'B'),
-                    v_query_tsvector
+                    v_query_tsquery
                 ) * 2.0 +
                 -- Boost title matches
-                CASE 
-                    WHEN d.title ILIKE v_query_pattern THEN 1.5 
-                    ELSE 0.0 
+                CASE
+                    WHEN d.title ILIKE v_query_pattern THEN 1.5
+                    ELSE 0.0
                 END +
                 -- Boost recent updates
-                CASE 
+                CASE
                     WHEN d.updated_at > NOW() - INTERVAL '7 days' THEN 0.5
                     WHEN d.updated_at > NOW() - INTERVAL '30 days' THEN 0.2
                     ELSE 0.0
@@ -138,9 +133,9 @@ BEGIN
             -- Full-text search match
             setweight(to_tsvector('english', COALESCE(d.title, '')), 'A') ||
             setweight(to_tsvector('english', COALESCE(d.content_text, '')), 'B')
-            @@ v_query_tsvector
+            @@ v_query_tsquery
             -- Fallback to ILIKE for simple substring matches
-            OR d.title ILIKE v_query_pattern 
+            OR d.title ILIKE v_query_pattern
             OR d.content_text ILIKE v_query_pattern
         )
         AND EXISTS (
@@ -150,7 +145,7 @@ BEGIN
         )
         AND (p_space_id IS NULL OR d.space_id = p_space_id)
     )
-    SELECT 
+    SELECT
         rr.document_id,
         rr.space_id,
         rr.space_name,

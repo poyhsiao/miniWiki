@@ -109,7 +109,7 @@ mod search_tests {
     async fn test_search_returns_matching_documents() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (_user_id, space_id, _doc1_id) = create_test_data(&pool).await;
 
         // Create app with search service
@@ -124,13 +124,13 @@ mod search_tests {
             .uri("/search?q=Rust")
             .header("X-User-Id", _user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
         let body = test::read_body(resp).await;
         let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON response");
-        
+
         assert!(json["success"].as_bool().unwrap_or(false));
         let results = json["data"]["results"].as_array().expect("Results should be an array");
         assert!(results.len() >= 1, "Should find at least one document about Rust");
@@ -140,7 +140,7 @@ mod search_tests {
     async fn test_search_returns_empty_for_no_matches() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, _space_id, _) = create_test_data(&pool).await;
 
         let app = test::init_service(
@@ -154,13 +154,13 @@ mod search_tests {
             .uri("/search?q=xyznonexistent123")
             .header("X-User-Id", user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
         let body = test::read_body(resp).await;
         let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON response");
-        
+
         assert!(json["success"].as_bool().unwrap_or(false));
         let results = json["data"]["results"].as_array().expect("Results should be an array");
         assert_eq!(results.len(), 0, "Should not find any documents");
@@ -170,7 +170,7 @@ mod search_tests {
     async fn test_search_respects_space_filter() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, space_id, _doc1_id) = create_test_data(&pool).await;
 
         let app = test::init_service(
@@ -184,13 +184,13 @@ mod search_tests {
             .uri(&format!("/search?q=Rust&spaceId={}", space_id))
             .header("X-User-Id", user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
         let body = test::read_body(resp).await;
         let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON response");
-        
+
         assert!(json["success"].as_bool().unwrap_or(false));
     }
 
@@ -209,7 +209,7 @@ mod search_tests {
         let req = TestRequest::get()
             .uri("/search?q=test")
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), 401, "Should require authentication");
     }
@@ -218,7 +218,7 @@ mod search_tests {
     async fn test_search_validates_query_length() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, _space_id, _) = create_test_data(&pool).await;
 
         let app = test::init_service(
@@ -232,7 +232,7 @@ mod search_tests {
             .uri("/search?q=")
             .header("X-User-Id", user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert_eq!(resp.status(), 400, "Should reject empty query");
     }
@@ -241,7 +241,7 @@ mod search_tests {
     async fn test_search_returns_timing_information() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, _space_id, _) = create_test_data(&pool).await;
 
         let app = test::init_service(
@@ -254,13 +254,13 @@ mod search_tests {
             .uri("/search?q=test")
             .header("X-User-Id", user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
         let body = test::read_body(resp).await;
         let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON response");
-        
+
         assert!(json["success"].as_bool().unwrap_or(false));
         let took = json["data"]["took"].as_i64().expect("Should have timing info");
         assert!(took >= 0, "Timing should be non-negative");
@@ -270,7 +270,7 @@ mod search_tests {
     async fn test_search_performance_within_500ms() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, _space_id, _) = create_test_data(&pool).await;
 
         let app = test::init_service(
@@ -285,16 +285,16 @@ mod search_tests {
                 .uri("/search?q=Rust")
                 .header("X-User-Id", user_id.to_string())
                 .to_request();
-            
+
             let start = std::time::Instant::now();
             let resp = test::call_service(&app, req).await;
             let elapsed = start.elapsed();
 
             assert!(resp.status().is_success(), "Search should succeed");
-            
+
             // Performance requirement: search should complete within 500ms
             assert!(
-                elapsed.as_millis() <= 1000 || took <= 500,
+                elapsed.as_millis() <= 500,
                 "Search performance requirement not met: {}ms (target: 500ms)",
                 elapsed.as_millis()
             );
@@ -305,7 +305,7 @@ mod search_tests {
     async fn test_search_with_special_characters() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, _space_id, _) = create_test_data(&pool).await;
 
         let app = test::init_service(
@@ -331,7 +331,7 @@ mod search_tests {
                 .uri(&format!("/search?q={}", encoded))
                 .header("X-User-Id", user_id.to_string())
                 .to_request();
-            
+
             let resp = test::call_service(&app, req).await;
             // Should not crash and return valid response (even if no results)
             assert!(
@@ -345,7 +345,7 @@ mod search_tests {
     async fn test_search_with_multiple_words() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, space_id, doc1_id) = create_test_data(&pool).await;
 
         // Add a document with multiple searchable terms
@@ -376,16 +376,16 @@ mod search_tests {
             .uri("/search?q=Rust%20async%20tokio")
             .header("X-User-Id", user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
         let body = test::read_body(resp).await;
         let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON");
-        
+
         assert!(json["success"].as_bool().unwrap_or(false));
         let results = json["data"]["results"].as_array().expect("Results should be array");
-        
+
         // Should find the multi-word document
         assert!(
             results.len() >= 1,
@@ -397,7 +397,7 @@ mod search_tests {
     async fn test_search_relevance_ranking() {
         let pool = setup_test_db().await;
         let pool = Arc::new(pool);
-        
+
         let (user_id, space_id, _) = create_test_data(&pool).await;
 
         // Create documents with varying relevance
@@ -443,13 +443,13 @@ mod search_tests {
             .uri("/search?q=Rust")
             .header("X-User-Id", user_id.to_string())
             .to_request();
-        
+
         let resp = test::call_service(&app, req).await;
         assert!(resp.status().is_success());
 
         let body = test::read_body(resp).await;
         let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON");
-        
+
         let results = json["data"]["results"].as_array().expect("Results should be array");
         assert!(results.len() >= 2, "Should find at least 2 documents");
 
