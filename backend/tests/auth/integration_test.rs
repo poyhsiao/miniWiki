@@ -23,7 +23,7 @@ mod auth_integration_test {
                     .route("/login", web::post().to(login))
             );
 
-        let mut app = test::init_service(app).await;
+        let app = test::init_service(app).await;
 
         let req = test::TestRequest::post()
             .uri("/auth/register")
@@ -34,7 +34,7 @@ mod auth_integration_test {
             }))
             .to_request();
 
-        let resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
 
         assert_eq!(resp.status().as_u16(), 201);
     }
@@ -55,7 +55,7 @@ mod auth_integration_test {
                     .route("/login", web::post().to(login))
             );
 
-        let mut app = test::init_service(app).await;
+        let app = test::init_service(app).await;
 
         let req = test::TestRequest::post()
             .uri("/auth/register")
@@ -66,7 +66,7 @@ mod auth_integration_test {
             }))
             .to_request();
 
-        let resp = test::call_service(&mut app, req).await;
+        let resp = test::call_service(&app, req).await;
 
         assert_eq!(resp.status().as_u16(), 400);
     }
