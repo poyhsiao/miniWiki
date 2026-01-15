@@ -179,7 +179,7 @@ BEGIN
     FROM document_versions
     WHERE document_id = p_document_id AND version_number = p_version_number;
 
-    IF version_content IS NULL THEN
+    IF NOT FOUND THEN
         RAISE EXCEPTION 'Version % not found for document %', p_version_number, p_document_id;
     END IF;
 
@@ -369,8 +369,12 @@ CREATE POLICY documents_allow_all ON documents
 -- Pre-flight check: Ensure this migration doesn't run in production
 -- Comment out the following line after proper RLS policies are implemented
 DO $$
+DECLARE
+    env_setting TEXT;
 BEGIN
-    IF current_setting('app.environment', true) = 'production' THEN
+    env_setting := current_setting('app.environment', true);
+
+    IF env_setting = 'production' OR env_setting IS NULL THEN
         RAISE EXCEPTION 'CRITICAL: documents_allow_all policy detected in production. Replace with proper RLS policies before deployment.';
     END IF;
 END;
