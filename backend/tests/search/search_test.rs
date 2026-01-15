@@ -454,14 +454,12 @@ mod search_tests {
         assert!(results.len() >= 2, "Should find at least 2 documents");
 
         // First result should have higher or equal score
-        if results.len() >= 2 {
-            let first_score = results[0]["score"].as_f64().unwrap_or(0.0);
-            let second_score = results[1]["score"].as_f64().unwrap_or(0.0);
-            assert!(
-                first_score >= second_score,
-                "Results should be ranked by score (first: {}, second: {})",
-                first_score, second_score
-            );
-        }
+        let first_score = results[0]["score"].as_f64().unwrap_or(0.0);
+        let second_score = results[1]["score"].as_f64().unwrap_or(0.0);
+        assert!(
+            first_score >= second_score,
+            "Results should be ranked by score (first: {}, second: {})",
+            first_score, second_score
+        );
     }
 }

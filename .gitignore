@@ -338,8 +338,8 @@ yarn.lock
 # PostgreSQL
 postgresql/
 *.sql
-!migrations/*.sql
 !backend/migrations/*.sql
+!backend/services/space_service/migrations/*.sql
 
 # MinIO / S3
 .minio/

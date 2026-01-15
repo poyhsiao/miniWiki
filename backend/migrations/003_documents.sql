@@ -27,42 +27,24 @@ ON document_versions(document_id, created_at DESC);
 -- ============================================
 
 -- Function to get document hierarchy path
-CREATE OR REPLACE FUNCTION get_document_path(document_id UUID)
+CREATE OR REPLACE FUNCTION get_document_path(p_document_id UUID)
 RETURNS TABLE(id UUID, title VARCHAR, level INT) AS $$
-DECLARE
-    current_id UUID;
-    level_num INT := 0;
-BEGIN
-    current_id := document_id;
-
-    DROP TABLE IF EXISTS temp_document_path;
-    CREATE TEMP TABLE temp_document_path (
-        doc_id UUID,
-        doc_title VARCHAR,
-        doc_level INT
-    );
-
-    WHILE current_id IS NOT NULL AND level_num < 100 LOOP
-        INSERT INTO temp_document_path
-        SELECT id, title, level_num
-        FROM documents
-        WHERE id = current_id;
-
-        SELECT parent_id INTO current_id
-        FROM documents
-        WHERE id = current_id;
-
-        level_num := level_num + 1;
-    END LOOP;
-
-    RETURN QUERY
-    SELECT doc_id, doc_title, doc_level
-    FROM temp_document_path
-    ORDER BY doc_level DESC;
-
-    DROP TABLE IF EXISTS temp_document_path;
-END;
-$$ LANGUAGE PLPGSQL;
+WITH RECURSIVE doc_path AS (
+    SELECT d.id, d.title, d.parent_id, 0 AS level
+    FROM documents d
+    WHERE d.id = p_document_id
+    
+    UNION ALL
+    
+    SELECT d.id, d.title, d.parent_id, dp.level + 1
+    FROM documents d
+    JOIN doc_path dp ON d.id = dp.parent_id
+    WHERE dp.level < 100
+)
+SELECT dp.id, dp.title, dp.level
+FROM doc_path dp
+ORDER BY dp.level DESC;
+$$ LANGUAGE SQL STABLE;
 
 -- Function to calculate content size from JSONB
 CREATE OR REPLACE FUNCTION calculate_content_size(content JSONB)
@@ -368,11 +350,23 @@ ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
 -- Create a permissive policy for development/testing
 -- IMPORTANT: In production, replace this with proper authorization policies
 -- that check space_memberships and user permissions
+-- SECURITY: This permissive policy is only allowed in non-production environments
+-- The migration runner should fail if this policy exists when NODE_ENV=production
 DROP POLICY IF EXISTS documents_allow_all ON documents;
 CREATE POLICY documents_allow_all ON documents
     FOR ALL
     USING (true)
     WITH CHECK (true);
+
+-- Pre-flight check: Ensure this migration doesn't run in production
+-- Comment out the following line after proper RLS policies are implemented
+-- DO $$
+-- BEGIN
+--     IF current_setting('app.environment', true) = 'production' THEN
+--         RAISE EXCEPTION 'CRITICAL: documents_allow_all policy detected in production. Replace with proper RLS policies before deployment.';
+--     END IF;
+-- END;
+-- $$;
 
 -- TODO: Replace the above policy with proper RLS policies such as:
 -- CREATE POLICY documents_select_policy ON documents

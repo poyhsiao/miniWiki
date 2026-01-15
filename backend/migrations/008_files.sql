@@ -5,9 +5,9 @@
 -- Create files table
 CREATE TABLE IF NOT EXISTS files (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    space_id UUID NOT NULL REFERENCES spaces(id),
-    document_id UUID NULL REFERENCES documents(id),
-    uploaded_by UUID NOT NULL REFERENCES users(id),
+    space_id UUID NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,
+    document_id UUID NULL REFERENCES documents(id) ON DELETE SET NULL,
+    uploaded_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
     file_name VARCHAR(255) NOT NULL,
     file_type VARCHAR(100) NOT NULL,
     file_size BIGINT NOT NULL,
@@ -31,11 +31,13 @@ ALTER TABLE files ADD CONSTRAINT chk_file_size CHECK (file_size <= 52428800); --
 
 ALTER TABLE files ADD CONSTRAINT chk_file_type CHECK (
     file_type LIKE 'image/%'
-    OR file_type LIKE 'application/pdf'
+    OR file_type = 'application/pdf'
     OR file_type LIKE 'text/%'
     OR file_type LIKE 'video/%'
     OR file_type LIKE 'audio/%'
-    OR file_type = 'application/zip'
+    OR file_type LIKE 'application/%zip%'
+    OR file_type LIKE 'application/vnd.%'
+    OR file_type = 'application/json'
 );
 
 -- Note: chunked_uploads table is created in migration 009_chunked_uploads.sql
@@ -54,12 +56,22 @@ $$ LANGUAGE plpgsql;
 
 -- Create function to restore soft-deleted file
 CREATE OR REPLACE FUNCTION restore_file(p_file_id UUID)
-RETURNS void AS $$
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_restored BOOLEAN;
 BEGIN
     UPDATE files
     SET is_deleted = false,
         deleted_at = NULL
     WHERE id = p_file_id AND deleted_at > NOW() - INTERVAL '30 days';
+    
+    GET DIAGNOSTICS v_restored = ROW_COUNT > 0;
+    
+    IF NOT v_restored THEN
+        RAISE NOTICE 'File % not found or past 30-day restore window', p_file_id;
+    END IF;
+    
+    RETURN v_restored;
 END;
 $$ LANGUAGE plpgsql;
 
