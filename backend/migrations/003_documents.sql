@@ -33,9 +33,9 @@ WITH RECURSIVE doc_path AS (
     SELECT d.id, d.title, d.parent_id, 0 AS level
     FROM documents d
     WHERE d.id = p_document_id
-    
+
     UNION ALL
-    
+
     SELECT d.id, d.title, d.parent_id, dp.level + 1
     FROM documents d
     JOIN doc_path dp ON d.id = dp.parent_id
@@ -360,13 +360,13 @@ CREATE POLICY documents_allow_all ON documents
 
 -- Pre-flight check: Ensure this migration doesn't run in production
 -- Comment out the following line after proper RLS policies are implemented
--- DO $$
--- BEGIN
---     IF current_setting('app.environment', true) = 'production' THEN
---         RAISE EXCEPTION 'CRITICAL: documents_allow_all policy detected in production. Replace with proper RLS policies before deployment.';
---     END IF;
--- END;
--- $$;
+DO $$
+BEGIN
+    IF current_setting('app.environment', true) = 'production' THEN
+        RAISE EXCEPTION 'CRITICAL: documents_allow_all policy detected in production. Replace with proper RLS policies before deployment.';
+    END IF;
+END;
+$$;
 
 -- TODO: Replace the above policy with proper RLS policies such as:
 -- CREATE POLICY documents_select_policy ON documents

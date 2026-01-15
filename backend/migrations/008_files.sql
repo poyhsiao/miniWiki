@@ -58,19 +58,21 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION restore_file(p_file_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
+    v_row_count INTEGER;
     v_restored BOOLEAN;
 BEGIN
     UPDATE files
     SET is_deleted = false,
         deleted_at = NULL
     WHERE id = p_file_id AND deleted_at > NOW() - INTERVAL '30 days';
-    
-    GET DIAGNOSTICS v_restored = ROW_COUNT > 0;
-    
+
+    GET DIAGNOSTICS v_row_count = ROW_COUNT;
+    v_restored := (v_row_count > 0);
+
     IF NOT v_restored THEN
         RAISE NOTICE 'File % not found or past 30-day restore window', p_file_id;
     END IF;
-    
+
     RETURN v_restored;
 END;
 $$ LANGUAGE plpgsql;
