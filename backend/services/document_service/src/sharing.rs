@@ -8,7 +8,6 @@ use serde::{Serialize, Deserialize};
 use validator::Validate;
 use shared_errors::AppError;
 use bcrypt::{hash, verify, DEFAULT_COST};
-use base64;
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use std::sync::Arc;
 
@@ -572,7 +571,8 @@ async fn extract_user_id_from_request(req: &HttpRequest) -> Result<Uuid, AppErro
         .strip_prefix("Bearer ")
         .ok_or_else(|| AppError::AuthenticationError("Invalid authorization format".to_string()))?;
 
-    let secret = req.app_data::<Arc<String>>()
+    let secret = req.app_data::<web::Data<Arc<String>>>()
+        .map(|d| d.get_ref().clone())
         .ok_or_else(|| AppError::InternalError("JWT secret not configured".to_string()))?;
 
     #[derive(Debug, Deserialize)]
@@ -589,11 +589,4 @@ async fn extract_user_id_from_request(req: &HttpRequest) -> Result<Uuid, AppErro
     let user_id_str = &token_data.claims.sub;
     Uuid::parse_str(user_id_str)
         .map_err(|_| AppError::AuthenticationError("Invalid user ID format".to_string()))
-}
-
-fn base64_decode(input: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(input)
-        .or_else(|_| base64::engine::general_purpose::STANDARD.decode(input))?;
-    String::from_utf8(bytes).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
 }
