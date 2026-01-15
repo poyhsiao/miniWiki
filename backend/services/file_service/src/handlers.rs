@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse, Responder, HttpRequest, HttpMessage};
 use serde::Deserialize;
 use uuid::Uuid;
 use std::collections::HashMap;
@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use chrono::Utc;
 use futures_util::stream::StreamExt;
 use actix_web::http::header::HeaderMap;
+use shared_errors::AppError;
 
 /// Upload file request (multipart form field names)
 const FIELD_FILE: &str = "file";
@@ -22,6 +23,22 @@ fn extract_boundary(headers: &HeaderMap) -> Option<String> {
     let mime = content_type.parse::<mime::Mime>().ok()?;
     let boundary = mime.params().find(|(k, _)| *k == "boundary")?.1.to_string();
     Some(boundary)
+}
+
+/// Extract user ID from request for authentication context
+/// First tries to get from request extensions (set by JWT middleware), falls back to X-User-Id header
+fn extract_user_id(req: &HttpRequest) -> Result<Uuid, AppError> {
+    // Try to get from request extensions first (set by JWT middleware)
+    if let Some(user_uuid) = req.extensions().get::<Uuid>() {
+        return Ok(*user_uuid);
+    }
+    
+    // Fallback to X-User-Id header
+    req.headers()
+        .get("X-User-Id")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| Uuid::parse_str(s).ok())
+        .ok_or_else(|| AppError::AuthenticationError("User ID not found in request. Provide valid JWT token or X-User-Id header.".to_string()))
 }
 
 /// Upload file handler - POST /api/v1/files/upload
@@ -53,7 +70,7 @@ pub async fn upload_file(
     let mut content_type: Option<String> = None;
 
     while let Some(field_result) = form.next().await {
-        let field = match field_result {
+        let mut field = match field_result {
             Ok(f) => f,
             Err(e) => {
                 return HttpResponse::BadRequest()
@@ -65,17 +82,9 @@ pub async fn upload_file(
             }
         };
 
-        let content_disposition = match field.content_disposition() {
-            Some(cd) => cd,
-            None => continue,
-        };
+        let name = field.name();
 
-        let name = match content_disposition.name {
-            Some(n) => n.to_string(),
-            None => continue,
-        };
-
-        match name.as_str() {
+        match name {
             FIELD_SPACE_ID => {
                 if let Some(data) = field.next().await {
                     if let Ok(data) = data {
@@ -105,9 +114,18 @@ pub async fn upload_file(
                 let ct: Option<String> = field.content_type().map(|ct: &mime::Mime| ct.to_string());
                 content_type = ct;
 
+                const MAX_FILE_SIZE: usize = 50 * 1024 * 1024;
                 let mut bytes = Vec::new();
                 while let Some(chunk_result) = field.next().await {
                     if let Ok(data) = chunk_result {
+                        if bytes.len() + data.len() > MAX_FILE_SIZE {
+                            return HttpResponse::PayloadTooLarge()
+                                .json(ErrorResponse {
+                                    code: "FILE_TOO_LARGE".to_string(),
+                                    message: format!("File exceeds maximum size of {} bytes", MAX_FILE_SIZE),
+                                    details: None,
+                                });
+                        }
                         bytes.extend_from_slice(&data);
                     } else {
                         break;
@@ -206,9 +224,18 @@ pub async fn upload_file(
         file_id,
         space_id,
         document_id,
-        // TODO: Extract user_id from authentication context (e.g., request extensions set by auth middleware)
-        // For now, using nil UUID as placeholder until auth is integrated
-        Uuid::nil(),
+        // Extract user_id from authentication context
+        match extract_user_id(&req) {
+            Ok(user_id) => user_id,
+            Err(e) => {
+                return HttpResponse::Unauthorized()
+                    .json(ErrorResponse {
+                        code: "AUTHENTICATION_ERROR".to_string(),
+                        message: e.to_string(),
+                        details: None,
+                    });
+            }
+        },
         file_name,
         content_type,
         file_size,
@@ -270,11 +297,11 @@ pub async fn init_chunked_upload(
         req.document_id,
         req.file_name,
         req.content_type,
-        req.total_size,
+        req.total_size as i64,
         chunk_size as i64,
         total_chunks as i64,
-        0i32,
-        expires_at
+        &vec![0i32],
+        now
     )
     .execute(pool.as_ref())
     .await
@@ -340,6 +367,7 @@ pub async fn upload_chunk(
 
     let uploaded_chunks: Vec<i32> = session.uploaded_chunks.unwrap_or_default();
     let total_chunks = session.total_chunks as u32;
+    let chunk_size = session.chunk_size as usize;
 
     // Validate chunk_number is within bounds and not already uploaded
     if chunk_number >= total_chunks {
@@ -347,6 +375,16 @@ pub async fn upload_chunk(
             .json(ErrorResponse {
                 code: "INVALID_CHUNK_NUMBER".to_string(),
                 message: format!("Chunk number {} is out of bounds (total chunks: {})", chunk_number, total_chunks),
+                details: None,
+            });
+    }
+
+    // Validate chunk size doesn't exceed expected chunk_size (streaming size check)
+    if body.len() > chunk_size {
+        return HttpResponse::BadRequest()
+            .json(ErrorResponse {
+                code: "CHUNK_TOO_LARGE".to_string(),
+                message: format!("Chunk size {} bytes exceeds maximum allowed size of {} bytes", body.len(), chunk_size),
                 details: None,
             });
     }
@@ -398,7 +436,7 @@ pub async fn upload_chunk(
         uploaded_bytes: body.len() as u64,
         chunks_uploaded: new_uploaded_count,
         total_chunks,
-        expires_at: session.expires_at.unwrap_or_else(|| Utc::now().naive_utc() + chrono::Duration::hours(24)),
+        expires_at: session.expires_at.naive_utc(),
     })
 }
 
@@ -408,6 +446,7 @@ pub async fn complete_chunked_upload(
     req: web::Json<CompleteChunkedUploadRequest>,
     pool: web::Data<PgPool>,
     storage: web::Data<Arc<S3Storage>>,
+    http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let upload_id = upload_id.into_inner();
 
@@ -502,6 +541,21 @@ pub async fn complete_chunked_upload(
 
     let bucket = storage.bucket().to_string();
 
+    let computed_checksum = format!("{:x}", md5::compute(&assembled_content));
+
+    // Validate client-provided checksum matches computed checksum
+    if req.checksum != computed_checksum {
+        return HttpResponse::BadRequest()
+            .json(ErrorResponse {
+                code: "CHECKSUM_MISMATCH".to_string(),
+                message: "Client-provided checksum does not match computed checksum".to_string(),
+                details: Some(serde_json::json!({
+                    "client_provided": req.checksum,
+                    "computed": computed_checksum
+                })),
+            });
+    }
+
     if let Err(e) = sqlx::query!(
         r#"
         INSERT INTO files (
@@ -513,13 +567,24 @@ pub async fn complete_chunked_upload(
         file_id,
         session.space_id,
         session.document_id,
-        Uuid::nil(),
+        // Extract user_id from authentication context
+        match extract_user_id(&http_req) {
+            Ok(user_id) => user_id,
+            Err(e) => {
+                return HttpResponse::Unauthorized()
+                    .json(ErrorResponse {
+                        code: "AUTHENTICATION_ERROR".to_string(),
+                        message: e.to_string(),
+                        details: None,
+                    });
+            }
+        },
         session.file_name,
         session.content_type,
         session.total_size,
         storage_path,
         bucket,
-        req.checksum
+        computed_checksum
     )
     .execute(pool.as_ref())
     .await
@@ -980,10 +1045,9 @@ pub async fn list_space_files(
     let limit = query.limit.unwrap_or(50).clamp(1, 100);
     let offset = query.offset.unwrap_or(0).max(0);
 
-    let files_result = match query.document_id {
+    let files: Result<Vec<File>, sqlx::Error> = match query.document_id {
         Some(doc_id) => {
-            sqlx::query_as!(
-                File,
+            sqlx::query_as::<_, File>(
                 r#"
                 SELECT id, space_id, document_id, uploaded_by, file_name,
                        file_type, file_size, storage_path, storage_bucket,
@@ -993,14 +1057,16 @@ pub async fn list_space_files(
                 ORDER BY created_at DESC
                 LIMIT $3 OFFSET $4
                 "#,
-                space_id, doc_id, limit as i64, offset as i64
             )
+            .bind(space_id)
+            .bind(doc_id)
+            .bind(limit as i64)
+            .bind(offset as i64)
             .fetch_all(pool.as_ref())
             .await
         }
         None => {
-            sqlx::query_as!(
-                File,
+            sqlx::query_as::<_, File>(
                 r#"
                 SELECT id, space_id, document_id, uploaded_by, file_name,
                        file_type, file_size, storage_path, storage_bucket,
@@ -1010,51 +1076,55 @@ pub async fn list_space_files(
                 ORDER BY created_at DESC
                 LIMIT $2 OFFSET $3
                 "#,
-                space_id, limit as i64, offset as i64
             )
+            .bind(space_id)
+            .bind(limit as i64)
+            .bind(offset as i64)
             .fetch_all(pool.as_ref())
             .await
         }
     };
 
-    let files = match files_result {
+    let total_result: Result<Option<i64>, sqlx::Error> = match query.document_id {
+        Some(doc_id) => {
+            sqlx::query_scalar::<_, i64>(
+                r#"SELECT COUNT(*) FROM files WHERE space_id = $1 AND document_id = $2 AND is_deleted = false"#,
+            )
+            .bind(space_id)
+            .bind(doc_id)
+            .fetch_optional(pool.as_ref())
+            .await
+        }
+        None => {
+            sqlx::query_scalar::<_, i64>(
+                r#"SELECT COUNT(*) FROM files WHERE space_id = $1 AND is_deleted = false"#,
+            )
+            .bind(space_id)
+            .fetch_optional(pool.as_ref())
+            .await
+        }
+    };
+
+    let total = match total_result {
+        Ok(Some(count)) => count,
+        Ok(None) => 0,
+        Err(e) => {
+            return HttpResponse::InternalServerError()
+                .json(ErrorResponse {
+                    code: "DATABASE_ERROR".to_string(),
+                    message: format!("Failed to count files: {}", e),
+                    details: None,
+                });
+        }
+    };
+
+    let files = match files {
         Ok(f) => f,
         Err(e) => {
             return HttpResponse::InternalServerError()
                 .json(ErrorResponse {
                     code: "DATABASE_ERROR".to_string(),
                     message: format!("Failed to list files: {}", e),
-                    details: None,
-                });
-        }
-    };
-
-    let total_result = match query.document_id {
-        Some(doc_id) => {
-            sqlx::query!(
-                r#"SELECT COUNT(*) as "count!: i64" FROM files WHERE space_id = $1 AND document_id = $2 AND is_deleted = false"#,
-                space_id, doc_id
-            )
-            .fetch_one(pool.as_ref())
-            .await
-        }
-        None => {
-            sqlx::query!(
-                r#"SELECT COUNT(*) as "count!: i64" FROM files WHERE space_id = $1 AND is_deleted = false"#,
-                space_id
-            )
-            .fetch_one(pool.as_ref())
-            .await
-        }
-    };
-
-    let total = match total_result {
-        Ok(r) => r.count.unwrap_or(0),
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .json(ErrorResponse {
-                    code: "DATABASE_ERROR".to_string(),
-                    message: format!("Failed to count files: {}", e),
                     details: None,
                 });
         }

@@ -77,9 +77,12 @@ pub struct FileDetailResponse {
 }
 
 /// Chunked upload session response
+/// Note: upload_url is always None for chunked uploads - clients should use
+/// the PUT /api/v1/files/upload/chunked/{upload_id}/{chunk_number} endpoint directly
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChunkedUploadInitResponse {
     pub upload_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub upload_url: Option<String>,
     pub chunk_size: u64,
     pub total_chunks: u32,
