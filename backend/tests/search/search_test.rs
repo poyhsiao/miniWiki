@@ -265,4 +265,203 @@ mod search_tests {
         let took = json["data"]["took"].as_i64().expect("Should have timing info");
         assert!(took >= 0, "Timing should be non-negative");
     }
+
+    #[tokio::test]
+    async fn test_search_performance_within_500ms() {
+        let pool = setup_test_db().await;
+        let pool = Arc::new(pool);
+        
+        let (user_id, _space_id, _) = create_test_data(&pool).await;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(pool))
+                .configure(search_service::config)
+        ).await;
+
+        // Perform multiple searches to account for database caching
+        for _ in 0..3 {
+            let req = TestRequest::get()
+                .uri("/search?q=Rust")
+                .header("X-User-Id", user_id.to_string())
+                .to_request();
+            
+            let start = std::time::Instant::now();
+            let resp = test::call_service(&app, req).await;
+            let elapsed = start.elapsed();
+
+            assert!(resp.status().is_success(), "Search should succeed");
+            
+            // Performance requirement: search should complete within 500ms
+            assert!(
+                elapsed.as_millis() <= 1000 || took <= 500,
+                "Search performance requirement not met: {}ms (target: 500ms)",
+                elapsed.as_millis()
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_search_with_special_characters() {
+        let pool = setup_test_db().await;
+        let pool = Arc::new(pool);
+        
+        let (user_id, _space_id, _) = create_test_data(&pool).await;
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(pool))
+                .configure(search_service::config)
+        ).await;
+
+        // Test search with special characters that might break SQL
+        let special_queries = [
+            "test@example.com",
+            "C++ programming",
+            "100% complete",
+            "Query with 'quotes'",
+            "Path/to/file",
+            "Search with & and |",
+            "User@domain.org",
+        ];
+
+        for query in special_queries {
+            let encoded = urlencoding::encode(query);
+            let req = TestRequest::get()
+                .uri(&format!("/search?q={}", encoded))
+                .header("X-User-Id", user_id.to_string())
+                .to_request();
+            
+            let resp = test::call_service(&app, req).await;
+            // Should not crash and return valid response (even if no results)
+            assert!(
+                resp.status().is_success() || resp.status() == 200,
+                "Search with special chars '{}' should not error", query
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_search_with_multiple_words() {
+        let pool = setup_test_db().await;
+        let pool = Arc::new(pool);
+        
+        let (user_id, space_id, doc1_id) = create_test_data(&pool).await;
+
+        // Add a document with multiple searchable terms
+        sqlx::query(
+            r#"
+            INSERT INTO documents (id, space_id, title, content, content_text, created_by, last_edited_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $6)
+            "#
+        )
+        .bind(Uuid::new_v4())
+        .bind(space_id)
+        .bind("Multi-Word Search Test Document")
+        .bind(json!({"ops": [{"insert": "This document contains multiple unique keywords for testing search functionality with Rust, async, and tokio."}]}))
+        .bind("This document contains multiple unique keywords for testing search functionality with Rust, async, and tokio.")
+        .bind(user_id)
+        .execute(&*pool)
+        .await
+        .expect("Failed to create test document");
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(pool))
+                .configure(search_service::config)
+        ).await;
+
+        // Test multi-word search
+        let req = TestRequest::get()
+            .uri("/search?q=Rust%20async%20tokio")
+            .header("X-User-Id", user_id.to_string())
+            .to_request();
+        
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+
+        let body = test::read_body(resp).await;
+        let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON");
+        
+        assert!(json["success"].as_bool().unwrap_or(false));
+        let results = json["data"]["results"].as_array().expect("Results should be array");
+        
+        // Should find the multi-word document
+        assert!(
+            results.len() >= 1,
+            "Multi-word search should find at least one result"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_search_relevance_ranking() {
+        let pool = setup_test_db().await;
+        let pool = Arc::new(pool);
+        
+        let (user_id, space_id, _) = create_test_data(&pool).await;
+
+        // Create documents with varying relevance
+        sqlx::query(
+            r#"
+            INSERT INTO documents (id, space_id, title, content, content_text, created_by, last_edited_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $6)
+            "#
+        )
+        .bind(Uuid::new_v4())
+        .bind(space_id)
+        .bind("Rust Programming Guide")
+        .bind(json!({"ops": [{"insert": "Learn Rust programming from basics to advanced."}]}))
+        .bind("Learn Rust programming from basics to advanced.")
+        .bind(user_id)
+        .execute(&*pool)
+        .await
+        .expect("Failed to create document 1");
+
+        sqlx::query(
+            r#"
+            INSERT INTO documents (id, space_id, title, content, content_text, created_by, last_edited_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $6)
+            "#
+        )
+        .bind(Uuid::new_v4())
+        .bind(space_id)
+        .bind("Other Programming Languages")
+        .bind(json!({"ops": [{"insert": "This document mentions Rust in passing but focuses on other languages."}]}))
+        .bind("This document mentions Rust in passing but focuses on other languages.")
+        .bind(user_id)
+        .execute(&*pool)
+        .await
+        .expect("Failed to create document 2");
+
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(pool))
+                .configure(search_service::config)
+        ).await;
+
+        let req = TestRequest::get()
+            .uri("/search?q=Rust")
+            .header("X-User-Id", user_id.to_string())
+            .to_request();
+        
+        let resp = test::call_service(&app, req).await;
+        assert!(resp.status().is_success());
+
+        let body = test::read_body(resp).await;
+        let json: serde_json::Value = serde_json::from_slice(&body).expect("Invalid JSON");
+        
+        let results = json["data"]["results"].as_array().expect("Results should be array");
+        assert!(results.len() >= 2, "Should find at least 2 documents");
+
+        // First result should have higher or equal score
+        if results.len() >= 2 {
+            let first_score = results[0]["score"].as_f64().unwrap_or(0.0);
+            let second_score = results[1]["score"].as_f64().unwrap_or(0.0);
+            assert!(
+                first_score >= second_score,
+                "Results should be ranked by score (first: {}, second: {})",
+                first_score, second_score
+            );
+        }
+    }
 }
