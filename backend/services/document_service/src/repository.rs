@@ -17,6 +17,12 @@ pub struct DocumentRow {
     pub last_edited_by: Uuid,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    // Sync-related fields
+    pub version: i64,
+    pub last_synced_at: Option<NaiveDateTime>,
+    pub vector_clock: Option<serde_json::Value>,
+    pub client_id: Option<Uuid>,
+    pub sync_state: Option<String>,
 }
 
 #[derive(Debug, Clone, FromRow)]
@@ -66,14 +72,12 @@ struct DocumentPathRow {
     level: Option<i32>,
 }
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, FromRow, serde::Serialize)]
 pub struct CommentRow {
     pub id: Uuid,
     pub document_id: Uuid,
     pub parent_id: Option<Uuid>,
     pub author_id: Uuid,
-    pub author_name: Option<String>,
-    pub author_avatar: Option<String>,
     pub content: String,
     pub is_resolved: bool,
     pub resolved_by: Option<Uuid>,
@@ -515,8 +519,8 @@ impl DocumentRepository {
         let spaces = sqlx::query_as!(
             SpaceRow,
             r#"
-            SELECT 
-                s.id, s.owner_id, s.name, s.icon, s.description, 
+            SELECT
+                s.id, s.owner_id, s.name, s.icon, s.description,
                 s.is_public, s.created_at, s.updated_at,
                 sm.role as user_role
             FROM spaces s
@@ -605,7 +609,7 @@ impl DocumentRepository {
             SpaceRow,
             r#"
             UPDATE spaces
-            SET 
+            SET
                 name = COALESCE($2, name),
                 icon = COALESCE($3, icon),
                 description = COALESCE($4, description),
@@ -787,8 +791,8 @@ impl DocumentRepository {
         let document_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let parent_uuid = parent_id.map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into()))).transpose()?;
 
-        let limit = limit.unwrap_or(50);
-        let offset = offset.unwrap_or(0);
+        let limit_i64 = limit.unwrap_or(50) as i64;
+        let offset_i64 = offset.unwrap_or(0) as i64;
 
         let comments = if let Some(parent) = parent_uuid {
             sqlx::query_as!(
@@ -796,8 +800,8 @@ impl DocumentRepository {
                 r#"SELECT * FROM comments WHERE document_id = $1 AND parent_id = $2 ORDER BY created_at LIMIT $3 OFFSET $4"#,
                 document_uuid,
                 parent,
-                limit,
-                offset
+                limit_i64,
+                offset_i64
             )
             .fetch_all(&self.pool)
             .await?
@@ -806,8 +810,8 @@ impl DocumentRepository {
                 CommentRow,
                 r#"SELECT * FROM comments WHERE document_id = $1 AND parent_id IS NULL ORDER BY created_at LIMIT $2 OFFSET $3"#,
                 document_uuid,
-                limit,
-                offset
+                limit_i64,
+                offset_i64
             )
             .fetch_all(&self.pool)
             .await?
@@ -821,6 +825,7 @@ impl DocumentRepository {
             )
             .fetch_one(&self.pool)
             .await?
+            .unwrap_or(0)
         } else {
             sqlx::query_scalar!(
                 r#"SELECT COUNT(*) FROM comments WHERE document_id = $1 AND parent_id IS NULL"#,
@@ -828,6 +833,7 @@ impl DocumentRepository {
             )
             .fetch_one(&self.pool)
             .await?
+            .unwrap_or(0)
         };
 
         Ok((comments, total))
@@ -848,14 +854,13 @@ impl DocumentRepository {
         let comment = sqlx::query_as!(
             CommentRow,
             r#"
-            INSERT INTO comments (id, document_id, parent_id, author_id, author_name, content)
-            VALUES (gen_random_uuid(), $1, $2, $3, $4, $5)
+            INSERT INTO comments (id, document_id, parent_id, author_id, content)
+            VALUES (gen_random_uuid(), $1, $2, $3, $4)
             RETURNING *
             "#,
             document_uuid,
             parent_uuid,
             author_uuid,
-            author_name,
             content
         )
         .fetch_one(&self.pool)

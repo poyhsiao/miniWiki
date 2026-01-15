@@ -11,7 +11,7 @@
 use actix_web::{web, Responder, HttpResponse, HttpRequest};
 use validator::Validate;
 use tracing::error;
-use shared_errors::AppError;
+use shared_errors::{AppError, ErrorCode};
 
 use crate::models::*;
 use crate::repository::DocumentRepository;
@@ -67,9 +67,9 @@ pub async fn list_comments(
     let document_id = document_id.into_inner();
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            &e.error_code,
-            &e.message,
+        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+            ErrorCode::from(e).to_string().as_str(),
+            e.to_string().as_str(),
         )),
     };
 
@@ -97,9 +97,10 @@ pub async fn list_comments(
             let comment_responses: Vec<CommentResponse> = comments
                 .iter()
                 .map(|row| {
-                    let author_name = row.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
-                    let author_avatar = row.author_avatar.as_deref();
-                    comment_row_to_response(row, &author_name, author_avatar)
+                    // TODO: Join with users table to get author_name and author_avatar
+                    let author_name = "User"; // Placeholder until user lookup is implemented
+                    let author_avatar = None;
+                    comment_row_to_response(row, author_name, author_avatar)
                 })
                 .collect();
 
@@ -139,9 +140,9 @@ pub async fn create_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            &e.error_code,
-            &e.message,
+        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+            ErrorCode::from(e).to_string().as_str(),
+            e.to_string().as_str(),
         )),
     };
 
@@ -231,9 +232,9 @@ pub async fn update_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            &e.error_code,
-            &e.message,
+        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+            ErrorCode::from(e).to_string().as_str(),
+            e.to_string().as_str(),
         )),
     };
 
@@ -265,11 +266,29 @@ pub async fn update_comment(
 
     // Update comment
     match repo.update_comment(&comment_id, &req.content).await {
-        Ok(comment) => {
-            let author_name = comment.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
-            let author_avatar = comment.author_avatar.as_deref();
-            let response = comment_row_to_response(&comment, &author_name, author_avatar);
-            HttpResponse::Ok().json(ApiResponse::success(response))
+        Ok(_comment) => {
+            let author_name = "User"; // Placeholder until user lookup is implemented
+            let author_avatar = None;
+            // Re-fetch the comment with full data
+            match repo.get_comment(&comment_id).await {
+                Ok(Some(full_comment)) => {
+                    let response = comment_row_to_response(&full_comment, author_name, author_avatar);
+                    HttpResponse::Ok().json(ApiResponse::success(response))
+                }
+                Ok(None) => {
+                    HttpResponse::NotFound().json(ApiResponse::<()>::error(
+                        "NOT_FOUND",
+                        "Comment not found after update",
+                    ))
+                }
+                Err(e) => {
+                    error!("Database error fetching updated comment: {:?}", e);
+                    HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                        "DATABASE_ERROR",
+                        "Failed to fetch updated comment",
+                    ))
+                }
+            }
         }
         Err(e) => {
             error!("Database error updating comment: {:?}", e);
@@ -291,9 +310,9 @@ pub async fn resolve_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            &e.error_code,
-            &e.message,
+        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+            ErrorCode::from(e).to_string().as_str(),
+            e.to_string().as_str(),
         )),
     };
 
@@ -341,10 +360,9 @@ pub async fn resolve_comment(
     // Resolve comment
     match repo.resolve_comment(&comment_id, &user_id).await {
         Ok(comment) => {
-            let author_name = comment.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
-            let author_avatar = comment.author_avatar.as_deref();
-            let response = comment_row_to_response(&comment, &author_name, author_avatar);
-            HttpResponse::Ok().json(ApiResponse::success(response))
+            let _author_name = "User"; // Placeholder until user lookup is implemented
+            let _author_avatar: Option<&str> = None;
+            HttpResponse::Ok().json(ApiResponse::success(comment))
         }
         Err(e) => {
             error!("Database error resolving comment: {:?}", e);
@@ -366,9 +384,9 @@ pub async fn unresolve_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            &e.error_code,
-            &e.message,
+        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+            ErrorCode::from(e).to_string().as_str(),
+            e.to_string().as_str(),
         )),
     };
 
@@ -410,11 +428,8 @@ pub async fn unresolve_comment(
 
     // Unresolve comment
     match repo.unresolve_comment(&comment_id).await {
-        Ok(comment) => {
-            let author_name = comment.author_name.clone().unwrap_or_else(|| "Unknown User".to_string());
-            let author_avatar = comment.author_avatar.as_deref();
-            let response = comment_row_to_response(&comment, &author_name, author_avatar);
-            HttpResponse::Ok().json(ApiResponse::success(response))
+        Ok(_comment) => {
+            HttpResponse::Ok().json(ApiResponse::success(()))
         }
         Err(e) => {
             error!("Database error unresolving comment: {:?}", e);
@@ -436,9 +451,9 @@ pub async fn delete_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            &e.error_code,
-            &e.message,
+        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+            ErrorCode::from(e).to_string().as_str(),
+            e.to_string().as_str(),
         )),
     };
 

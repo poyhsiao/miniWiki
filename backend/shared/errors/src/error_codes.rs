@@ -1,3 +1,5 @@
+use super::error_types::AppError;
+
 pub enum ErrorCode {
     DatabaseError,
     ValidationError,
@@ -24,6 +26,23 @@ impl std::fmt::Display for ErrorCode {
             ErrorCode::InternalError => write!(f, "INTERNAL_ERROR"),
             ErrorCode::ConfigurationError => write!(f, "CONFIGURATION_ERROR"),
             ErrorCode::ExternalServiceError => write!(f, "EXTERNAL_SERVICE_ERROR"),
+        }
+    }
+}
+
+impl From<&AppError> for ErrorCode {
+    fn from(err: &AppError) -> Self {
+        match err {
+            AppError::DatabaseError(_) => ErrorCode::DatabaseError,
+            AppError::ValidationError(_) => ErrorCode::ValidationError,
+            AppError::AuthenticationError(_) => ErrorCode::AuthenticationError,
+            AppError::AuthorizationError(_) => ErrorCode::AuthorizationError,
+            AppError::NotFoundError(_) => ErrorCode::NotFoundError,
+            AppError::ConflictError(_) => ErrorCode::ConflictError,
+            AppError::RateLimitError(_) => ErrorCode::RateLimitError,
+            AppError::InternalError(_) => ErrorCode::InternalError,
+            AppError::ConfigurationError(_) => ErrorCode::ConfigurationError,
+            AppError::ExternalServiceError(_) => ErrorCode::ExternalServiceError,
         }
     }
 }

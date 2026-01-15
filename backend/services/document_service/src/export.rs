@@ -253,7 +253,7 @@ impl ExportService {
         output.push_str(&format!("# {}\n\n", title));
 
         // Content - convert Yjs JSON to Markdown
-        let markdown_content = yjs_to_markdown(content);
+        let markdown_content = Self::yjs_to_markdown(content);
         output.push_str(&markdown_content);
 
         Ok(output)
@@ -328,7 +328,7 @@ impl ExportService {
         output.push_str(&format!("    <h1>{}</h1>\n\n", title));
 
         // Content - convert Yjs JSON to HTML
-        let html_content = yjs_to_html(content);
+        let html_content = Self::yjs_to_html(content);
         output.push_str(&format!("    {}\n", html_content));
 
         // Footer
