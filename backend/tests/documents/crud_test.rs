@@ -22,24 +22,25 @@ async fn test_create_document_success() {
         parent_id: None,
         title: "Test Document".to_string(),
         icon: Some("📝".to_string()),
-        content: serde_json::json!({
+        content: Some(serde_json::json!({
             "type": "Y.Doc",
             "update": "dGVzdCB1cGRhdGU=",
             "vector_clock": {
                 "client_id": user.id.to_string(),
                 "clock": 1
             }
-        }),
+        })),
     };
 
     let response = app
         .post(&format!("/api/v1/spaces/{}/documents", space.id))
         .json(&request)
         .send()
-        .await?;
+        .await
+        .expect("Create document request failed");
 
     assert!(response.status().is_success());
-    let document: serde_json::Value = response.json().await?;
+    let document: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(document["data"]["title"], "Test Document");
     assert_eq!(document["data"]["space_id"], space.id.to_string());
     assert!(document["data"]["id"].is_string());
@@ -55,20 +56,21 @@ async fn test_create_document_with_parent() {
     let parent_doc = app.create_test_document(&space.id, None).await;
 
     let request = CreateDocumentRequest {
-        parent_id: Some(parent_doc.id),
+        parent_id: Some(parent_doc.id.to_string()),
         title: "Child Document".to_string(),
         icon: None,
-        content: serde_json::json!({}),
+        content: Some(serde_json::json!({})),
     };
 
     let response = app
         .post(&format!("/api/v1/spaces/{}/documents", space.id))
         .json(&request)
         .send()
-        .await?;
+        .await
+        .expect("Create document request failed");
 
     assert!(response.status().is_success());
-    let document: serde_json::Value = response.json().await?;
+    let document: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(document["data"]["parent_id"], parent_doc.id.to_string());
     assert_eq!(document["success"], true);
     assert!(document["error"].is_null());
@@ -84,14 +86,15 @@ async fn test_create_document_empty_title_fails() {
         parent_id: None,
         title: "".to_string(),
         icon: None,
-        content: serde_json::json!({}),
+        content: Some(serde_json::json!({})),
     };
 
     let response = app
         .post(&format!("/api/v1/spaces/{}/documents", space.id))
         .json(&request)
         .send()
-        .await;
+        .await
+        .expect("Create document request failed");
 
     assert_eq!(response.status(), 400);
 }
@@ -106,10 +109,11 @@ async fn test_get_document_success() {
     let response = app
         .get(&format!("/api/v1/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("Get document request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(result["data"]["id"], document.id.to_string());
     assert_eq!(result["data"]["title"], document.title);
     assert_eq!(result["success"], true);
@@ -124,7 +128,8 @@ async fn test_get_document_not_found() {
     let response = app
         .get(&format!("/api/v1/documents/{}", fake_id))
         .send()
-        .await;
+        .await
+        .expect("Get document request failed");
 
     assert_eq!(response.status(), 404);
 }
@@ -146,10 +151,11 @@ async fn test_update_document_title() {
         .patch(&format!("/api/v1/documents/{}", document.id))
         .json(&request)
         .send()
-        .await;
+        .await
+        .expect("Update document request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(result["data"]["title"], "Updated Title");
     assert_eq!(result["success"], true);
     assert!(result["error"].is_null());
@@ -181,7 +187,8 @@ async fn test_update_document_content() {
         .patch(&format!("/api/v1/documents/{}", document.id))
         .json(&request)
         .send()
-        .await;
+        .await
+        .expect("Update document request failed");
 
     assert!(response.status().is_success());
 }
@@ -196,7 +203,8 @@ async fn test_delete_document_soft_delete() {
     let response = app
         .delete(&format!("/api/v1/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("Delete document request failed");
 
     assert!(response.status().is_success());
 
@@ -204,10 +212,11 @@ async fn test_delete_document_soft_delete() {
     let get_response = app
         .get(&format!("/api/v1/documents/{}", document.id))
         .send()
-        .await;
+        .await
+        .expect("Get document request failed");
 
     assert!(get_response.status().is_success());
-    let result: serde_json::Value = get_response.json().await;
+    let result: serde_json::Value = get_response.json().await.expect("Parse response failed");
     assert_eq!(result["data"]["is_archived"], true);
     assert_eq!(result["success"], true);
     assert!(result["error"].is_null());
@@ -227,10 +236,11 @@ async fn test_list_documents_in_space() {
     let response = app
         .get(&format!("/api/v1/spaces/{}/documents", space.id))
         .send()
-        .await;
+        .await
+        .expect("List documents request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert!(result["data"]["documents"].is_array());
     assert_eq!(result["data"]["documents"].as_array().unwrap().len(), 3);
     assert_eq!(result["success"], true);
@@ -251,10 +261,11 @@ async fn test_list_documents_with_pagination() {
     let response = app
         .get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=0", space.id))
         .send()
-        .await;
+        .await
+        .expect("List documents request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(result["data"]["documents"].as_array().unwrap().len(), 5);
     assert_eq!(result["data"]["total"], 10);
     assert_eq!(result["data"]["limit"], 5);
@@ -278,10 +289,11 @@ async fn test_document_hierarchy_nested() {
     let response = app
         .get(&format!("/api/v1/documents/{}/children", parent.id))
         .send()
-        .await;
+        .await
+        .expect("Get children request failed");
 
     assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(result["data"]["documents"].as_array().unwrap().len(), 1);
     assert_eq!(result["success"], true);
     assert!(result["error"].is_null());
