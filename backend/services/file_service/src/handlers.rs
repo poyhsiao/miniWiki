@@ -501,7 +501,7 @@ pub async fn complete_chunked_upload(
     let temp_storage_path = format!("{}/{}", session.space_id, upload_id);
 
     for chunk_num in &sorted_chunks {
-        let chunk_path = format!("{}/{}.chunk.{}", session.space_id, upload_id, chunk_num);
+        let chunk_path = format!("{}/{}/{}.chunk.{}", session.space_id, upload_id, session.file_name, chunk_num);
         match storage.download_file(&chunk_path).await {
             Ok(chunk_data) => {
                 assembled_content.extend_from_slice(&chunk_data);
@@ -530,7 +530,7 @@ pub async fn complete_chunked_upload(
     }
 
     for chunk_num in sorted_chunks {
-        let chunk_path = format!("{}/{}.chunk.{}", session.space_id, upload_id, chunk_num);
+        let chunk_path = format!("{}/{}/{}.chunk.{}", session.space_id, upload_id, session.file_name, chunk_num);
         let _ = storage.delete_file(&chunk_path).await;
     }
 
