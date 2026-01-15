@@ -6,6 +6,7 @@ members = [
     "services/sync_service",
     "services/file_service",
     "services/websocket_service",
+    "services/search_service",
     "shared/database",
     "shared/models",
     "shared/errors",

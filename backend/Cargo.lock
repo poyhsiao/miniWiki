@@ -4490,6 +4490,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "search_service"
+version = "0.1.0"
+dependencies = [
+ "actix-rt",
+ "actix-web",
+ "async-trait",
+ "chrono",
+ "futures-util",
+ "regex",
+ "serde",
+ "serde_json",
+ "shared_database",
+ "shared_errors",
+ "shared_models",
+ "sqlx",
+ "sqlx-cli",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "uuid",
+ "validator",
+]
+
+[[package]]
 name = "sec1"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
