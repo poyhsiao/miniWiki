@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:miniwiki/domain/entities/file.dart';
 import 'package:miniwiki/presentation/providers/file_provider.dart';
 import 'package:miniwiki/core/config/providers.dart';
@@ -24,22 +23,18 @@ class FileUploadWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uploadState = ref.watch(
-      fileUploadNotifierProvider,
-    );
+    final uploadKey = '$spaceId:$documentId';
+    final uploadState = ref.watch(fileUploadNotifierProvider(uploadKey));
     final theme = Theme.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Upload button and progress
         if (uploadState.isUploading && showProgress)
           _buildOverallProgress(context, uploadState, theme)
         else
           _buildUploadButton(context, ref, theme),
-
-        // Individual file progress
         if (uploadState.uploads.isNotEmpty)
           _buildUploadList(context, uploadState, theme, ref),
       ],
@@ -186,6 +181,9 @@ class FileUploadWidget extends ConsumerWidget {
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
     try {
       final service = ref.read(fileServiceProvider);
+      final uploadKey = '$spaceId:$documentId';
+      final uploader = ref.read(fileUploadNotifierProvider(uploadKey).notifier);
+
       final files = await service.pickFiles(
         type: FileTypeFilter.all,
         allowMultiple: true,
@@ -193,6 +191,7 @@ class FileUploadWidget extends ConsumerWidget {
 
       if (files.isEmpty) return;
 
+      await uploader.uploadFiles(files);
       onUploadComplete?.call();
     } catch (e) {
       if (context.mounted) {
@@ -222,9 +221,8 @@ class FileUploadButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uploadState = ref.watch(
-      fileUploadNotifierProvider,
-    );
+    final uploadKey = '$spaceId:$documentId';
+    final uploadState = ref.watch(fileUploadNotifierProvider(uploadKey));
     final hasActiveUploads = uploadState.isUploading;
 
     return IconButton(
@@ -243,6 +241,9 @@ class FileUploadButton extends ConsumerWidget {
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
     try {
       final service = ref.read(fileServiceProvider);
+      final uploadKey = '$spaceId:$documentId';
+      final uploader = ref.read(fileUploadNotifierProvider(uploadKey).notifier);
+
       final files = await service.pickFiles(
         type: FileTypeFilter.all,
         allowMultiple: true,
@@ -250,6 +251,7 @@ class FileUploadButton extends ConsumerWidget {
 
       if (files.isEmpty) return;
 
+      await uploader.uploadFiles(files);
       onFilesUploaded?.call();
     } catch (e) {
       if (context.mounted) {

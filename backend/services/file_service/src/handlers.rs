@@ -2,6 +2,7 @@ use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use uuid::Uuid;
 use std::collections::HashMap;
+use std::sync::Arc;
 use crate::models::*;
 use crate::storage::{S3Storage, StorageError};
 use sqlx::PgPool;
@@ -14,14 +15,6 @@ const FIELD_FILE: &str = "file";
 const FIELD_SPACE_ID: &str = "space_id";
 const FIELD_DOCUMENT_ID: &str = "document_id";
 const FIELD_FILE_NAME: &str = "file_name";
-
-/// File list query parameters
-#[derive(Debug, Deserialize)]
-pub struct FileListQuery {
-    pub document_id: Option<Uuid>,
-    pub limit: Option<i64>,
-    pub offset: Option<i64>,
-}
 
 /// Extract boundary from content-type header
 fn extract_boundary(headers: &HeaderMap) -> Option<String> {
@@ -261,20 +254,6 @@ pub async fn init_chunked_upload(
     let chunk_size = req.chunk_size.unwrap_or(5 * 1024 * 1024);
     let total_chunks = ((req.total_size + chunk_size - 1) / chunk_size) as u32;
 
-    let storage_path = format!("{}/{}/{}", req.space_id, upload_id, req.file_name);
-    
-    let presigned_url = match storage.presigned_upload_url(&storage_path, &req.content_type, 3600).await {
-        Ok(url) => url,
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .json(ErrorResponse {
-                    code: "PRESIGNED_URL_FAILED".to_string(),
-                    message: format!("Failed to generate presigned URL: {}", e),
-                    details: None,
-                });
-        }
-    };
-
     // Create chunked upload session in database
     if let Err(e) = sqlx::query!(
         r#"
@@ -308,21 +287,21 @@ pub async fn init_chunked_upload(
 
     HttpResponse::Created().json(ChunkedUploadInitResponse {
         upload_id,
-        upload_url: presigned_url,
+        upload_url: String::new(),
         chunk_size: chunk_size as u64,
         total_chunks,
         expires_at,
     })
 }
 
-/// Upload file chunk - PUT /api/v1/files/upload/chunked/{upload_id}
+/// Upload file chunk - PUT /api/v1/files/upload/chunked/{upload_id}/{chunk_number}
 pub async fn upload_chunk(
-    upload_id: web::Path<Uuid>,
+    path: web::Path<(Uuid, u32)>,
     body: web::Bytes,
     pool: web::Data<PgPool>,
     storage: web::Data<Arc<S3Storage>>,
 ) -> impl Responder {
-    let upload_id = upload_id.into_inner();
+    let (upload_id, chunk_number) = path.into_inner();
 
     // Get upload session - query as generic tuple to avoid type issues
     let session_result = sqlx::query!(
@@ -358,11 +337,31 @@ pub async fn upload_chunk(
     };
 
     let uploaded_chunks: Vec<i32> = session.uploaded_chunks.unwrap_or_default();
-    let chunk_number = uploaded_chunks.len() as u32;
+    let total_chunks = session.total_chunks as u32;
+
+    // Validate chunk_number is within bounds and not already uploaded
+    if chunk_number >= total_chunks {
+        return HttpResponse::BadRequest()
+            .json(ErrorResponse {
+                code: "INVALID_CHUNK_NUMBER".to_string(),
+                message: format!("Chunk number {} is out of bounds (total chunks: {})", chunk_number, total_chunks),
+                details: None,
+            });
+    }
+
+    if uploaded_chunks.contains(&(chunk_number as i32)) {
+        return HttpResponse::Conflict()
+            .json(ErrorResponse {
+                code: "CHUNK_ALREADY_UPLOADED".to_string(),
+                message: format!("Chunk {} has already been uploaded", chunk_number),
+                details: None,
+            });
+    }
+
     let storage_path = format!("{}/{}/{}", session.space_id, upload_id, session.file_name);
 
     let chunk_path = format!("{}.chunk.{}", storage_path, chunk_number);
-    
+
     if let Err(e) = storage.upload_file(&chunk_path, &body, "application/octet-stream").await {
         return HttpResponse::InternalServerError()
             .json(ErrorResponse {
@@ -396,7 +395,7 @@ pub async fn upload_chunk(
         chunk_number,
         uploaded_bytes: body.len() as u64,
         chunks_uploaded: new_uploaded_count,
-        total_chunks: session.total_chunks as u32,
+        total_chunks,
         expires_at: session.expires_at.unwrap_or_else(|| Utc::now().naive_utc() + chrono::Duration::hours(24)),
     })
 }
@@ -454,8 +453,45 @@ pub async fn complete_chunked_upload(
             });
     }
 
+    let mut sorted_chunks = uploaded_chunks.clone();
+    sorted_chunks.sort();
+
+    let mut assembled_content = Vec::new();
+    let temp_storage_path = format!("{}/{}", session.space_id, upload_id);
+
+    for chunk_num in &sorted_chunks {
+        let chunk_path = format!("{}/{}.chunk.{}", session.space_id, upload_id, chunk_num);
+        match storage.download_file(&chunk_path).await {
+            Ok(chunk_data) => {
+                assembled_content.extend_from_slice(&chunk_data);
+            }
+            Err(e) => {
+                return HttpResponse::InternalServerError()
+                    .json(ErrorResponse {
+                        code: "CHUNK_READ_FAILED".to_string(),
+                        message: format!("Failed to read chunk {}: {}", chunk_num, e),
+                        details: None,
+                    });
+            }
+        }
+    }
+
     let file_id = Uuid::new_v4();
     let storage_path = format!("{}/{}/{}", session.space_id, file_id, session.file_name);
+
+    if let Err(e) = storage.upload_file(&storage_path, &assembled_content, &session.content_type).await {
+        return HttpResponse::InternalServerError()
+            .json(ErrorResponse {
+                code: "UPLOAD_FAILED".to_string(),
+                message: format!("Failed to upload assembled file: {}", e),
+                details: None,
+            });
+    }
+
+    for chunk_num in sorted_chunks {
+        let chunk_path = format!("{}/{}.chunk.{}", session.space_id, upload_id, chunk_num);
+        let _ = storage.delete_file(&chunk_path).await;
+    }
 
     let download_url = match storage.presigned_download_url(&storage_path, 900).await {
         Ok(url) => url,
@@ -908,15 +944,6 @@ pub async fn permanent_delete_file(
         }
     };
 
-    if let Err(e) = storage.delete_file(&file.storage_path).await {
-        return HttpResponse::InternalServerError()
-            .json(ErrorResponse {
-                code: "STORAGE_DELETE_FAILED".to_string(),
-                message: format!("Failed to delete file from storage: {}", e),
-                details: None,
-            });
-    }
-
     match sqlx::query!("DELETE FROM files WHERE id = $1", file_id)
         .execute(pool.as_ref())
         .await
@@ -930,6 +957,10 @@ pub async fn permanent_delete_file(
                     details: None,
                 });
         }
+    }
+
+    if let Err(e) = storage.delete_file(&file.storage_path).await {
+        tracing::error!("Failed to delete file from storage after DB deletion: {}", e);
     }
 
     HttpResponse::Ok().json(MessageResponse {

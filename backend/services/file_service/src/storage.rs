@@ -16,28 +16,31 @@ use std::time::Duration;
 pub enum StorageError {
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
-    
+
     #[error("Upload failed: {0}")]
     UploadFailed(String),
-    
+
     #[error("Download failed: {0}")]
     DownloadFailed(String),
-    
+
+    #[error("Delete failed: {0}")]
+    DeleteFailed(String),
+
     #[error("File not found: {0}")]
     FileNotFound(String),
-    
+
     #[error("Invalid chunk: {0}")]
     InvalidChunk(String),
-    
+
     #[error("Checksum mismatch")]
     ChecksumMismatch,
-    
+
     #[error("Upload session expired")]
     SessionExpired,
-    
+
     #[error("File too large: {0} bytes (max: {1} bytes)")]
     FileTooLarge(u64, u64),
-    
+
     #[error("Unsupported file type: {0}")]
     UnsupportedFileType(String),
 }
@@ -104,6 +107,7 @@ impl S3Storage {
                     format!("http://{}", config.endpoint)
                 }
             )
+            .force_path_style(true)
             .credentials_provider(credentials)
             .build();
 
@@ -130,13 +134,20 @@ impl S3Storage {
         content_type: &str,
         expires_seconds: i32,
     ) -> Result<String, StorageError> {
-        let expires_in = Duration::from_secs(expires_seconds as u64);
-        
+        let expires_secs: u64 = expires_seconds
+            .try_into()
+            .map_err(|_| StorageError::UploadFailed("expires_seconds must be non-negative".into()))?;
+
+        let presigning_config = aws_sdk_s3::presigning::PresigningConfig::builder()
+            .expires_in(Duration::from_secs(expires_secs))
+            .build()
+            .map_err(|e| StorageError::UploadFailed(e.to_string()))?;
+
         let presigned = self.client.put_object()
             .bucket(&self.bucket)
             .key(object_name)
             .content_type(content_type)
-            .presigned(s3::presigning::PresigningConfig::expires_in(expires_in).map_err(|e| StorageError::UploadFailed(e.to_string()))?)
+            .presigned(presigning_config)
             .await
             .map_err(|e| StorageError::UploadFailed(e.to_string()))?;
 
@@ -149,12 +160,19 @@ impl S3Storage {
         object_name: &str,
         expires_seconds: i32,
     ) -> Result<String, StorageError> {
-        let expires_in = Duration::from_secs(expires_seconds as u64);
-        
+        let expires_secs: u64 = expires_seconds
+            .try_into()
+            .map_err(|_| StorageError::DownloadFailed("expires_seconds must be non-negative".into()))?;
+
+        let presigning_config = aws_sdk_s3::presigning::PresigningConfig::builder()
+            .expires_in(Duration::from_secs(expires_secs))
+            .build()
+            .map_err(|e| StorageError::DownloadFailed(e.to_string()))?;
+
         let presigned = self.client.get_object()
             .bucket(&self.bucket)
             .key(object_name)
-            .presigned(s3::presigning::PresigningConfig::expires_in(expires_in).map_err(|e| StorageError::DownloadFailed(e.to_string()))?)
+            .presigned(presigning_config)
             .await
             .map_err(|e| StorageError::DownloadFailed(e.to_string()))?;
 
@@ -236,7 +254,7 @@ impl S3Storage {
             .key(object_name)
             .send()
             .await
-            .map_err(|e| StorageError::DownloadFailed(e.to_string()))?;
+            .map_err(|e| StorageError::DeleteFailed(e.to_string()))?;
 
         Ok(())
     }
@@ -253,13 +271,10 @@ impl S3Storage {
             .await {
             Ok(_) => Ok(true),
             Err(e) => {
-                let err_ref = &e;
-                if let Some(status) = err_ref.service_error().map(|se| se.http_status()) {
-                    if status == 404 {
-                        return Ok(false);
-                    }
+                match e.into_service_error() {
+                    aws_sdk_s3::operation::head_object::HeadObjectError::NotFound(_) => Ok(false),
+                    other => Err(StorageError::DownloadFailed(other.to_string()))
                 }
-                Err(StorageError::DownloadFailed(err_ref.to_string()))
             }
         }
     }
