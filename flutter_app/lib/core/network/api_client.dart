@@ -47,6 +47,7 @@ final dioProvider = Provider<Dio>((ref) {
     baseUrl: config,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
+    validateStatus: (status) => true,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -58,11 +59,11 @@ final dioProvider = Provider<Dio>((ref) {
   ));
 
   dio.interceptors.add(InterceptorsWrapper(
-    onError: (error, handler) async {
-      if (error.response?.statusCode == 401) {
+    onResponse: (response, handler) {
+      if (response.statusCode == 401) {
         // TODO: Handle token refresh or logout
       }
-      return handler.next(error);
+      return handler.next(response);
     },
   ));
 
@@ -89,6 +90,7 @@ class ApiClient {
       baseUrl: baseUrl ?? envBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
+      validateStatus: (status) => true,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -100,11 +102,11 @@ class ApiClient {
     ));
 
     dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
+      onResponse: (response, handler) {
+        if (response.statusCode == 401) {
           // TODO: Handle token refresh or logout
         }
-        return handler.next(error);
+        return handler.next(response);
       },
     ));
 

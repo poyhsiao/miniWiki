@@ -13,6 +13,7 @@ import 'package:miniwiki/presentation/widgets/comment_input.dart';
 import 'package:miniwiki/core/config/auth_provider.dart';
 import 'package:miniwiki/services/providers.dart';
 import 'package:miniwiki/domain/entities/comment.dart';
+import 'package:miniwiki/presentation/dialogs/share_link_dialog.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
   final String documentId;
@@ -605,7 +606,7 @@ class _VersionHistorySheet extends ConsumerWidget {
   }
 }
 
-class _MoreOptionsSheet extends StatelessWidget {
+class _MoreOptionsSheet extends ConsumerWidget {
   final String documentId;
   final String spaceId;
 
@@ -615,46 +616,62 @@ class _MoreOptionsSheet extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.share),
-              title: const Text('Share'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.file_download),
-              title: const Text('Export'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(
-                Icons.delete,
-                color: Theme.of(context).colorScheme.error,
-              ),
-              title: Text(
-                'Delete',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final documentState = ref.watch(documentEditProvider);
+    final documentTitle = documentState.document?.title ?? 'Untitled';
 
-  @override
-  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
-    super.debugFillProperties(properties);
-    properties.add(StringProperty('documentId', documentId));
-    properties.add(StringProperty('spaceId', spaceId));
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.attach_file),
+            title: const Text('Attach File'),
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: Implement file upload functionality
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.share),
+            title: const Text('Share'),
+            onTap: () {
+              final parentContext = Navigator.of(context).context;
+              Navigator.pop(context);
+              showDialog(
+                context: parentContext,
+                builder: (context) => ShareLinkDialog(
+                  documentId: documentId,
+                  documentTitle: documentTitle,
+                ),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.file_download),
+            title: const Text('Export'),
+            onTap: () {
+              Navigator.pop(context);
+              // Export functionality to be implemented
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: Icon(
+              Icons.delete,
+              color: Theme.of(context).colorScheme.error,
+            ),
+            title: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              // Delete functionality to be implemented
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
