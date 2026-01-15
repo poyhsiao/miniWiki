@@ -36,6 +36,15 @@ uuid = { version = "1.7", features = ["v4", "serde"] }
 # DateTime
 chrono = { version = "0.4", features = ["serde"] }
 
+# Random generation for share tokens
+rand = "0.8"
+
+# Password hashing and security
+bcrypt = "0.17"
+
+# JWT verification
+jsonwebtoken = "9"
+
 # Configuration
 config = "0.14"
 dotenv = "0.15"

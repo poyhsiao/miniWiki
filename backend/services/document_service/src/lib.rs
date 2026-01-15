@@ -4,10 +4,12 @@ pub mod handlers;
 pub mod models;
 pub mod repository;
 pub mod validation;
+pub mod sharing;
 
 use actix_web::web;
 use crate::handlers::*;
 use crate::comments::*;
+use crate::sharing::*;
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     // Space-scoped document endpoints
@@ -45,5 +47,13 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{commentId}/resolve", web::post().to(resolve_comment))
             .route("/{commentId}/unresolve", web::post().to(unresolve_comment))
             .route("/{commentId}", web::delete().to(delete_comment))
+    );
+
+    // Share link endpoints
+    cfg.service(
+        web::scope("/documents/{documentId}/share")
+            .route("", web::post().to(create_share_link))
+            .route("", web::get().to(get_document_share_links))
+            .route("/{token}", web::delete().to(delete_share_link))
     );
 }

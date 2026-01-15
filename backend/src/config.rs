@@ -13,6 +13,8 @@ pub struct Config {
     pub minio_access_key: String,
     pub minio_secret_key: String,
     pub minio_bucket: String,
+    pub minio_region: String,
+    pub minio_use_ssl: bool,
 }
 
 impl Config {
