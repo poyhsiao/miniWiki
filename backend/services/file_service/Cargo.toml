@@ -41,7 +41,7 @@ dotenv = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 
-# MinIO / S3
+# S3 / MinIO
 aws-config = "1.1"
 aws-sdk-s3 = "1.35"
 aws-types = "1.1"
@@ -49,7 +49,13 @@ aws-types = "1.1"
 # MIME types
 mime = "0.3"
 
-# Encryption
+# Multipart form handling
+actix-multipart = "0.6"
+
+md5 = "0.8"
+
+futures-util = "0.3"
+
 aes-gcm = "0.10"
 
 [dev-dependencies]
