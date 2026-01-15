@@ -6,7 +6,7 @@
 CREATE TABLE IF NOT EXISTS share_links (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
-    created_by UUID NOT NULL REFERENCES users(id),
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token VARCHAR(64) NOT NULL UNIQUE,
     access_code VARCHAR(255),  -- Stores bcrypt hash of access code, not plain text
     expires_at TIMESTAMP WITH TIME ZONE,

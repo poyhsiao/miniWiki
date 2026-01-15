@@ -8,6 +8,7 @@ use serde::{Serialize, Deserialize};
 use validator::Validate;
 use shared_errors::AppError;
 use bcrypt::{hash, verify, DEFAULT_COST};
+use base64;
 
 const SHARE_TOKEN_LENGTH: usize = 32;
 const DEFAULT_EXPIRY_DAYS: i64 = 30;
@@ -21,7 +22,7 @@ pub struct CreateShareLinkRequest {
     pub document_id: String,
 
     #[serde(rename = "accessCode")]
-    #[validate(length(min = "4", max = "10", message = "Access code must be 4-10 characters"))]
+    #[validate(length(min = 4, max = 10, message = "Access code must be 4-10 characters"))]
     pub access_code: Option<String>,
 
     #[serde(rename = "expiresAt")]
@@ -39,7 +40,7 @@ pub struct CreateShareLinkRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 pub struct VerifyAccessCodeRequest {
     #[serde(rename = "accessCode")]
-    #[validate(length(min = "4", max = "10", message = "Access code must be 4-10 characters"))]
+    #[validate(length(min = 4, max = 10, message = "Access code must be 4-10 characters"))]
     pub access_code: String,
 }
 
@@ -221,15 +222,37 @@ pub async fn create_share_link(
     Ok(HttpResponse::Created().json(response))
 }
 
-/// Get all share links for a document
+/// Get all share links for a document (with authorization check)
 pub async fn get_document_share_links(
     pool: web::Data<PgPool>,
+    req: HttpRequest,
     path: web::Path<(String,)>,
 ) -> Result<impl Responder, AppError> {
     let document_id_str = path.into_inner().0;
     let document_id = Uuid::parse_str(&document_id_str).map_err(|_| {
         AppError::ValidationError("Invalid document ID format".to_string())
     })?;
+
+    // Authorization: verify user owns the document
+    let user_id = extract_user_id_from_request(&req).await?;
+    let owner_check = sqlx::query_as::<_, (Uuid,)>(
+        "SELECT owner_id FROM documents WHERE id = $1"
+    )
+    .bind(document_id)
+    .fetch_optional(pool.get_ref())
+    .await
+    .map_err(|e| AppError::DatabaseError(e))?;
+
+    match owner_check {
+        Some((owner_id,)) => {
+            if owner_id != user_id {
+                return Err(AppError::AuthorizationError(
+                    "You do not have permission to view share links for this document".to_string()
+                ));
+            }
+        }
+        None => return Err(AppError::NotFoundError("Document not found".to_string())),
+    }
 
     let query = r#"
         SELECT sl.id, sl.document_id, sl.token, sl.access_code,
@@ -338,8 +361,20 @@ pub async fn get_share_link_by_token(
                 .await
                 .ok(); // Ignore errors on click count update
 
-            // Check if access code is required
+            // Check if access code is required - if so, don't return content
             let requires_access_code = access_code.is_some();
+
+            if requires_access_code {
+                return Ok(HttpResponse::Ok().json(serde_json::json!({
+                    "id": id.to_string(),
+                    "document_id": document_id.to_string(),
+                    "document_title": title,
+                    "requires_access_code": true,
+                    "permission": permission,
+                    "expires_at": expires_at.map(|d| d.to_rfc3339()),
+                    "message": "Access code required. Use POST /share/{token}/verify to access content."
+                })));
+            }
 
             Ok(HttpResponse::Ok().json(serde_json::json!({
                 "id": id.to_string(),
@@ -504,9 +539,36 @@ pub async fn delete_share_link(
 }
 
 /// Helper function to extract user ID from request
-async fn extract_user_id_from_request(_req: &HttpRequest) -> Result<Uuid, AppError> {
-    // In a real implementation, this would extract user ID from JWT token
-    // For now, we'll return a default UUID if not found
-    // This should be replaced with proper JWT extraction
-    Ok(Uuid::nil())
+async fn extract_user_id_from_request(req: &HttpRequest) -> Result<Uuid, AppError> {
+    let auth_header = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .ok_or_else(|| AppError::AuthenticationError("Missing authorization header".to_string()))?;
+
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| AppError::AuthenticationError("Invalid authorization format".to_string()))?;
+
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 3 {
+        return Err(AppError::AuthenticationError("Invalid token format".to_string()));
+    }
+
+    let payload = base64_decode(parts[1]).map_err(|_| AppError::AuthenticationError("Invalid token payload".to_string()))?;
+    let json: serde_json::Value = serde_json::from_str(&payload)
+        .map_err(|_| AppError::AuthenticationError("Failed to parse token payload".to_string()))?;
+
+    let user_id_str = json.get("sub")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| AppError::AuthenticationError("Missing user ID in token".to_string()))?;
+
+    Uuid::parse_str(user_id_str)
+        .map_err(|_| AppError::AuthenticationError("Invalid user ID format".to_string()))
+}
+
+fn base64_decode(input: &str) -> Result<String, base64::DecodeError> {
+    let padding = if input.len() % 4 == 0 { 0 } else { 4 - (input.len() % 4) };
+    let padded = format!("{}{}", input, "=".repeat(padding));
+    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, padded)
 }
