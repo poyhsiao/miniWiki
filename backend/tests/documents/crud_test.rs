@@ -36,10 +36,10 @@ async fn test_create_document_success() {
         .post(&format!("/api/v1/spaces/{}/documents", space.id))
         .json(&request)
         .send()
-        .await;
+        .await?;
 
     assert!(response.status().is_success());
-    let document: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await?;
     assert_eq!(document["data"]["title"], "Test Document");
     assert_eq!(document["data"]["space_id"], space.id.to_string());
     assert!(document["data"]["id"].is_string());
@@ -65,10 +65,10 @@ async fn test_create_document_with_parent() {
         .post(&format!("/api/v1/spaces/{}/documents", space.id))
         .json(&request)
         .send()
-        .await;
+        .await?;
 
     assert!(response.status().is_success());
-    let document: serde_json::Value = response.json().await;
+    let result: serde_json::Value = response.json().await?;
     assert_eq!(document["data"]["parent_id"], parent_doc.id.to_string());
     assert_eq!(document["success"], true);
     assert!(document["error"].is_null());
