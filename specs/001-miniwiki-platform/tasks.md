@@ -561,7 +561,7 @@ Based on `plan.md` structure:
 - [x] T277 Create flutter_app/lib/presentation/providers/file_provider.dart with file state
 - [x] T278 Create flutter_app/lib/presentation/widgets/file_upload_widget.dart
 - [x] T279 Create flutter_app/lib/presentation/widgets/file_list.dart
-- [ ] T280 Implement file upload in document_editor_page.dart
+- [x] T280 Implement file upload in document_editor_page.dart
 
 ---
 
@@ -582,13 +582,13 @@ Based on `plan.md` structure:
 
 ### Frontend Implementation for Share Links
 
-- [ ] T287 Create flutter_app/lib/domain/entities/share_link.dart with share link entity
-- [ ] T288 Create flutter_app/lib/domain/repositories/share_repository.dart interface
-- [ ] T289 Create flutter_app/lib/data/repositories/share_repository_impl.dart
-- [ ] T290 Create flutter_app/lib/services/share_service.dart with share operations
-- [ ] T291 Create flutter_app/lib/presentation/providers/share_provider.dart with share state
-- [ ] T292 Create flutter_app/lib/presentation/dialogs/share_link_dialog.dart
-- [ ] T293 Implement share link creation and display
+- [x] T287 Create flutter_app/lib/domain/entities/share_link.dart with share link entity
+- [x] T288 Create flutter_app/lib/domain/repositories/share_repository.dart interface
+- [x] T289 Create flutter_app/lib/data/repositories/share_repository_impl.dart
+- [x] T290 Create flutter_app/lib/services/share_service.dart with share operations
+- [x] T291 Create flutter_app/lib/presentation/providers/share_provider.dart with share state
+- [x] T292 Create flutter_app/lib/presentation/dialogs/share_link_dialog.dart
+- [x] T293 Implement share link creation and display
 
 ---
 
