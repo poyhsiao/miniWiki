@@ -5,6 +5,7 @@ import 'package:miniwiki/core/theme/app_theme.dart';
 import 'package:miniwiki/data/datasources/local_storage.dart';
 import 'package:miniwiki/presentation/pages/auth/login_page.dart';
 import 'package:miniwiki/presentation/pages/home_page.dart';
+import 'package:miniwiki/presentation/pages/search_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class MiniWikiApp extends ConsumerWidget {
       routes: {
         '/login': (_) => const LoginPage(),
         '/home': (_) => const HomePage(),
+        '/search': (_) => const SearchPage(),
       },
     );
   }
