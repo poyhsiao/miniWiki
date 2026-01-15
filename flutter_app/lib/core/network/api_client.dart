@@ -59,11 +59,11 @@ final dioProvider = Provider<Dio>((ref) {
   ));
 
   dio.interceptors.add(InterceptorsWrapper(
-    onError: (error, handler) async {
-      if (error.response?.statusCode == 401) {
+    onResponse: (response, handler) {
+      if (response.statusCode == 401) {
         // TODO: Handle token refresh or logout
       }
-      return handler.next(error);
+      return handler.next(response);
     },
   ));
 
@@ -102,11 +102,11 @@ class ApiClient {
     ));
 
     dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
+      onResponse: (response, handler) {
+        if (response.statusCode == 401) {
           // TODO: Handle token refresh or logout
         }
-        return handler.next(error);
+        return handler.next(response);
       },
     ));
 

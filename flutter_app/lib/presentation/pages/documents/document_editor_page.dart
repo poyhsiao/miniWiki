@@ -636,9 +636,10 @@ class _MoreOptionsSheet extends ConsumerWidget {
             leading: const Icon(Icons.share),
             title: const Text('Share'),
             onTap: () {
+              final parentContext = Navigator.of(context).context;
               Navigator.pop(context);
               showDialog(
-                context: context,
+                context: parentContext,
                 builder: (context) => ShareLinkDialog(
                   documentId: documentId,
                   documentTitle: documentTitle,
