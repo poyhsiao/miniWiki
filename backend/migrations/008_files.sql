@@ -87,6 +87,11 @@ BEGIN
     SELECT storage_path INTO v_storage_path
     FROM files WHERE id = p_file_id;
 
+    IF NOT FOUND THEN
+        RAISE NOTICE 'File % not found', p_file_id;
+        RETURN;
+    END IF;
+
     -- Delete from database
     DELETE FROM files WHERE id = p_file_id;
 

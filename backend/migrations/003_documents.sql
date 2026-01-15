@@ -216,9 +216,17 @@ BEGIN
     FROM document_versions
     WHERE document_id = p_document_id AND version_number = p_version_from;
 
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Version % not found for document %', p_version_from, p_document_id;
+    END IF;
+
     SELECT content INTO content_to
     FROM document_versions
     WHERE document_id = p_document_id AND version_number = p_version_to;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Version % not found for document %', p_version_to, p_document_id;
+    END IF;
 
     RETURN jsonb_build_object(
         'from_version', p_version_from,
