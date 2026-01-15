@@ -41,6 +41,11 @@ impl PostgresSearchIndexer {
 
     /// Create the full-text search index if it doesn't exist
     pub async fn create_indexes(&self) -> Result<(), sqlx::Error> {
+        // Enable pg_trgm extension for trigram similarity search
+        sqlx::query("CREATE EXTENSION IF NOT EXISTS pg_trgm")
+            .execute(&*self.pool)
+            .await?;
+
         // Create a GIN index on the title for fast text search
         sqlx::query(
             r#"

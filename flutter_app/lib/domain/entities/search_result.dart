@@ -18,12 +18,12 @@ class SearchResult {
 
   factory SearchResult.fromJson(Map<String, dynamic> json) {
     return SearchResult(
-      documentId: json['documentId'] as String,
-      spaceId: json['spaceId'] as String,
-      spaceName: json['spaceName'] as String,
-      title: json['title'] as String,
-      snippet: json['snippet'] as String,
-      score: (json['score'] as num).toDouble(),
+      documentId: json['documentId'] as String? ?? '',
+      spaceId: json['spaceId'] as String? ?? '',
+      spaceName: json['spaceName'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      snippet: json['snippet'] as String? ?? '',
+      score: (json['score'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -75,11 +75,12 @@ class SearchResponse {
 
   factory SearchResponse.fromJson(Map<String, dynamic> json) {
     return SearchResponse(
-      results: (json['results'] as List<dynamic>)
-          .map((r) => SearchResult.fromJson(r as Map<String, dynamic>))
-          .toList(),
-      total: json['total'] as int,
-      took: json['took'] as int,
+      results: (json['results'] as List<dynamic>?)
+              ?.map((r) => SearchResult.fromJson(r as Map<String, dynamic>))
+              .toList() ??
+          [],
+      total: json['total'] as int? ?? 0,
+      took: json['took'] as int? ?? 0,
     );
   }
 

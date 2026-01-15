@@ -5,17 +5,18 @@
 mod search_tests {
     use actix_web::{web, App, test::{self, TestRequest}};
     use serde_json::json;
-    use sqlx::{Pool, Postgres, Connection};
+    use sqlx::{Pool, Postgres};
     use std::sync::Arc;
     use uuid::Uuid;
+    use search_service;
 
     // Helper to create a test database
     async fn setup_test_db() -> Pool<Postgres> {
         // For integration tests, connect to test database
-        // In CI, use TEST_DATABASE_URL environment variable
+        // TEST_DATABASE_URL must be set in CI environments
         let database_url = std::env::var("TEST_DATABASE_URL")
-            .unwrap_or_else(|_| "postgresql://miniwiki:miniwiki@localhost:5432/miniwiki".to_string());
-        
+            .expect("TEST_DATABASE_URL must be set for tests");
+
         Pool::connect(&database_url).await.expect("Failed to connect to test database")
     }
 

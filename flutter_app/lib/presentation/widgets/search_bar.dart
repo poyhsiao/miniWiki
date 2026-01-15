@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/pages/search_page.dart';
 
 /// Search bar widget for triggering search
-class SearchBar extends ConsumerWidget {
-  final bool expanded;
+class WikiSearchBar extends StatelessWidget {
   final VoidCallback? onTap;
 
-  const SearchBar({
-    this.expanded = false,
+  const WikiSearchBar({
     this.onTap,
     super.key,
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Material(
       color: Theme.of(context).colorScheme.surfaceVariant,
       borderRadius: BorderRadius.circular(8),
@@ -68,7 +65,7 @@ class SearchBar extends ConsumerWidget {
 }
 
 /// Search app bar widget for use in pages
-class SearchAppBar extends ConsumerWidget implements PreferredSizeWidget {
+class SearchAppBar extends StatelessWidget implements PreferredSizeWidget {
   final TextEditingController? controller;
   final String? hintText;
   final ValueChanged<String>? onChanged;
@@ -88,32 +85,43 @@ class SearchAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return AppBar(
-      title: TextField(
-        controller: controller,
-        autofocus: true,
-        decoration: InputDecoration(
-          hintText: hintText ?? 'Search...',
-          border: InputBorder.none,
-          prefixIcon: const Icon(Icons.search),
-          suffixIcon: controller?.text.isNotEmpty == true
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: onClear,
-                )
-              : null,
-        ),
-        onChanged: onChanged,
-        onSubmitted: (_) => onSubmit?.call(),
-        textInputAction: TextInputAction.search,
+      title: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller ?? TextEditingController(),
+        builder: (context, value, child) {
+          return TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: hintText ?? 'Search...',
+              border: InputBorder.none,
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: value.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: onClear,
+                    )
+                  : null,
+            ),
+            onChanged: onChanged,
+            onSubmitted: (_) => onSubmit?.call(),
+            textInputAction: TextInputAction.search,
+          );
+        },
       ),
       actions: [
-        if (controller?.text.isNotEmpty == true)
-          TextButton(
-            onPressed: onSubmit,
-            child: const Text('Search'),
-          ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller ?? TextEditingController(),
+          builder: (context, value, child) {
+            return value.text.isNotEmpty
+                ? TextButton(
+                    onPressed: onSubmit,
+                    child: const Text('Search'),
+                  )
+                : const SizedBox.shrink();
+          },
+        ),
       ],
     );
   }

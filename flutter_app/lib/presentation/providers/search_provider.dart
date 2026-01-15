@@ -3,14 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/search_result.dart';
 import '../../services/search_service.dart';
 
-/// Search state enum
-enum SearchState {
-  idle,
-  searching,
-  success,
-  error,
-}
-
 /// Search provider using Riverpod StateNotifier
 class SearchProvider extends StateNotifier<AsyncValue<List<SearchResult>>> {
   final SearchService searchService;
@@ -83,5 +75,7 @@ final searchStateProvider =
 /// Simple search query provider
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-/// Search loading state provider
-final searchLoadingProvider = StateProvider<bool>((ref) => false);
+/// Derived loading state from the main search provider
+final searchLoadingProvider = Provider<bool>((ref) {
+  return ref.watch(searchStateProvider).isLoading;
+});

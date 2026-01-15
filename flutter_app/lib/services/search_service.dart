@@ -86,7 +86,8 @@ class SearchService {
   }
 
   /// Highlight matching terms in text, returning TextSpans for rich text rendering
-  static List<TextSpan> highlightQuery(String text, String query, {TextStyle? baseStyle, TextStyle? highlightStyle}) {
+  static List<TextSpan> highlightQuery(String text, String query,
+      {TextStyle? baseStyle, TextStyle? highlightStyle}) {
     if (query.isEmpty || text.isEmpty) {
       return [TextSpan(text: text, style: baseStyle)];
     }
@@ -111,10 +112,11 @@ class SearchService {
       // Add highlighted match
       spans.add(TextSpan(
         text: match.group(0),
-        style: highlightStyle ?? TextStyle(
-          fontWeight: FontWeight.bold,
-          backgroundColor: Colors.yellow.withOpacity(0.3),
-        ),
+        style: highlightStyle ??
+            TextStyle(
+              fontWeight: FontWeight.bold,
+              backgroundColor: Colors.yellow.withValues(alpha: 0.3),
+            ),
       ));
 
       lastEnd = match.end;

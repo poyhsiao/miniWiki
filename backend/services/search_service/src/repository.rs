@@ -50,60 +50,23 @@ impl SearchRepositoryTrait for SearchRepository {
         let user_uuid: Uuid = user_id.parse()
             .map_err(|_| sqlx::Error::Decode("Invalid user ID format".into()))?;
 
-        // Build the search query with PostgreSQL full-text search
-        // Using tsvector and tsquery for efficient full-text search
-        let _search_condition = match space_id {
-            Some(sid) => {
-                let _space_uuid: Uuid = sid.parse()
-                    .map_err(|_| sqlx::Error::Decode("Invalid space ID format".into()))?;
-                format!(
-                    r#"
-                    AND d.space_id = $4
-                    AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
-                    AND EXISTS (
-                        SELECT 1 FROM space_memberships sm
-                        WHERE sm.space_id = d.space_id
-                        AND sm.user_id = $5
-                    )
-                    "#
-                )
-            }
-            None => {
-                format!(
-                    r#"
-                    AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
-                    AND EXISTS (
-                        SELECT 1 FROM space_memberships sm
-                        JOIN spaces s ON sm.space_id = s.id
-                        WHERE sm.space_id = d.space_id
-                        AND sm.user_id = $4
-                        AND (s.is_public OR sm.user_id = $4)
-                    )
-                    "#
-                )
-            }
-        };
-
         // Count total results
-        let count_sql = format!(
-            r#"
-            SELECT COUNT(*) as total
-            FROM documents d
-            WHERE d.is_archived = false
-            AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
-            {}
-            "#,
-            if space_id.is_some() {
-                "AND d.space_id = $4"
-            } else {
-                "AND EXISTS (SELECT 1 FROM space_memberships sm WHERE sm.space_id = d.space_id AND sm.user_id = $4)"
-            }
-        );
-
         let query_pattern = format!("%{}%", query);
 
         let total: i64 = match space_id {
             Some(sid) => {
+                let count_sql = r#"
+                SELECT COUNT(*) as total
+                FROM documents d
+                WHERE d.is_archived = false
+                AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
+                AND d.space_id = $3
+                AND EXISTS (
+                    SELECT 1 FROM space_memberships sm
+                    WHERE sm.space_id = d.space_id
+                    AND sm.user_id = $2
+                )
+                "#.to_string();
                 sqlx::query_as::<_, (i64,)>(&count_sql)
                     .bind(&query_pattern)
                     .bind(&user_uuid)
@@ -113,6 +76,19 @@ impl SearchRepositoryTrait for SearchRepository {
                     .0
             }
             None => {
+                let count_sql = r#"
+                SELECT COUNT(*) as total
+                FROM documents d
+                WHERE d.is_archived = false
+                AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
+                AND EXISTS (
+                    SELECT 1 FROM space_memberships sm
+                    JOIN spaces s ON sm.space_id = s.id
+                    WHERE sm.space_id = d.space_id
+                    AND sm.user_id = $2
+                    AND (s.is_public OR sm.user_id = $2)
+                )
+                "#.to_string();
                 sqlx::query_as::<_, (i64,)>(&count_sql)
                     .bind(&query_pattern)
                     .bind(&user_uuid)
@@ -124,45 +100,43 @@ impl SearchRepositoryTrait for SearchRepository {
 
         // Search with ranking
         // Using ILIKE for simple pattern matching (PostgreSQL full-text search with tsvector can be added later)
-        let search_sql = format!(
-            r#"
-            SELECT
-                d.id as document_id,
-                d.space_id,
-                s.name as space_name,
-                d.title,
-                d.content as content,
-                (
-                    CASE
-                        WHEN d.title ILIKE $1 THEN 2.0
-                        ELSE 1.0
-                    END +
-                    CASE
-                        WHEN d.title ILIKE $1 || ' %' THEN 0.5
-                        ELSE 0.0
-                    END
-                ) as score
-            FROM documents d
-            JOIN spaces s ON d.space_id = s.id
-            WHERE d.is_archived = false
-            AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
-            {}
-            ORDER BY
-                CASE WHEN d.title ILIKE $1 THEN 0 ELSE 1 END,
-                d.updated_at DESC
-            LIMIT $2 OFFSET $3
-            "#,
-            if space_id.is_some() {
-                "AND d.space_id = $4"
-            } else {
-                "AND EXISTS (SELECT 1 FROM space_memberships sm WHERE sm.space_id = d.space_id AND sm.user_id = $5)"
-            }
-        );
-
         let results: Vec<SearchResultRow> = match space_id {
             Some(sid) => {
+                let search_sql = r#"
+                SELECT
+                    d.id as document_id,
+                    d.space_id,
+                    s.name as space_name,
+                    d.title,
+                    d.content as content,
+                    (
+                        CASE
+                            WHEN d.title ILIKE $1 THEN 2.0
+                            ELSE 1.0
+                        END +
+                        CASE
+                            WHEN d.title ILIKE $1 || ' %' THEN 0.5
+                            ELSE 0.0
+                        END
+                    ) as score
+                FROM documents d
+                JOIN spaces s ON d.space_id = s.id
+                WHERE d.is_archived = false
+                AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
+                AND d.space_id = $4
+                AND EXISTS (
+                    SELECT 1 FROM space_memberships sm
+                    WHERE sm.space_id = d.space_id
+                    AND sm.user_id = $2
+                )
+                ORDER BY
+                    CASE WHEN d.title ILIKE $1 THEN 0 ELSE 1 END,
+                    d.updated_at DESC
+                LIMIT $3 OFFSET $4
+                "#.to_string();
                 sqlx::query_as(&search_sql)
                     .bind(&query_pattern)
+                    .bind(&user_uuid)
                     .bind(limit)
                     .bind(offset)
                     .bind(sid)
@@ -170,11 +144,44 @@ impl SearchRepositoryTrait for SearchRepository {
                     .await?
             }
             None => {
+                let search_sql = r#"
+                SELECT
+                    d.id as document_id,
+                    d.space_id,
+                    s.name as space_name,
+                    d.title,
+                    d.content as content,
+                    (
+                        CASE
+                            WHEN d.title ILIKE $1 THEN 2.0
+                            ELSE 1.0
+                        END +
+                        CASE
+                            WHEN d.title ILIKE $1 || ' %' THEN 0.5
+                            ELSE 0.0
+                        END
+                    ) as score
+                FROM documents d
+                JOIN spaces s ON d.space_id = s.id
+                WHERE d.is_archived = false
+                AND (d.title ILIKE $1 OR d.content_text ILIKE $1)
+                AND EXISTS (
+                    SELECT 1 FROM space_memberships sm
+                    JOIN spaces s ON sm.space_id = s.id
+                    WHERE sm.space_id = d.space_id
+                    AND sm.user_id = $2
+                    AND (s.is_public OR sm.user_id = $2)
+                )
+                ORDER BY
+                    CASE WHEN d.title ILIKE $1 THEN 0 ELSE 1 END,
+                    d.updated_at DESC
+                LIMIT $3 OFFSET $4
+                "#.to_string();
                 sqlx::query_as(&search_sql)
                     .bind(&query_pattern)
+                    .bind(&user_uuid)
                     .bind(limit)
                     .bind(offset)
-                    .bind(&user_uuid)
                     .fetch_all(&*self.pool)
                     .await?
             }
@@ -245,17 +252,16 @@ fn generate_snippet(content: &serde_json::Value, query: &str) -> String {
     } else {
         // Return first 150 chars if no match found
         let truncated = if text.len() > 150 {
-            // Find safe UTF-8 boundary
-            text[..150]
-                .char_indices()
-                .rev()
-                .next()
-                .map(|(i, c)| i + c.len_utf8())
-                .map(|i| &text[..i])
-                .unwrap_or(&text[..150])
+            // Find safe UTF-8 boundary by iterating char indices
+            let safe_boundary = text.char_indices()
+                .take(150)
+                .last()
+                .map(|(i, _)| i)
+                .unwrap_or(text.len());
+            format!("{}...", &text[..safe_boundary])
         } else {
-            &text
+            format!("{}...", text)
         };
-        format!("{}...", truncated)
+        truncated
     }
 }

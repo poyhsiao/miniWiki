@@ -30,6 +30,7 @@ auth_service = { path = "./services/auth_service" }
 document_service = { path = "./services/document_service" }
 space_service = { path = "./services/space_service" }
 websocket_service = { path = "./services/websocket_service" }
+search_service = { path = "./services/search_service" }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }
@@ -120,7 +121,6 @@ shared_models = { path = "./shared/models" }
 shared_database = { path = "./shared/database" }
 
 [dev-dependencies]
-sqlx-cli = { version = "0.7", features = ["postgres"] }
 actix-rt = "2.9"
 tokio-test = "0.4"
 rstest = "0.18"

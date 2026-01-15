@@ -188,7 +188,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              error,
+              'Unable to complete search. Please try again.',
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
@@ -212,21 +212,21 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       query,
       baseStyle: Theme.of(context).textTheme.titleMedium,
       highlightStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-        fontWeight: FontWeight.bold,
-        backgroundColor: Colors.yellow.withOpacity(0.3),
-      ),
+            fontWeight: FontWeight.bold,
+            backgroundColor: Colors.yellow.withValues(alpha: 0.3),
+          ),
     );
     final snippetSpans = SearchService.highlightQuery(
       result.snippet,
       query,
       baseStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
       highlightStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-        fontWeight: FontWeight.bold,
-        backgroundColor: Colors.yellow.withOpacity(0.3),
-      ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.bold,
+            backgroundColor: Colors.yellow.withValues(alpha: 0.3),
+          ),
     );
 
     return Card(
