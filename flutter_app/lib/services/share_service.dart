@@ -10,7 +10,7 @@ class ShareService {
   final String _baseUrl;
 
   ShareService(this._repository, [String? baseUrl])
-      : _baseUrl = baseUrl ?? 'http://localhost:8080';
+      : _baseUrl = baseUrl ?? 'http://localhost:3000';
 
   /// Get the configured base URL for share links.
   String get baseUrl => _baseUrl;

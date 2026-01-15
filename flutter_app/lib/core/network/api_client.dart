@@ -47,6 +47,7 @@ final dioProvider = Provider<Dio>((ref) {
     baseUrl: config,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 30),
+    validateStatus: (status) => true,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -89,6 +90,7 @@ class ApiClient {
       baseUrl: baseUrl ?? envBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
+      validateStatus: (status) => true,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

@@ -600,8 +600,9 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                     );
 
                     if (confirmed == true) {
-                      try {
-                        await linksNotifier.deleteShareLink(link.token);
+                      final success =
+                          await linksNotifier.deleteShareLink(link.token);
+                      if (success) {
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -609,11 +610,14 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                             ),
                           );
                         }
-                      } catch (e) {
+                      } else {
                         if (mounted) {
+                          final linksState = ref.read(
+                              shareLinksNotifierProvider(widget.documentId));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Failed to delete share link: $e'),
+                              content: Text(
+                                  'Failed to delete share link: ${linksState.error ?? "Unknown error"}'),
                               backgroundColor: colorScheme.error,
                             ),
                           );

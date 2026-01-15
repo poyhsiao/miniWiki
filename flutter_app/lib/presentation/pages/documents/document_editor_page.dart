@@ -14,7 +14,6 @@ import 'package:miniwiki/core/config/auth_provider.dart';
 import 'package:miniwiki/services/providers.dart';
 import 'package:miniwiki/domain/entities/comment.dart';
 import 'package:miniwiki/presentation/dialogs/share_link_dialog.dart';
-import 'package:miniwiki/presentation/widgets/file_upload_widget.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
   final String documentId;
@@ -630,7 +629,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
             title: const Text('Attach File'),
             onTap: () {
               Navigator.pop(context);
-              // File upload handled by FileUploadWidget in the editor
+              // TODO: Implement file upload functionality
             },
           ),
           ListTile(
