@@ -90,7 +90,7 @@ impl StateVector {
             match other.get(client_id) {
                 Some(other_clock) if *other_clock > clock => return Ordering::Less,
                 Some(other_clock) if *other_clock < clock => return Ordering::Greater,
-                None => return Ordering::Less,
+                None => return Ordering::Greater,
                 _ => {}
             }
         }
@@ -110,6 +110,7 @@ impl StateVector {
 
     pub fn get_missing(&self, other: &StateVector) -> Vec<(ClientId, Clock)> {
         let mut missing = Vec::new();
+        // Check entries in other that self doesn't have or has lower clock
         for (&client_id, &clock) in other.0.iter() {
             match self.get(client_id) {
                 Some(self_clock) if *self_clock < clock => {
