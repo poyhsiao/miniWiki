@@ -206,6 +206,8 @@ pub async fn upload_file(
         file_id,
         space_id,
         document_id,
+        // TODO: Extract user_id from authentication context (e.g., request extensions set by auth middleware)
+        // For now, using nil UUID as placeholder until auth is integrated
         Uuid::nil(),
         file_name,
         content_type,
@@ -287,7 +289,7 @@ pub async fn init_chunked_upload(
 
     HttpResponse::Created().json(ChunkedUploadInitResponse {
         upload_id,
-        upload_url: String::new(),
+        upload_url: None,
         chunk_size: chunk_size as u64,
         total_chunks,
         expires_at,

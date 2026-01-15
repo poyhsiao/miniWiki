@@ -80,7 +80,7 @@ pub struct FileDetailResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChunkedUploadInitResponse {
     pub upload_id: Uuid,
-    pub upload_url: String,
+    pub upload_url: Option<String>,
     pub chunk_size: u64,
     pub total_chunks: u32,
     pub expires_at: NaiveDateTime,

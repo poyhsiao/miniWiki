@@ -220,9 +220,12 @@ impl S3Storage {
             .await
             .map_err(|e| StorageError::UploadFailed(e.to_string()))?;
 
+        let e_tag = result.e_tag
+            .ok_or_else(|| StorageError::UploadFailed(format!("Missing ETag for chunk {} of {}", chunk_number, object_name)))?;
+
         Ok(CompletedPart::builder()
             .part_number(chunk_number as i32)
-            .e_tag(result.e_tag.unwrap_or_default())
+            .e_tag(e_tag)
             .build())
     }
 
@@ -276,26 +279,6 @@ impl S3Storage {
                     other => Err(StorageError::DownloadFailed(other.to_string()))
                 }
             }
-        }
-    }
-
-    /// Generate storage path for file
-    pub fn generate_storage_path(
-        &self,
-        space_id: Uuid,
-        file_id: Uuid,
-        file_name: &str,
-    ) -> String {
-        let date = Utc::now().format("%Y-%m-%d").to_string();
-        let extension = std::path::Path::new(file_name)
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
-        
-        if extension.is_empty() {
-            format!("{}/{}/{}", space_id, file_id, date)
-        } else {
-            format!("{}/{}/{}/{}", space_id, file_id, date, file_name)
         }
     }
 
