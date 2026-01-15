@@ -50,10 +50,13 @@ async fn main() -> std::io::Result<()> {
             .expect("Failed to connect to S3/MinIO storage")
     );
 
+    let jwt_secret = Arc::new(config.jwt_secret.clone());
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(db.clone()))
             .app_data(web::Data::new(s3_storage.clone()))
+            .app_data(web::Data::new(jwt_secret.clone()))
             .configure(routes::config)
             .route("/health", web::get().to(health))
     })

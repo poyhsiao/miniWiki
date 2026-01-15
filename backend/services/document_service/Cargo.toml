@@ -45,6 +45,9 @@ bcrypt = "0.17"
 # Base64 decoding for JWT
 base64 = "0.22"
 
+# JWT verification
+jsonwebtoken = "9"
+
 # Configuration
 config = "0.14"
 dotenv = "0.15"

@@ -9,6 +9,8 @@ use validator::Validate;
 use shared_errors::AppError;
 use bcrypt::{hash, verify, DEFAULT_COST};
 use base64;
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use std::sync::Arc;
 
 const SHARE_TOKEN_LENGTH: usize = 32;
 const DEFAULT_EXPIRY_DAYS: i64 = 30;
@@ -128,8 +130,28 @@ pub async fn create_share_link(
         AppError::ValidationError("Invalid document ID format".to_string())
     })?;
 
-    // Extract user_id from JWT token (optional for some flows)
+    // Extract user_id from JWT token
     let user_id = extract_user_id_from_request(&req).await?;
+
+    // Verify document exists and user has permission to share it
+    let owner_check = sqlx::query_as::<_, (Uuid,)>(
+        "SELECT owner_id FROM documents WHERE id = $1"
+    )
+    .bind(document_id)
+    .fetch_optional(pool.get_ref())
+    .await
+    .map_err(|e| AppError::DatabaseError(e))?;
+
+    match owner_check {
+        Some((owner_id,)) => {
+            if owner_id != user_id {
+                return Err(AppError::AuthorizationError(
+                    "You do not have permission to share this document".to_string()
+                ));
+            }
+        }
+        None => return Err(AppError::NotFoundError("Document not found".to_string())),
+    }
 
     // Generate share token
     let token = generate_share_token();
@@ -353,14 +375,6 @@ pub async fn get_share_link_by_token(
                 }
             }
 
-            // Increment click count
-            let update_query = r#"UPDATE share_links SET click_count = click_count + 1 WHERE id = $1"#;
-            sqlx::query(update_query)
-                .bind(id)
-                .execute(pool.get_ref())
-                .await
-                .ok(); // Ignore errors on click count update
-
             // Check if access code is required - if so, don't return content
             let requires_access_code = access_code.is_some();
 
@@ -375,6 +389,14 @@ pub async fn get_share_link_by_token(
                     "message": "Access code required. Use POST /share/{token}/verify to access content."
                 })));
             }
+
+            // Increment click count only when content is actually accessed
+            let update_query = r#"UPDATE share_links SET click_count = click_count + 1 WHERE id = $1"#;
+            sqlx::query(update_query)
+                .bind(id)
+                .execute(pool.get_ref())
+                .await
+                .ok();
 
             Ok(HttpResponse::Ok().json(serde_json::json!({
                 "id": id.to_string(),
@@ -550,25 +572,28 @@ async fn extract_user_id_from_request(req: &HttpRequest) -> Result<Uuid, AppErro
         .strip_prefix("Bearer ")
         .ok_or_else(|| AppError::AuthenticationError("Invalid authorization format".to_string()))?;
 
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
-        return Err(AppError::AuthenticationError("Invalid token format".to_string()));
+    let secret = req.app_data::<Arc<String>>()
+        .ok_or_else(|| AppError::InternalError("JWT secret not configured".to_string()))?;
+
+    #[derive(Debug, Deserialize)]
+    struct Claims {
+        sub: String,
     }
 
-    let payload = base64_decode(parts[1]).map_err(|_| AppError::AuthenticationError("Invalid token payload".to_string()))?;
-    let json: serde_json::Value = serde_json::from_str(&payload)
-        .map_err(|_| AppError::AuthenticationError("Failed to parse token payload".to_string()))?;
+    let token_data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::new(Algorithm::HS256),
+    ).map_err(|_| AppError::AuthenticationError("Invalid token".to_string()))?;
 
-    let user_id_str = json.get("sub")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| AppError::AuthenticationError("Missing user ID in token".to_string()))?;
-
+    let user_id_str = &token_data.claims.sub;
     Uuid::parse_str(user_id_str)
         .map_err(|_| AppError::AuthenticationError("Invalid user ID format".to_string()))
 }
 
-fn base64_decode(input: &str) -> Result<String, base64::DecodeError> {
-    let padding = if input.len() % 4 == 0 { 0 } else { 4 - (input.len() % 4) };
-    let padded = format!("{}{}", input, "=".repeat(padding));
-    base64::Engine::decode(&base64::engine::general_purpose::STANDARD, padded)
+fn base64_decode(input: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(input)
+        .or_else(|_| base64::engine::general_purpose::STANDARD.decode(input))?;
+    String::from_utf8(bytes).map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
 }
