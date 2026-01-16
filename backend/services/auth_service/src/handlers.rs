@@ -3,48 +3,13 @@ use serde::Deserialize;
 use crate::models::{RegisterRequest, LoginRequest, RegisterResponse, LoginResponse, RefreshRequest, RefreshResponse};
 use crate::jwt::JwtService;
 use crate::password::{hash_password, verify_password, validate_password_strength};
-use shared_errors::AppError;
+use crate::repository::AuthRepository;
 use shared_models::entities::User;
-
-#[derive(Deserialize)]
-pub struct AuthRepository {
-    // This would be injected from the app data
-}
-
-impl AuthRepository {
-    pub async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
-        // Implementation would query the database
-        Ok(None)
-    }
-    
-    pub async fn create(&self, email: &str, password_hash: &str, display_name: &str) -> Result<User, sqlx::Error> {
-        // Implementation would insert into database
-        Ok(User {
-            id: uuid::Uuid::new_v4(),
-            email: email.to_string(),
-            password_hash: password_hash.to_string(),
-            display_name: display_name.to_string(),
-            avatar_url: None,
-            timezone: "UTC".to_string(),
-            language: "en".to_string(),
-            is_active: true,
-            is_email_verified: false,
-            email_verified_at: None,
-            last_login_at: None,
-            created_at: chrono::Utc::now(),
-            updated_at: chrono::Utc::now(),
-        })
-    }
-    
-    pub async fn update_last_login(&self, user_id: &uuid::Uuid) -> Result<(), sqlx::Error> {
-        Ok(())
-    }
-}
 
 pub async fn register(
     req: web::Json<RegisterRequest>,
     repo: web::Data<AuthRepository>,
-    jwt_service: web::Data<JwtService>,
+    _jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
     // Hash password and create user
     let password_hash = match hash_password(&req.password) {

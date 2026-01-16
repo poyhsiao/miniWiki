@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use uuid::Uuid;
-use chrono::{DateTime, Utc, TimeDelta};
+use chrono::{DateTime, Utc};
 use crate::WebSocketSession;
 
 #[derive(Debug, Clone)]
@@ -233,6 +233,7 @@ impl ConnectionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeDelta;
     use uuid::Uuid;
 
     #[test]

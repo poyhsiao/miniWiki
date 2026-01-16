@@ -8,11 +8,10 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use redis::{AsyncCommands, Client as RedisClient};
 use uuid::Uuid;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use tracing::{info, error};
 
-use crate::{PRESENCE_STORE, UserPresence, CursorPosition};
+use crate::{PRESENCE_STORE, CursorPosition};
 
 /// Channel prefix for Redis pub/sub
 const REDIS_CHANNEL_PREFIX: &str = "miniwiki:ws:";

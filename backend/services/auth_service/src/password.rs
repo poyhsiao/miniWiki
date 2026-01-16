@@ -1,6 +1,5 @@
 use bcrypt::{hash, verify, DEFAULT_COST};
 use rand::Rng;
-use std::collections::HashSet;
 
 pub fn hash_password(password: &str) -> Result<String, PasswordError> {
     hash(password, DEFAULT_COST).map_err(|e| PasswordError::HashError(e.to_string()))
