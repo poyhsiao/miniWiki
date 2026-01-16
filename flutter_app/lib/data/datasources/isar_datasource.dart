@@ -2,7 +2,7 @@
 /// Provides high-performance local storage for Flutter apps
 ///
 /// Note: This is a placeholder implementation. For full Isar support,
-/// add `isar` and `isar_flutter_libs` to pubspec.yaml and generate
+/// add `isar_community` and `isar_community_flutter_libs` to pubspec.yaml and generate
 /// the Isar schema.
 import 'dart:async';
 import 'dart:convert';
@@ -147,19 +147,20 @@ class IsarDatabase {
   /// Deserialize document from JSON
   DocumentEntity deserializeDocument(String json) {
     Map<String, dynamic> map;
+    final jsonLength = json.length;
 
     // Parse JSON with error handling
     try {
       final decoded = jsonDecode(json);
       if (decoded is! Map<String, dynamic>) {
         throw ArgumentError(
-            'Invalid JSON for DocumentEntity: expected Map<String, dynamic>, got ${decoded.runtimeType} — raw: $json');
+            'Invalid JSON for DocumentEntity: expected Map<String, dynamic>, got ${decoded.runtimeType} (length: $jsonLength)');
       }
       map = decoded;
     } on FormatException catch (e) {
-      throw ArgumentError('Invalid JSON for DocumentEntity: $e — raw: $json');
+      throw ArgumentError('Invalid JSON for DocumentEntity: $e (length: $jsonLength)');
     } on TypeError catch (e) {
-      throw ArgumentError('Invalid JSON for DocumentEntity: $e — raw: $json');
+      throw ArgumentError('Invalid JSON for DocumentEntity: $e (length: $jsonLength)');
     }
 
     // Validate required fields

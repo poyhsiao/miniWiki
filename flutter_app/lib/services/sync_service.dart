@@ -367,22 +367,39 @@ class SyncService {
     final List<Map<String, dynamic>> skippedEntities = [];
 
     for (final item in pendingItems) {
-      final entityType = item['entityType'] as String;
-      final entityId = item['entityId'] as String;
-      final operation = item['operation'] as String;
+      final entityType = item['entityType'] as String?;
+      final entityId = item['entityId'] as String?;
+      final operation = (item['operation'] ?? item['op']) as String?;
       final data = item['data'] as Map<String, dynamic>? ?? {};
+
+      if (entityType == null || entityId == null || operation == null || operation.isEmpty) {
+        logger.warn('Invalid queue item metadata: $item');
+        if (entityType != null && entityId != null) {
+          await _syncDatasource.removeFromQueue(entityType, entityId);
+          await _syncDatasource.addToFailedQueue(
+              entityType,
+              entityId,
+              operation ?? 'unknown',
+              data,
+              'Missing or invalid operation metadata');
+          failedCount++;
+          _failedCount++;
+          _totalFailedCount++;
+        }
+        continue;
+      }
 
       try {
         // Only process document entities
         if (entityType == 'document') {
-          final success = await _syncDocument(entityId, operation, data);
+          final success = await _syncDocument(entityId!, operation!, data);
           if (success) {
-            await _syncDatasource.removeFromQueue(entityType, entityId);
+            await _syncDatasource.removeFromQueue(entityType, entityId!);
             syncedCount++;
           } else {
-            await _syncDatasource.removeFromQueue(entityType, entityId);
+            await _syncDatasource.removeFromQueue(entityType, entityId!);
             await _syncDatasource.addToFailedQueue(
-                entityType, entityId, operation, data, 'sync returned false');
+                entityType, entityId!, operation!, data, 'sync returned false');
             failedCount++;
             _failedCount++;
             _totalFailedCount++;
@@ -395,7 +412,7 @@ class SyncService {
             'entityId': entityId,
           });
           final moved =
-              await _syncDatasource.moveToSkippedQueue(entityType, entityId);
+              await _syncDatasource.moveToSkippedQueue(entityType, entityId!);
           if (!moved) {
             logger.warn(
                 'Failed to move skipped item: $entityType:$entityId (not found in pending)');
@@ -404,7 +421,7 @@ class SyncService {
       } catch (e) {
         await _syncDatasource.removeFromQueue(entityType, entityId);
         await _syncDatasource.addToFailedQueue(
-            entityType, entityId, operation, data, e.toString());
+            entityType, entityId!, operation!, data, e.toString());
         failedCount++;
         _failedCount++;
         _totalFailedCount++;

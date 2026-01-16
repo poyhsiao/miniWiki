@@ -148,14 +148,8 @@ class DocumentEntity {
       ..isDirty = isDirty ?? this.isDirty
       ..lastSyncedAt = lastSyncedAt ?? this.lastSyncedAt;
 
-    if (content != null) {
-      entity.content = content;
-    } else if (contentSize != null) {
-      entity.contentSize = contentSize;
-    } else {
-      entity.content = this.content;
-    }
-
+    final contentToUse = content ?? this.content;
+    entity.content = contentToUse;
     if (contentSize != null && content == null) {
       entity.contentSize = contentSize;
     }
