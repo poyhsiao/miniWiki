@@ -27,16 +27,13 @@ class IsarDatabaseConfig {
 class IsarDatabase {
   static const String _docKeyPrefix = 'isar_doc_';
 
+  // ignore: unused_field
   final String _name;
   final LocalStorageService _storage;
 
   IsarDatabase({required String name, required LocalStorageService storage})
       : _name = name,
-        _storage = storage {
-    // Initialize storage for document operations
-    _name; // Suppress unused warning
-    _storage; // Suppress unused warning
-  }
+        _storage = storage;
 
   /// Open database
   Future<void> open() async {
@@ -247,7 +244,8 @@ class IsarCollection<T> {
 /// Provider for IsarDatabase
 final isarDatabaseProvider = Provider<IsarDatabase>((ref) {
   final storage = ref.watch(localStorageServiceProvider);
-  return IsarDatabase(name: 'miniwiki', storage: storage);
+  final config = ref.watch(isarConfigProvider);
+  return IsarDatabase(name: config.name, storage: storage);
 });
 
 /// Provider for Isar database configuration

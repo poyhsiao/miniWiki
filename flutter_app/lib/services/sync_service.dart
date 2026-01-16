@@ -520,8 +520,18 @@ class SyncService {
       );
 
       if (queuedItem.isNotEmpty) {
-        final operation = queuedItem['operation'] as String;
         final data = queuedItem['data'] as Map<String, dynamic>? ?? {};
+        final operation = queuedItem['operation'] as String?;
+        if (operation == null || operation.isEmpty) {
+          await _syncDatasource.removeFromQueue('document', documentId);
+          await _syncDatasource.addToFailedQueue('document', documentId,
+              'unknown', data, 'Missing operation metadata');
+          return SyncResult(
+            success: false,
+            errorMessage: 'Missing operation metadata',
+            documentsSynced: 0,
+          );
+        }
 
         try {
           final success = await _syncDocument(documentId, operation, data);

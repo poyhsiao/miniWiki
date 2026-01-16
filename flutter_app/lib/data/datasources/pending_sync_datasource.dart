@@ -126,8 +126,8 @@ class PendingSyncDatasource {
   /// Move item from pending queue to skipped queue
   ///
   /// Note: If removal from pending queue fails and rollback also fails,
-  /// the item may exist in both queues. Consider running [reconcileQueues]
-  /// periodically to detect and resolve such inconsistencies.
+  /// the item may exist in both queues. A reconciliation mechanism should
+  /// be implemented to detect and resolve such inconsistencies if needed.
   Future<bool> moveToSkippedQueue(String entityType, String entityId) async {
     // Check if pending item exists before attempting to move
     final pendingItems = _syncQueue.getQueueItems();

@@ -139,7 +139,6 @@ class DocumentEntity {
       ..parentId = parentId ?? this.parentId
       ..title = title ?? this.title
       ..icon = icon ?? this.icon
-      ..content = content ?? this.content
       ..isArchived = isArchived ?? this.isArchived
       ..createdBy = createdBy ?? this.createdBy
       ..lastEditedBy = lastEditedBy ?? this.lastEditedBy
@@ -148,9 +147,19 @@ class DocumentEntity {
       ..isSynced = isSynced ?? this.isSynced
       ..isDirty = isDirty ?? this.isDirty
       ..lastSyncedAt = lastSyncedAt ?? this.lastSyncedAt;
-    if (contentSize != null) {
+
+    if (content != null) {
+      entity.content = content;
+    } else if (contentSize != null) {
+      entity.contentSize = contentSize;
+    } else {
+      entity.content = this.content;
+    }
+
+    if (contentSize != null && content == null) {
       entity.contentSize = contentSize;
     }
+
     return entity;
   }
 

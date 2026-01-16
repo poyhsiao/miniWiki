@@ -23,7 +23,6 @@ bower_components/
 # ===========================================
 .dart_tool/
 .packages
-pubspec.lock
 *.g.dart
 *.gr.dart
 flutter_app/build/
@@ -34,7 +33,6 @@ flutter_app/.dart_tool/
 # ===========================================
 target/
 **/Cargo.toml
-**/Cargo.lock
 
 # ===========================================
 # Documentation
