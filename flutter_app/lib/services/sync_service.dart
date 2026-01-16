@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:miniwiki/core/network/api_client.dart';
@@ -11,15 +12,15 @@ class SyncLogger {
   SyncLogger(this._tag);
 
   void warn(String message) {
-    print('[WARN][$_tag] $message');
+    debugPrint('[WARN][$_tag] $message');
   }
 
   void info(String message) {
-    print('[INFO][$_tag] $message');
+    debugPrint('[INFO][$_tag] $message');
   }
 
   void error(String message) {
-    print('[ERROR][$_tag] $message');
+    debugPrint('[ERROR][$_tag] $message');
   }
 }
 
@@ -372,7 +373,10 @@ class SyncService {
       final operation = (item['operation'] ?? item['op']) as String?;
       final data = item['data'] as Map<String, dynamic>? ?? {};
 
-      if (entityType == null || entityId == null || operation == null || operation.isEmpty) {
+      if (entityType == null ||
+          entityId == null ||
+          operation == null ||
+          operation.isEmpty) {
         logger.warn('Invalid queue item metadata: $item');
         if (entityType != null && entityId != null) {
           await _syncDatasource.removeFromQueue(entityType, entityId);
@@ -538,7 +542,8 @@ class SyncService {
 
       if (queuedItem.isNotEmpty) {
         final data = queuedItem['data'] as Map<String, dynamic>? ?? {};
-        final operation = queuedItem['operation'] as String?;
+        final operation =
+            (queuedItem['operation'] ?? queuedItem['op']) as String?;
         if (operation == null || operation.isEmpty) {
           await _syncDatasource.removeFromQueue('document', documentId);
           await _syncDatasource.addToFailedQueue('document', documentId,
