@@ -3,7 +3,6 @@ use serde::Deserialize;
 use crate::models::{RegisterRequest, LoginRequest, RegisterResponse, LoginResponse, RefreshRequest, RefreshResponse};
 use crate::jwt::JwtService;
 use crate::password::{hash_password, verify_password, validate_password_strength};
-use shared_errors::AppError;
 use shared_models::entities::User;
 
 #[derive(Deserialize)]
@@ -12,7 +11,7 @@ pub struct AuthRepository {
 }
 
 impl AuthRepository {
-    pub async fn find_by_email(&self, email: &str) -> Result<Option<User>, sqlx::Error> {
+    pub async fn find_by_email(&self, _email: &str) -> Result<Option<User>, sqlx::Error> {
         // Implementation would query the database
         Ok(None)
     }
@@ -36,7 +35,7 @@ impl AuthRepository {
         })
     }
     
-    pub async fn update_last_login(&self, user_id: &uuid::Uuid) -> Result<(), sqlx::Error> {
+    pub async fn update_last_login(&self, _user_id: &uuid::Uuid) -> Result<(), sqlx::Error> {
         Ok(())
     }
 }
@@ -44,7 +43,7 @@ impl AuthRepository {
 pub async fn register(
     req: web::Json<RegisterRequest>,
     repo: web::Data<AuthRepository>,
-    jwt_service: web::Data<JwtService>,
+    _jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
     // Hash password and create user
     let password_hash = match hash_password(&req.password) {

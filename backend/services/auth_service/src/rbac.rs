@@ -1,6 +1,5 @@
-use actix_web::{HttpMessage, HttpRequest, HttpResponse, ResponseError};
+use actix_web::{HttpRequest, HttpResponse, ResponseError};
 use actix_web::http::StatusCode;
-use jsonwebtoken::TokenData;
 use thiserror::Error;
 use lazy_static::lazy_static;
 
@@ -116,7 +115,7 @@ impl RbacMiddleware {
     /// to enforce authorization until actual DB-backed membership checking is implemented.
     /// Once space_memberships table is available, this should query it
     /// to verify that Claims::user_id is actually a member of the space.
-    pub fn is_space_member(claims: &Claims, space_id: &str) -> bool {
+    pub fn is_space_member(_claims: &Claims, _space_id: &str) -> bool {
         // TODO: Implement actual space membership check
         // This should query space_memberships table
         // SECURITY: Return false by default to prevent auth bypass

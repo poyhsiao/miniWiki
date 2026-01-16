@@ -3,7 +3,7 @@ use actix_web_actors::ws;
 use actix_web::{web, Error, HttpRequest, HttpResponse};
 use uuid::Uuid;
 use crate::{
-    WebSocketSession, SessionStore, SESSION_STORE,
+    WebSocketSession, SESSION_STORE,
     models::ClientMessage,
     presence::{PresenceStore, PresenceEntry, PRESENCE_STORE},
 };

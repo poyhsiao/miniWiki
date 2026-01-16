@@ -1,13 +1,11 @@
- use std::sync::Arc;
  use uuid::Uuid;
  use chrono::{DateTime, Utc};
  use thiserror::Error;
- use aws_sdk_s3 as s3;
  use aws_sdk_s3::Client as S3Client;
  use aws_sdk_s3::primitives::ByteStream;
  use aws_sdk_s3::types::{CompletedPart};
  use aws_sdk_s3::config::Builder as S3ConfigBuilder;
- use aws_config::{self, BehaviorVersion};
+ use aws_config;
  use aws_credential_types::Credentials;
  use aws_types::region::Region;
  use std::time::Duration;
