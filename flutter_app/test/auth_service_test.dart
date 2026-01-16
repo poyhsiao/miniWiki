@@ -13,12 +13,13 @@ class MockAuthRepository implements AuthRepository {
     required String email,
     required String password,
     required String displayName,
-  }) async => UserEntity()
-      ..uuid = '12345678-1234-5678-1234-5678-1234'
-      ..email = email
-      ..displayName = displayName
-      ..avatarUrl = null
-      ..isEmailVerified = false;
+  }) async => UserEntity(
+      uuid: '12345678-1234-5678-1234-123456789012',
+      email: email,
+      displayName: displayName,
+      avatarUrl: null,
+      isEmailVerified: false,
+    );
 
   @override
   Future<AuthTokens> login({
@@ -28,24 +29,26 @@ class MockAuthRepository implements AuthRepository {
       accessToken: 'mock_access_token_123',
       refreshToken: 'mock_refresh_token_456',
       expiresIn: 900,
-      user: UserEntity()
-        ..uuid = '12345678-1234-5678-1234-5678-1234'
-        ..email = email
-        ..displayName = 'Mock User'
-        ..avatarUrl = null
-        ..isEmailVerified = true,
+      user: UserEntity(
+        uuid: '12345678-1234-5678-1234-123456789012',
+        email: email,
+        displayName: 'Mock User',
+        avatarUrl: null,
+        isEmailVerified: true,
+      ),
     );
 
   @override
   Future<void> logout() async {}
 
   @override
-  Future<UserEntity> getCurrentUser() async => UserEntity()
-      ..uuid = '12345678-1234-5678-1234-5678-1234'
-      ..email = 'mock@example.com'
-      ..displayName = 'Mock User'
-      ..avatarUrl = null
-      ..isEmailVerified = true;
+  Future<UserEntity> getCurrentUser() async => UserEntity(
+      uuid: '12345678-1234-5678-1234-123456789012',
+      email: 'mock@example.com',
+      displayName: 'Mock User',
+      avatarUrl: null,
+      isEmailVerified: true,
+    );
 
   @override
   Future<void> refreshToken() async {}
@@ -83,7 +86,7 @@ void main() {
       );
 
       expect(result, isA<Authenticated>());
-      expect((result as Authenticated).userId, '12345678-1234-5678-1234-5678-1234');
+      expect((result as Authenticated).userId, '12345678-1234-5678-1234-123456789012');
       expect((result).email, 'test@example.com');
       expect((result).displayName, 'Mock User');
     });
@@ -111,7 +114,7 @@ void main() {
       );
 
       expect(result, isA<Authenticated>());
-      expect((result as Authenticated).userId, '12345678-1234-5678-1234-5678-1234');
+      expect((result as Authenticated).userId, '12345678-1234-5678-1234-123456789012');
       expect((result).email, 'newuser@example.com');
       expect((result).displayName, 'New User');
     });
@@ -130,7 +133,7 @@ void main() {
       final result = await service.getCurrentUser();
 
       expect(result, isA<Authenticated>());
-      expect((result as Authenticated).userId, '12345678-1234-5678-1234-5678-1234');
+      expect((result as Authenticated).userId, '12345678-1234-5678-1234-123456789012');
       expect((result).email, 'mock@example.com');
       expect((result).displayName, 'Mock User');
     });

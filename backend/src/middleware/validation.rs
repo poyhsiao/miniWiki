@@ -131,15 +131,15 @@ mod tests {
     fn create_test_request(method: Method, content_type: Option<&str>, content_length: Option<&str>) -> ServiceRequest {
         let mut test_req = TestRequest::default();
         test_req = test_req.method(method);
-        
+
         if let Some(ct) = content_type {
             test_req = test_req.insert_header((header::CONTENT_TYPE, ct));
         }
-        
+
         if let Some(cl) = content_length {
             test_req = test_req.insert_header((header::CONTENT_LENGTH, cl));
         }
-        
+
         test_req.to_srv_request()
     }
 

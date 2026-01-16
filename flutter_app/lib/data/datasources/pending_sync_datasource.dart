@@ -2,6 +2,7 @@
 // Uses SharedPreferences for Web-compatible local storage
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'local_storage.dart';
 
@@ -116,6 +117,81 @@ class PendingSyncDatasource {
   /// Get cached content
   String? getCachedContent(String docId) {
     return _documentCache.getCachedContent(docId);
+  }
+
+  // ============================================
+  // SKIPPED QUEUE OPERATIONS
+  // ============================================
+
+  /// Move item from pending queue to skipped queue
+  ///
+  /// Note: If removal from pending queue fails and rollback also fails,
+  /// the item may exist in both queues. A reconciliation mechanism should
+  /// be implemented to detect and resolve such inconsistencies if needed.
+  Future<bool> moveToSkippedQueue(String entityType, String entityId) async {
+    // Check if pending item exists before attempting to move
+    final pendingItems = _syncQueue.getQueueItems();
+    final hasPending = pendingItems.any(
+      (item) =>
+          item['entityType'] == entityType && item['entityId'] == entityId,
+    );
+
+    if (!hasPending) {
+      return false; // Nothing to move
+    }
+
+    // Try to add to skipped queue first
+    bool skippedAdded = false;
+    try {
+      await _syncQueue.addSkippedItem(entityType, entityId);
+      skippedAdded = true;
+    } catch (e) {
+      // Failed to add to skipped queue, propagate error
+      rethrow;
+    }
+
+    // Try to remove from pending queue
+    try {
+      await _syncQueue.removeItem(entityType, entityId);
+      return true;
+    } catch (e) {
+      // Rollback: remove from skipped queue only if it was added
+      if (skippedAdded) {
+        try {
+          // Check if skipped item exists before removing (idempotent)
+          final skippedItems = _syncQueue.getSkippedItems();
+          final hasSkipped = skippedItems.any(
+            (item) =>
+                item['entityType'] == entityType &&
+                item['entityId'] == entityId,
+          );
+          if (hasSkipped) {
+            await _syncQueue.removeSkippedItem(entityType, entityId);
+          }
+        } catch (rollbackError) {
+          // Log rollback failure so it is visible
+          // TODO: Replace with proper logging when logging infrastructure is available
+          debugPrint(
+              'Rollback failed for $entityType:$entityId: $rollbackError');
+        }
+      }
+      rethrow;
+    }
+  }
+
+  /// Get all skipped items
+  List<Map<String, dynamic>> getSkippedItems() {
+    return _syncQueue.getSkippedItems();
+  }
+
+  /// Get skipped queue size
+  int getSkippedQueueSize() {
+    return _syncQueue.getSkippedQueueSize();
+  }
+
+  /// Clear skipped queue
+  Future<void> clearSkippedQueue() async {
+    await _syncQueue.clearSkippedQueue();
   }
 }
 

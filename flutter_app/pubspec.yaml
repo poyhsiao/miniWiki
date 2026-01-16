@@ -1,13 +1,13 @@
 name: miniwiki
 description: miniWiki Knowledge Management Platform - Self-hosted Notion Alternative
 
-publish_to: 'none'
+publish_to: "none"
 
 version: 0.1.0
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
-  flutter: '>=3.22.0'
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.22.0"
 
 dependencies:
   flutter:
@@ -27,6 +27,11 @@ dependencies:
 
   # Local Storage (Offline-first) - Web-compatible storage using SharedPreferences
   shared_preferences: ^2.2.0
+
+  # Isar Database for offline-first storage
+
+  isar_community: ^3.1.0
+  isar_community_flutter_libs: ^3.1.0
 
   # CRDT for sync
   y_crdt: ^0.0.1
@@ -80,9 +85,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   build_runner: ^2.4.0
-  riverpod_generator: ^2.3.0
+  riverpod_generator: ^2.4.0
   json_serializable: ^6.8.0
   mocktail: ^1.0.0
+  isar_community_generator: ^3.1.0
 
 flutter:
   uses-material-design: true

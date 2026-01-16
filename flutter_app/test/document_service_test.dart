@@ -25,8 +25,8 @@ void main() {
         ..title = 'Test'
         ..content = content;
 
-      expect(doc.content['type'], 'Y.Doc');
-      expect(doc.content['update'], 'base64data');
+      expect(doc.content!['type'], 'Y.Doc');
+      expect(doc.content!['update'], 'base64data');
     });
 
     test('document entity with parent hierarchy', () {
@@ -96,11 +96,16 @@ void main() {
         ..content = {'text': 'Hello'}
         ..isSynced = true;
 
-      // User edits
+      // User edits - must reassign the full map because content getter returns a new Map each time
       doc.title = 'Modified';
-      doc.content['text'] = 'Hello World';
+      final newContent = Map<String, dynamic>.from(doc.content!);
+      newContent['text'] = 'Hello World';
+      doc.content = newContent;
       doc.isDirty = true;
       doc.isSynced = false;
+
+      // Verify the content was updated
+      expect(doc.content!['text'], 'Hello World');
 
       // Simulate sync
       doc.isDirty = false;

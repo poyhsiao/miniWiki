@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/core/config/auth_provider.dart';
-import 'package:miniwiki/presentation/pages/auth/login_page.dart';
 import 'package:miniwiki/presentation/pages/home_page.dart';
 
 class RegisterPage extends ConsumerWidget {

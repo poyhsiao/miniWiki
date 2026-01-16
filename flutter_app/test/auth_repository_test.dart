@@ -165,6 +165,22 @@ void main() {
         expect(result.avatarUrl, 'https://example.com/avatar.png');
         expect(result.isEmailVerified, true);
       });
+
+      test('getCurrentUser throws StateError when ID is not a string',
+          () async {
+        final response = MockResponse();
+        when(() => response.statusCode).thenReturn(200);
+        when(() => response.data).thenReturn({
+          'id': 12345, // Not a string
+          'email': 'user@example.com',
+        });
+        when(() => apiClient.get('/auth/me')).thenAnswer((_) async => response);
+
+        await expectLater(
+          authRepository.getCurrentUser(),
+          throwsA(isA<StateError>()),
+        );
+      });
     });
 
     group('isAuthenticated', () {

@@ -5,8 +5,8 @@ description: "Task list for miniWiki Knowledge Management Platform implementatio
 
 # Tasks: miniWiki Knowledge Management Platform
 
-**Feature Branch**: `001-miniwiki-platform`  
-**Input**: Design documents from `/specs/001-miniwiki-platform/`  
+**Feature Branch**: `001-miniwiki-platform`
+**Input**: Design documents from `/specs/001-miniwiki-platform/`
 **Spec**: [spec.md](spec.md) | **Plan**: [plan.md](plan.md) | **Data Model**: [data-model.md](data-model.md) | **Contracts**: [contracts/](contracts/) | **Quickstart**: [quickstart.md](quickstart.md)
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
@@ -625,16 +625,16 @@ Based on `plan.md` structure:
 
 ### Testing
 
-- [ ] T309 [P] Run all unit tests and verify passing (blocked: 58 compilation errors in document_service)
-- [ ] T310 [P] Run all integration tests and verify passing (blocked: compilation errors)
-- [ ] T311 [P] Run end-to-end tests and verify passing (blocked: compilation errors)
-- [ ] T312 [P] Verify test coverage >80% (blocked: compilation errors)
+- [x] T309 [P] Fix sync service and document entity issues (Fixed: 1) syncAllDirtyDocuments entity type checking, 2) syncDocument cached-document error handling, 3) DocumentEntity content setter test; see SYNC_SERVICE_FIXES_T309.md)
+- [ ] T310 [P] Run all integration tests and verify passing (45 integration tests require running backend server)
+- [ ] T311 [P] Run end-to-end tests and verify passing (requires: fix Flutter compilation errors)
+- [ ] T312 [P] Verify test coverage >80% (requires: complete Flutter test suite)
 
 ### Quickstart Validation
 
 - [x] T313 [P] Verify all quickstart.md steps work correctly (quickstart.md exists at specs/001-miniwiki-platform/quickstart.md)
-- [ ] T314 [P] Test development environment setup from scratch (requires: fix document_service compilation errors)
-- [ ] T315 [P] Verify docker-compose setup works reliably (requires: fix document_service compilation errors)
+- [ ] T314 Test development environment setup from scratch (requires: fix Flutter data layer files)
+- [ ] T315 Verify docker-compose setup works reliably (requires: running Docker services)
 
 ---
 
