@@ -166,7 +166,8 @@ void main() {
         expect(result.isEmailVerified, true);
       });
 
-      test('getCurrentUser throws StateError when ID is not a string', () async {
+      test('getCurrentUser throws StateError when ID is not a string',
+          () async {
         final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
@@ -175,7 +176,10 @@ void main() {
         });
         when(() => apiClient.get('/auth/me')).thenAnswer((_) async => response);
 
-        expect(authRepository.getCurrentUser(), throwsA(isA<StateError>()));
+        await expectLater(
+          authRepository.getCurrentUser(),
+          throwsA(isA<StateError>()),
+        );
       });
     });
 

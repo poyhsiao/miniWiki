@@ -52,7 +52,6 @@ LICENSE*
 !package.json
 .eslintrc*
 .prettierrc*
-tsconfig*.json
 
 # ===========================================
 # IDE

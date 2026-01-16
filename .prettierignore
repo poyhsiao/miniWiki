@@ -33,7 +33,6 @@ flutter_app/.dart_tool/
 # Rust
 # ===========================================
 target/
-Cargo.lock
 **/Cargo.toml
 **/Cargo.lock
 
@@ -68,8 +67,8 @@ tsconfig*.json
 # Generated
 # ===========================================
 *.generated.*
-flutter_app/*.g.dart
-flutter_app/*.gr.dart
+flutter_app/**/*.g.dart
+flutter_app/**/*.gr.dart
 
 # ===========================================
 # Docker & Infrastructure
@@ -79,13 +78,6 @@ flutter_app/*.gr.dart
 # ===========================================
 # Lock Files & Binary Artifacts
 # ===========================================
-pubspec.lock
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-Gemfile.lock
-Cargo.lock
-**/Cargo.lock
 *.lock
 *.bin
 

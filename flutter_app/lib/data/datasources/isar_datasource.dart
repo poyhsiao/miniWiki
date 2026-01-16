@@ -71,8 +71,12 @@ class IsarDatabase {
 
   /// Save a document (for testing)
   Future<void> saveDocument(DocumentEntity document) async {
+    final uuid = document.uuid;
+    if (uuid == null || uuid.isEmpty) {
+      throw StateError('DocumentEntity.uuid is required to save a document');
+    }
     final json = serializeDocument(document);
-    await _storage.setString('$_docKeyPrefix${document.uuid}', json);
+    await _storage.setString('$_docKeyPrefix$uuid', json);
     return Future.value();
   }
 
@@ -152,18 +156,13 @@ class IsarDatabase {
       final decoded = jsonDecode(json);
       if (decoded is! Map<String, dynamic>) {
         throw ArgumentError(
-          'Invalid JSON for DocumentEntity: expected Map<String, dynamic>, got ${decoded.runtimeType} — raw: $json'
-        );
+            'Invalid JSON for DocumentEntity: expected Map<String, dynamic>, got ${decoded.runtimeType} — raw: $json');
       }
       map = decoded;
     } on FormatException catch (e) {
-      throw ArgumentError(
-        'Invalid JSON for DocumentEntity: $e — raw: $json'
-      );
+      throw ArgumentError('Invalid JSON for DocumentEntity: $e — raw: $json');
     } on TypeError catch (e) {
-      throw ArgumentError(
-        'Invalid JSON for DocumentEntity: $e — raw: $json'
-      );
+      throw ArgumentError('Invalid JSON for DocumentEntity: $e — raw: $json');
     }
 
     // Validate required fields
@@ -184,8 +183,7 @@ class IsarDatabase {
         return DateTime.parse(dateStr);
       } on FormatException catch (e) {
         throw ArgumentError(
-          'Invalid date format for DocumentEntity.$fieldName: $e — value: $dateStr'
-        );
+            'Invalid date format for DocumentEntity.$fieldName: $e — value: $dateStr');
       }
     }
 
@@ -204,7 +202,8 @@ class IsarDatabase {
       ..lastEditedBy = map['lastEditedBy'] as String?
       ..createdAt = parseDateTime(map['createdAt'] as String?, 'createdAt')
       ..updatedAt = parseDateTime(map['updatedAt'] as String?, 'updatedAt')
-      ..lastSyncedAt = parseDateTime(map['lastSyncedAt'] as String?, 'lastSyncedAt');
+      ..lastSyncedAt =
+          parseDateTime(map['lastSyncedAt'] as String?, 'lastSyncedAt');
   }
 }
 
@@ -219,40 +218,30 @@ class IsarCollection<T> {
     _name.toString();
   }
 
+  Never _unimplemented() => throw UnimplementedError(
+      'IsarCollection is a placeholder until Isar is wired.');
+
   /// Get by ID
-  Future<T?> get(String id) async {
-    return null;
-  }
+  Future<T?> get(String id) async => _unimplemented();
 
   /// Get all documents
-  Future<List<T>> getAll() async {
-    return [];
-  }
+  Future<List<T>> getAll() async => _unimplemented();
 
   /// Put document
-  Future<String> put(T doc) async {
-    return '';
-  }
+  Future<String> put(T doc) async => _unimplemented();
 
   /// Delete by ID
-  Future<bool> delete(String id) async {
-    return false;
-  }
+  Future<bool> delete(String id) async => _unimplemented();
 
   /// Clear collection
-  Future<void> clear() async {
-    return Future.value();
-  }
+  Future<void> clear() async => _unimplemented();
 
   /// Count documents
-  Future<int> count() async {
-    return 0;
-  }
+  Future<int> count() async => _unimplemented();
 
   /// Find by index
-  Future<List<T>> find({String? index, String? value}) async {
-    return [];
-  }
+  Future<List<T>> find({String? index, String? value}) async =>
+      _unimplemented();
 }
 
 /// Provider for IsarDatabase

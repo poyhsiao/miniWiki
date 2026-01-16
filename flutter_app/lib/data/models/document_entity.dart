@@ -23,7 +23,8 @@ class DocumentEntity {
   /// Serialize to JSON with validation
   Map<String, dynamic> toJson() {
     if (uuid == null || uuid!.isEmpty || spaceId == null || spaceId!.isEmpty) {
-      throw StateError('DocumentEntity validation failed: uuid or spaceId cannot be empty');
+      throw StateError(
+          'DocumentEntity validation failed: uuid or spaceId cannot be empty');
     }
     return {
       'uuid': uuid,
@@ -79,7 +80,7 @@ class DocumentEntity {
       contentSize = 0;
     } else {
       contentJson = jsonEncode(value);
-      contentSize = contentJson?.length ?? 0;
+      contentSize = utf8.encode(contentJson!).length;
     }
   }
 
@@ -131,7 +132,7 @@ class DocumentEntity {
     bool? isDirty,
     DateTime? lastSyncedAt,
   }) {
-    return DocumentEntity()
+    final entity = DocumentEntity()
       ..id = id ?? this.id
       ..uuid = uuid ?? this.uuid
       ..spaceId = spaceId ?? this.spaceId
@@ -139,7 +140,6 @@ class DocumentEntity {
       ..title = title ?? this.title
       ..icon = icon ?? this.icon
       ..content = content ?? this.content
-      ..contentSize = contentSize ?? this.contentSize
       ..isArchived = isArchived ?? this.isArchived
       ..createdBy = createdBy ?? this.createdBy
       ..lastEditedBy = lastEditedBy ?? this.lastEditedBy
@@ -148,6 +148,10 @@ class DocumentEntity {
       ..isSynced = isSynced ?? this.isSynced
       ..isDirty = isDirty ?? this.isDirty
       ..lastSyncedAt = lastSyncedAt ?? this.lastSyncedAt;
+    if (contentSize != null) {
+      entity.contentSize = contentSize;
+    }
+    return entity;
   }
 
   @override

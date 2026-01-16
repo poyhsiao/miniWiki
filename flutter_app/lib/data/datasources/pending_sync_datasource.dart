@@ -2,6 +2,7 @@
 // Uses SharedPreferences for Web-compatible local storage
 
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'local_storage.dart';
 
@@ -123,6 +124,10 @@ class PendingSyncDatasource {
   // ============================================
 
   /// Move item from pending queue to skipped queue
+  ///
+  /// Note: If removal from pending queue fails and rollback also fails,
+  /// the item may exist in both queues. Consider running [reconcileQueues]
+  /// periodically to detect and resolve such inconsistencies.
   Future<bool> moveToSkippedQueue(String entityType, String entityId) async {
     // Check if pending item exists before attempting to move
     final pendingItems = _syncQueue.getQueueItems();
@@ -165,7 +170,9 @@ class PendingSyncDatasource {
           }
         } catch (rollbackError) {
           // Log rollback failure so it is visible
-          print('Rollback failed for $entityType:$entityId: $rollbackError');
+          // TODO: Replace with proper logging when logging infrastructure is available
+          debugPrint(
+              'Rollback failed for $entityType:$entityId: $rollbackError');
         }
       }
       rethrow;

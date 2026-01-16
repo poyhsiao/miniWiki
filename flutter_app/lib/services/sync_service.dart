@@ -341,8 +341,6 @@ class SyncService {
     }
   }
 
-
-
   /// Sync all dirty documents
   Future<SyncSummary> syncAllDirtyDocuments() async {
     if (!_isOnline) {
@@ -396,9 +394,11 @@ class SyncService {
             'entityType': entityType,
             'entityId': entityId,
           });
-          final moved = await _syncDatasource.moveToSkippedQueue(entityType, entityId);
+          final moved =
+              await _syncDatasource.moveToSkippedQueue(entityType, entityId);
           if (!moved) {
-            logger.warn('Failed to move skipped item: $entityType:$entityId (not found in pending)');
+            logger.warn(
+                'Failed to move skipped item: $entityType:$entityId (not found in pending)');
           }
         }
       } catch (e) {
@@ -436,7 +436,8 @@ class SyncService {
       if (cachedDoc != null) {
         try {
           // Read operation metadata - support both 'op' and 'operation' for migration
-          final operation = (cachedDoc['operation'] ?? cachedDoc['op']) as String?;
+          final operation =
+              (cachedDoc['operation'] ?? cachedDoc['op']) as String?;
 
           if (operation == null || operation.isEmpty) {
             throw Exception('Missing operation metadata in cached document');
@@ -454,11 +455,13 @@ class SyncService {
               if (spaceId == null) {
                 throw Exception('Missing spaceId for create operation');
               }
-              await _apiClient.post('/spaces/$spaceId/documents', data: sanitizedData);
+              await _apiClient.post('/spaces/$spaceId/documents',
+                  data: sanitizedData);
               break;
 
             case 'update':
-              await _apiClient.patch('/documents/$documentId', data: sanitizedData);
+              await _apiClient.patch('/documents/$documentId',
+                  data: sanitizedData);
               break;
 
             case 'delete':
@@ -482,7 +485,9 @@ class SyncService {
         } catch (e) {
           // Handle cached-document branch failures
           // Extract operation for failed queue
-          final operation = (cachedDoc['operation'] ?? cachedDoc['op']) as String? ?? 'unknown';
+          final operation =
+              (cachedDoc['operation'] ?? cachedDoc['op']) as String? ??
+                  'unknown';
 
           // Add to failed queue
           await _syncDatasource.addToFailedQueue(
@@ -492,6 +497,10 @@ class SyncService {
             cachedDoc,
             e.toString(),
           );
+
+          // Remove cached/queue entries to prevent repeated failures
+          await _syncDatasource.removeCachedDocument(documentId);
+          await _syncDatasource.removeFromQueue('document', documentId);
 
           // Return failure result
           return SyncResult(
@@ -522,8 +531,7 @@ class SyncService {
             // Move to failed queue on failure
             await _syncDatasource.removeFromQueue('document', documentId);
             await _syncDatasource.addToFailedQueue(
-              'document', documentId, operation, data, 'sync returned false'
-            );
+                'document', documentId, operation, data, 'sync returned false');
           }
           return SyncResult(
             success: success,
@@ -534,8 +542,7 @@ class SyncService {
           // Move to failed queue on exception
           await _syncDatasource.removeFromQueue('document', documentId);
           await _syncDatasource.addToFailedQueue(
-            'document', documentId, operation, data, e.toString()
-          );
+              'document', documentId, operation, data, e.toString());
           // Return failure result instead of rethrowing to avoid duplicating error in outer catch
           return SyncResult(
             success: false,
@@ -571,8 +578,7 @@ class SyncService {
 /// Provider for SyncService
 final syncServiceProvider = Provider<SyncService>((ref) {
   final syncDatasource = ref.watch(pendingSyncDatasourceProvider);
-  final syncService =
-      SyncService(syncDatasource, ApiClient.defaultInstance());
+  final syncService = SyncService(syncDatasource, ApiClient.defaultInstance());
   ref.onDispose(syncService.dispose);
   return syncService;
 });
