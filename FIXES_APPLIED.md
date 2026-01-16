@@ -129,3 +129,22 @@
 - 文檔導出中的未使用賦值
 
 這些警告來自其他服務模組,可以在後續的清理工作中處理。
+
+## 8. Flutter 應用程序修復
+
+### 修復 12: 解決 SyncService 中的重複訪問器
+
+- **問題**: `SyncService` 中存在命名不一致 (`getPendingCount`)，而調用方預期 `getPendingSyncCount`。
+- **修復**:
+  - 將 `getPendingCount` 重命名為 `getPendingSyncCount`。
+  - 添加標記為 `@Deprecated` 的 `getPendingCount` 方法，轉發調用到新方法以保持兼容性。
+- **影響**: 解決了代碼庫中的命名不一致，並確保與 `SyncProvider` 的兼容性。
+
+### 修復 13: 解決 Isar 與 Analyzer 的依賴衝突
+
+- **問題**: `isar` 3.1.0+1 與 `analyzer` 6.x (由其他代碼生成包使用) 衝突，且在 Flutter 3.22+ 上可能存在構建問題。
+- **修復**:
+  - 將 `pubspec.yaml` 中的 `isar`, `isar_flutter_libs`, `isar_generator` 替換為社區分支 `isar_community`, `isar_community_flutter_libs`, `isar_community_generator`。
+  - 更新 `user_entity.dart` 和 `document_entity.dart` 中的導入路徑。
+  - 運行 `build_runner` 重新生成代碼。
+- **影響**: 解決了依賴版本衝突，並確保應用程序在 Flutter 3.22+ 環境下的兼容性 (修復 Android/AGP 相關問題)。

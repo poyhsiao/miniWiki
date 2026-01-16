@@ -239,6 +239,54 @@ class SyncQueueService {
   int getFailedQueueSize() {
     return getFailedItems().length;
   }
+
+  // ============================================
+  // SKIPPED QUEUE OPERATIONS
+  // ============================================
+
+  static const String _skippedPrefix = 'sync_skipped_';
+
+  /// Add item to skipped queue (for unsupported entity types)
+  Future<void> addSkippedItem(String entityType, String entityId) async {
+    final item = {
+      'entityType': entityType,
+      'entityId': entityId,
+      'skippedAt': DateTime.now().toIso8601String(),
+      'reason': 'Unsupported entity type',
+    };
+    final json = jsonEncode(item);
+    await _storage.setString('$_skippedPrefix${entityType}_$entityId', json);
+  }
+
+  /// Get all skipped items
+  List<Map<String, dynamic>> getSkippedItems() {
+    final items = _storage.getValuesByPrefix(_skippedPrefix);
+    return items
+        .map((json) {
+          try {
+            return jsonDecode(json) as Map<String, dynamic>;
+          } catch (_) {
+            return <String, dynamic>{};
+          }
+        })
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+
+  /// Remove item from skipped queue
+  Future<void> removeSkippedItem(String entityType, String entityId) async {
+    await _storage.remove('$_skippedPrefix${entityType}_$entityId');
+  }
+
+  /// Clear skipped queue
+  Future<void> clearSkippedQueue() async {
+    await _storage.removeByPrefix(_skippedPrefix);
+  }
+
+  /// Get skipped queue size
+  int getSkippedQueueSize() {
+    return getSkippedItems().length;
+  }
 }
 
 /// User cache service

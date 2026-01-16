@@ -1,0 +1,112 @@
+# ===========================================
+# miniWiki - Prettier Ignore Configuration
+# ===========================================
+# Patterns for files/directories to skip during Prettier formatting
+
+# ===========================================
+# Build & Distribution
+# ===========================================
+build/
+dist/
+coverage/
+*.min.js
+*.min.css
+
+# ===========================================
+# Dependencies
+# ===========================================
+node_modules/
+bower_components/
+
+# ===========================================
+# Flutter / Dart
+# ===========================================
+.dart_tool/
+.packages
+pubspec.lock
+*.g.dart
+*.gr.dart
+flutter_app/build/
+flutter_app/.dart_tool/
+
+# ===========================================
+# Rust
+# ===========================================
+target/
+Cargo.lock
+**/Cargo.toml
+**/Cargo.lock
+
+# ===========================================
+# Documentation
+# ===========================================
+*.md
+docs/
+specs/
+README*
+CHANGELOG*
+LICENSE*
+CONTRIBUTING*
+
+# ===========================================
+# Configuration Files
+# ===========================================
+# Ignore these configuration files
+Dockerfile*
+docker-compose*.yml
+.eslintrc*
+.prettierrc*
+tsconfig*.json
+
+# ===========================================
+# IDE
+# ===========================================
+.idea/
+.vscode/
+
+# ===========================================
+# Generated
+# ===========================================
+*.generated.*
+flutter_app/*.g.dart
+flutter_app/*.gr.dart
+
+# ===========================================
+# Docker & Infrastructure
+# ===========================================
+.dockerignore
+
+# ===========================================
+# Lock Files & Binary Artifacts
+# ===========================================
+pubspec.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Gemfile.lock
+Cargo.lock
+**/Cargo.lock
+*.lock
+*.bin
+
+# ===========================================
+# Binary & Assets
+# ===========================================
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# ===========================================
+# Temporary
+# ===========================================
+*.tmp
+*.log
+.env*
+!.env.example

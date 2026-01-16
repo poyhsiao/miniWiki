@@ -16,6 +16,8 @@ pubspec.lock
 *.g.dart
 *.freezed.dart
 *.gr.dart
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # Test coverage
 coverage/

@@ -1,14 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miniwiki/core/network/api_client.dart';
-import 'package:miniwiki/data/datasources/isar_datasource.dart';
 import 'package:miniwiki/data/models/document_entity.dart';
 import 'package:miniwiki/data/repositories/document_repository_impl.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
-
-class MockIsarDatabase extends Mock implements IsarDatabase {}
 
 class MockResponse extends Mock implements Response {}
 
@@ -22,19 +19,11 @@ void main() {
 
   group('DocumentRepository Tests', () {
     late ApiClient apiClient;
-    late IsarDatabase isarDatabase;
     late DocumentRepositoryImpl documentRepository;
 
     setUp(() {
       apiClient = MockApiClient();
-      isarDatabase = MockIsarDatabase();
-      documentRepository = DocumentRepositoryImpl(apiClient, isarDatabase);
-
-      when(() => isarDatabase.saveDocument(any())).thenAnswer((_) async => {});
-      when(() => isarDatabase.getDocumentById(any())).thenAnswer((_) async => null);
-      when(() => isarDatabase.getDocumentsBySpace(any())).thenAnswer((_) async => []);
-      when(() => isarDatabase.getDocumentsByParent(any())).thenAnswer((_) async => []);
-      when(() => isarDatabase.deleteDocument(any())).thenAnswer((_) async => {});
+      documentRepository = DocumentRepositoryImpl(apiClient);
     });
 
     group('listDocuments', () {
@@ -62,23 +51,27 @@ void main() {
             'total': 1,
           },
         });
-        when(() => apiClient.get('/spaces/space-uuid/documents', queryParams: any(named: 'queryParams')))
+        when(() => apiClient.get('/spaces/space-uuid/documents',
+                queryParams: any(named: 'queryParams')))
             .thenAnswer((_) async => response);
 
-        final result = await documentRepository.listDocuments(spaceId: 'space-uuid');
+        final result =
+            await documentRepository.listDocuments(spaceId: 'space-uuid');
 
         expect(result.documents.length, 1);
         expect(result.documents.first.id, 'doc-1');
         expect(result.documents.first.title, 'Document 1');
       });
 
-      test('listDocuments falls back to Isar on error', () async {
-        when(() => apiClient.get('/spaces/space-uuid/documents', queryParams: any(named: 'queryParams')))
+      test('listDocuments throws an exception on API error', () async {
+        when(() => apiClient.get('/spaces/space-uuid/documents',
+                queryParams: any(named: 'queryParams')))
             .thenThrow(Exception('Network error'));
 
-        final result = await documentRepository.listDocuments(spaceId: 'space-uuid');
-
-        expect(result.documents, isEmpty);
+        expect(
+          () => documentRepository.listDocuments(spaceId: 'space-uuid'),
+          throwsA(isA<Exception>()),
+        );
       });
     });
 
@@ -112,14 +105,8 @@ void main() {
       });
 
       test('getDocument throws when not found', () async {
-        final response = MockResponse();
-        when(() => response.statusCode).thenReturn(404);
-        when(() => response.data).thenReturn({
-          'error': 'DOC_NOT_FOUND',
-          'message': 'Document not found',
-        });
         when(() => apiClient.get('/documents/nonexistent'))
-            .thenAnswer((_) async => response);
+            .thenThrow(Exception('Document not found'));
 
         expect(
           () => documentRepository.getDocument('nonexistent'),
@@ -150,8 +137,8 @@ void main() {
             },
           },
         });
-        when(() => apiClient.post('/spaces/space-uuid/documents', data: any(named: 'data')))
-            .thenAnswer((_) async => response);
+        when(() => apiClient.post('/spaces/space-uuid/documents',
+            data: any(named: 'data'))).thenAnswer((_) async => response);
 
         final result = await documentRepository.createDocument(
           spaceId: 'space-uuid',
@@ -188,8 +175,8 @@ void main() {
             },
           },
         });
-        when(() => apiClient.patch('/documents/doc-uuid', data: any(named: 'data')))
-            .thenAnswer((_) async => response);
+        when(() => apiClient.patch('/documents/doc-uuid',
+            data: any(named: 'data'))).thenAnswer((_) async => response);
 
         final result = await documentRepository.updateDocument(
           id: 'doc-uuid',
@@ -240,7 +227,8 @@ void main() {
         when(() => apiClient.get('/documents/parent-doc/children'))
             .thenAnswer((_) async => response);
 
-        final result = await documentRepository.getDocumentChildren('parent-doc');
+        final result =
+            await documentRepository.getDocumentChildren('parent-doc');
 
         expect(result.documents.length, 1);
         expect(result.documents.first.id, 'child-doc');
@@ -285,13 +273,15 @@ void main() {
         verify(() => apiClient.get('/documents/child-doc/path')).called(1);
       });
 
-      test('getDocumentPath returns empty list when document not found', () async {
+      test('getDocumentPath throws exception when document not found',
+          () async {
         when(() => apiClient.get(any(), queryParams: any(named: 'queryParams')))
             .thenThrow(Exception('Not found'));
 
-        final result = await documentRepository.getDocumentPath('unknown');
-
-        expect(result, isEmpty);
+        expect(
+          () => documentRepository.getDocumentPath('unknown'),
+          throwsA(isA<Exception>()),
+        );
       });
     });
   });

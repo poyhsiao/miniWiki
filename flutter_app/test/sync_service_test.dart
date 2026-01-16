@@ -348,4 +348,40 @@ void main() {
       expect(summary.syncedCount, 2);
     });
   });
+
+  group('SyncService - Skipped Entities Handling', () {
+    test('SyncSummary includes skippedEntities field', () {
+      final summary = ss.SyncSummary(
+        success: true,
+        syncedCount: 5,
+        failedCount: 0,
+        skippedEntities: [
+          {'entityType': 'comment', 'entityId': 'comment-1'},
+          {'entityType': 'space', 'entityId': 'space-1'},
+        ],
+        timestamp: DateTime(2024, 1),
+      );
+
+      expect(summary.skippedEntities.length, 2);
+      expect(summary.skippedEntities[0]['entityType'], 'comment');
+      expect(summary.skippedEntities[1]['entityType'], 'space');
+    });
+
+    test('SyncSummary copyWith preserves skippedEntities', () {
+      final original = ss.SyncSummary(
+        success: true,
+        syncedCount: 10,
+        failedCount: 0,
+        skippedEntities: [
+          {'entityType': 'comment', 'entityId': 'comment-1'},
+        ],
+        timestamp: DateTime(2024, 1),
+      );
+
+      final modified = original.copyWith(syncedCount: 15);
+
+      expect(modified.skippedEntities.length, 1);
+      expect(modified.skippedEntities[0]['entityType'], 'comment');
+    });
+  });
 }

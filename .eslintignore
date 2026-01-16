@@ -1,0 +1,85 @@
+# ===========================================
+# miniWiki - ESLint Ignore Configuration
+# ===========================================
+# Patterns for files/directories to skip during ESLint linting
+
+# ===========================================
+# Build & Distribution
+# ===========================================
+build/
+dist/
+coverage/
+*.min.js
+*.min.css
+
+# ===========================================
+# Dependencies
+# ===========================================
+node_modules/
+bower_components/
+
+# ===========================================
+# Flutter / Dart
+# ===========================================
+.dart_tool/
+.packages
+pubspec.lock
+flutter_app/build/
+flutter_app/.dart_tool/
+flutter_app/.packages
+flutter_app/pubspec.lock
+
+# ===========================================
+# Rust
+# ===========================================
+target/
+Cargo.lock
+
+# ===========================================
+# Documentation
+# ===========================================
+*.md
+docs/
+specs/
+README*
+CHANGELOG*
+LICENSE*
+
+# ===========================================
+# Configuration
+# ===========================================
+*.json
+!package.json
+.eslintrc*
+.prettierrc*
+tsconfig*.json
+
+# ===========================================
+# IDE
+# ===========================================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===========================================
+# Generated
+# ===========================================
+*.generated.*
+*.g.dart
+*.gr.dart
+
+# ===========================================
+# Docker & Infrastructure
+# ===========================================
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# ===========================================
+# Temporary
+# ===========================================
+*.tmp
+*.log
+.env*
+!.env.example

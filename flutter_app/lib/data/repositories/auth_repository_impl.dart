@@ -24,12 +24,13 @@ class AuthRepositoryImpl implements AuthRepository {
     final data = response.data as Map<String, dynamic>;
     final userData = data['user'] as Map<String, dynamic>;
 
-    return UserEntity()
-      ..uuid = userData['id'] as String
-      ..email = userData['email'] as String
-      ..displayName = userData['display_name'] as String
-      ..avatarUrl = userData['avatar_url'] as String?
-      ..isEmailVerified = userData['is_email_verified'] as bool;
+    return UserEntity(
+      uuid: _requireString(userData['id'], 'id'),
+      email: (userData['email'] as String?) ?? '',
+      displayName: (userData['display_name'] as String?) ?? '',
+      avatarUrl: userData['avatar_url'] as String?,
+      isEmailVerified: (userData['is_email_verified'] as bool?) ?? false,
+    );
   }
 
   @override
@@ -52,12 +53,13 @@ class AuthRepositoryImpl implements AuthRepository {
       accessToken: data['access_token'] as String,
       refreshToken: data['refresh_token'] as String,
       expiresIn: data['expires_in'] as int,
-      user: UserEntity()
-        ..uuid = userData['id'] as String
-        ..email = userData['email'] as String
-        ..displayName = userData['display_name'] as String
-        ..avatarUrl = userData['avatar_url'] as String?
-        ..isEmailVerified = userData['is_email_verified'] as bool,
+      user: UserEntity(
+        uuid: _requireString(userData['id'], 'id'),
+        email: (userData['email'] as String?) ?? '',
+        displayName: (userData['display_name'] as String?) ?? '',
+        avatarUrl: userData['avatar_url'] as String?,
+        isEmailVerified: (userData['is_email_verified'] as bool?) ?? false,
+      ),
     );
   }
 
@@ -73,12 +75,23 @@ class AuthRepositoryImpl implements AuthRepository {
     final response = await _apiClient.get('/auth/me');
     final data = response.data as Map<String, dynamic>;
 
-    return UserEntity()
-      ..uuid = data['id'] as String
-      ..email = data['email'] as String
-      ..displayName = data['display_name'] as String
-      ..avatarUrl = data['avatar_url'] as String?
-      ..isEmailVerified = data['is_email_verified'] as bool;
+    return UserEntity(
+      uuid: _requireString(data['id'], 'id'),
+      email: (data['email'] as String?) ?? '',
+      displayName: (data['display_name'] as String?) ?? '',
+      avatarUrl: data['avatar_url'] as String?,
+      isEmailVerified: (data['is_email_verified'] as bool?) ?? false,
+    );
+  }
+
+  String _requireString(dynamic value, String fieldName) {
+    if (value == null || (value is String && value.isEmpty)) {
+      throw StateError('Missing required field: $fieldName');
+    }
+    if (value is! String) {
+      throw StateError('Unexpected type for field: $fieldName. Expected String, got ${value.runtimeType}');
+    }
+    return value;
   }
 
   @override

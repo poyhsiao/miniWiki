@@ -2,8 +2,26 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:miniwiki/core/network/api_client.dart';
-import 'package:miniwiki/services/crdt_service.dart';
 import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
+
+/// Simple logger for sync service
+class SyncLogger {
+  final String _tag;
+
+  SyncLogger(this._tag);
+
+  void warn(String message) {
+    print('[WARN][$_tag] $message');
+  }
+
+  void info(String message) {
+    print('[INFO][$_tag] $message');
+  }
+
+  void error(String message) {
+    print('[ERROR][$_tag] $message');
+  }
+}
 
 /// Sync status enumeration
 enum SyncStatus {
@@ -57,12 +75,14 @@ class SyncSummary {
   final bool success;
   final int syncedCount;
   final int failedCount;
+  final List<Map<String, dynamic>> skippedEntities;
   final DateTime timestamp;
 
   const SyncSummary({
     required this.success,
     required this.syncedCount,
     required this.failedCount,
+    this.skippedEntities = const [],
     required this.timestamp,
   });
 
@@ -70,21 +90,23 @@ class SyncSummary {
     bool? success,
     int? syncedCount,
     int? failedCount,
+    List<Map<String, dynamic>>? skippedEntities,
     DateTime? timestamp,
   }) =>
       SyncSummary(
         success: success ?? this.success,
         syncedCount: syncedCount ?? this.syncedCount,
         failedCount: failedCount ?? this.failedCount,
+        skippedEntities: skippedEntities ?? this.skippedEntities,
         timestamp: timestamp ?? this.timestamp,
       );
 }
 
 /// Sync service for handling offline-first synchronization
 class SyncService {
-  final CrdtService _crdtService;
   final PendingSyncDatasource _syncDatasource;
   final ApiClient _apiClient;
+  final SyncLogger logger = SyncLogger('SyncService');
 
   final StreamController<SyncEvent> _syncEventsController =
       StreamController<SyncEvent>.broadcast();
@@ -120,14 +142,18 @@ class SyncService {
   /// Total failed count (historical)
   int _totalFailedCount = 0;
 
+  final Connectivity _connectivity;
+
   /// Sync service constructor
-  SyncService(this._crdtService, this._syncDatasource, this._apiClient);
+  SyncService(this._syncDatasource, this._apiClient,
+      {Connectivity? connectivity})
+      : _connectivity = connectivity ?? Connectivity();
 
   /// Initialize sync service
   Future<void> initialize() async {
     _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
-    _connectivityStatus = await Connectivity().checkConnectivity();
+        _connectivity.onConnectivityChanged.listen(_onConnectivityChanged);
+    _connectivityStatus = await _connectivity.checkConnectivity();
     _startQueueWorker();
 
     if (_autoSyncEnabled && _isOnline) {
@@ -277,8 +303,14 @@ class SyncService {
   }
 
   /// Get pending sync count
-  int getPendingCount() {
+  int getPendingSyncCount() {
     return _syncDatasource.getQueueSize();
+  }
+
+  /// Get pending sync count (deprecated)
+  @Deprecated('Use getPendingSyncCount instead')
+  int getPendingCount() {
+    return getPendingSyncCount();
   }
 
   /// Get failed sync count
@@ -301,6 +333,232 @@ class SyncService {
     }
   }
 
+  /// Set sync interval in seconds
+  void setSyncInterval(int seconds) {
+    _syncIntervalSeconds = seconds;
+    if (_autoSyncEnabled && _isOnline) {
+      _startAutoSync();
+    }
+  }
+
+
+
+  /// Sync all dirty documents
+  Future<SyncSummary> syncAllDirtyDocuments() async {
+    if (!_isOnline) {
+      return SyncSummary(
+        success: false,
+        syncedCount: 0,
+        failedCount: 0,
+        timestamp: DateTime.now(),
+      );
+    }
+
+    final pendingItems = _syncDatasource.getPendingItems();
+    if (pendingItems.isEmpty) {
+      return SyncSummary(
+        success: true,
+        syncedCount: 0,
+        failedCount: 0,
+        timestamp: DateTime.now(),
+      );
+    }
+
+    int syncedCount = 0;
+    int failedCount = 0;
+    final List<Map<String, dynamic>> skippedEntities = [];
+
+    for (final item in pendingItems) {
+      final entityType = item['entityType'] as String;
+      final entityId = item['entityId'] as String;
+      final operation = item['operation'] as String;
+      final data = item['data'] as Map<String, dynamic>? ?? {};
+
+      try {
+        // Only process document entities
+        if (entityType == 'document') {
+          final success = await _syncDocument(entityId, operation, data);
+          if (success) {
+            await _syncDatasource.removeFromQueue(entityType, entityId);
+            syncedCount++;
+          } else {
+            await _syncDatasource.removeFromQueue(entityType, entityId);
+            await _syncDatasource.addToFailedQueue(
+                entityType, entityId, operation, data, 'sync returned false');
+            failedCount++;
+            _failedCount++;
+            _totalFailedCount++;
+          }
+        } else {
+          // Skip non-document entities - log warning, track in summary, move to skipped queue
+          logger.warn('Skipping non-document entity: $entityType:$entityId');
+          skippedEntities.add({
+            'entityType': entityType,
+            'entityId': entityId,
+          });
+          final moved = await _syncDatasource.moveToSkippedQueue(entityType, entityId);
+          if (!moved) {
+            logger.warn('Failed to move skipped item: $entityType:$entityId (not found in pending)');
+          }
+        }
+      } catch (e) {
+        await _syncDatasource.removeFromQueue(entityType, entityId);
+        await _syncDatasource.addToFailedQueue(
+            entityType, entityId, operation, data, e.toString());
+        failedCount++;
+        _failedCount++;
+        _totalFailedCount++;
+      }
+    }
+
+    return SyncSummary(
+      success: failedCount == 0,
+      syncedCount: syncedCount,
+      failedCount: failedCount,
+      skippedEntities: skippedEntities,
+      timestamp: DateTime.now(),
+    );
+  }
+
+  /// Sync a single document and return result
+  Future<SyncResult> syncDocument(String documentId) async {
+    if (!_isOnline) {
+      return SyncResult(
+        success: false,
+        errorMessage: 'Not online',
+        documentsSynced: 0,
+      );
+    }
+
+    try {
+      // Get the document from cache or queue
+      final cachedDoc = _syncDatasource.getCachedDocument(documentId);
+      if (cachedDoc != null) {
+        try {
+          // Read operation metadata - support both 'op' and 'operation' for migration
+          final operation = (cachedDoc['operation'] ?? cachedDoc['op']) as String?;
+
+          if (operation == null || operation.isEmpty) {
+            throw Exception('Missing operation metadata in cached document');
+          }
+
+          // Create sanitized copy without internal metadata
+          final sanitizedData = Map<String, dynamic>.from(cachedDoc)
+            ..remove('op')
+            ..remove('operation');
+
+          // Branch to correct API method based on operation
+          switch (operation) {
+            case 'create':
+              final spaceId = sanitizedData['spaceId'] as String?;
+              if (spaceId == null) {
+                throw Exception('Missing spaceId for create operation');
+              }
+              await _apiClient.post('/spaces/$spaceId/documents', data: sanitizedData);
+              break;
+
+            case 'update':
+              await _apiClient.patch('/documents/$documentId', data: sanitizedData);
+              break;
+
+            case 'delete':
+              await _apiClient.delete('/documents/$documentId');
+              break;
+
+            default:
+              throw Exception('Unsupported operation: $operation');
+          }
+
+          // Remove from cache after successful sync
+          await _syncDatasource.removeCachedDocument(documentId);
+
+          // Also remove potentially pending item for this document to prevent double-sync
+          await _syncDatasource.removeFromQueue('document', documentId);
+
+          return SyncResult(
+            success: true,
+            documentsSynced: 1,
+          );
+        } catch (e) {
+          // Handle cached-document branch failures
+          // Extract operation for failed queue
+          final operation = (cachedDoc['operation'] ?? cachedDoc['op']) as String? ?? 'unknown';
+
+          // Add to failed queue
+          await _syncDatasource.addToFailedQueue(
+            'document',
+            documentId,
+            operation,
+            cachedDoc,
+            e.toString(),
+          );
+
+          // Return failure result
+          return SyncResult(
+            success: false,
+            errorMessage: e.toString(),
+            documentsSynced: 0,
+          );
+        }
+      }
+
+      // Check if document is in queue
+      final pendingItems = _syncDatasource.getPendingItems();
+      final queuedItem = pendingItems.firstWhere(
+        (item) =>
+            item['entityType'] == 'document' && item['entityId'] == documentId,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (queuedItem.isNotEmpty) {
+        final operation = queuedItem['operation'] as String;
+        final data = queuedItem['data'] as Map<String, dynamic>? ?? {};
+
+        try {
+          final success = await _syncDocument(documentId, operation, data);
+          if (success) {
+            await _syncDatasource.removeFromQueue('document', documentId);
+          } else {
+            // Move to failed queue on failure
+            await _syncDatasource.removeFromQueue('document', documentId);
+            await _syncDatasource.addToFailedQueue(
+              'document', documentId, operation, data, 'sync returned false'
+            );
+          }
+          return SyncResult(
+            success: success,
+            errorMessage: success ? null : 'Sync failed',
+            documentsSynced: success ? 1 : 0,
+          );
+        } catch (e) {
+          // Move to failed queue on exception
+          await _syncDatasource.removeFromQueue('document', documentId);
+          await _syncDatasource.addToFailedQueue(
+            'document', documentId, operation, data, e.toString()
+          );
+          // Return failure result instead of rethrowing to avoid duplicating error in outer catch
+          return SyncResult(
+            success: false,
+            errorMessage: e.toString(),
+            documentsSynced: 0,
+          );
+        }
+      }
+
+      return SyncResult(
+        success: false,
+        errorMessage: 'Document not found in cache or queue',
+        documentsSynced: 0,
+      );
+    } catch (e) {
+      return SyncResult(
+        success: false,
+        errorMessage: e.toString(),
+        documentsSynced: 0,
+      );
+    }
+  }
+
   /// Dispose
   void dispose() {
     _connectivitySubscription?.cancel();
@@ -312,10 +570,9 @@ class SyncService {
 
 /// Provider for SyncService
 final syncServiceProvider = Provider<SyncService>((ref) {
-  final crdtService = ref.watch(crdtServiceProvider);
   final syncDatasource = ref.watch(pendingSyncDatasourceProvider);
   final syncService =
-      SyncService(crdtService, syncDatasource, ApiClient.defaultInstance());
+      SyncService(syncDatasource, ApiClient.defaultInstance());
   ref.onDispose(syncService.dispose);
   return syncService;
 });
