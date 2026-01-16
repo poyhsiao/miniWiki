@@ -423,7 +423,7 @@ class SyncService {
           }
         }
       } catch (e) {
-        await _syncDatasource.removeFromQueue(entityType, entityId);
+        await _syncDatasource.removeFromQueue(entityType, entityId!);
         await _syncDatasource.addToFailedQueue(
             entityType, entityId!, operation!, data, e.toString());
         failedCount++;
@@ -610,7 +610,8 @@ class SyncService {
 /// Provider for SyncService
 final syncServiceProvider = Provider<SyncService>((ref) {
   final syncDatasource = ref.watch(pendingSyncDatasourceProvider);
-  final syncService = SyncService(syncDatasource, ApiClient.defaultInstance());
+  final apiClient = ref.watch(apiClientProvider);
+  final syncService = SyncService(syncDatasource, apiClient);
   ref.onDispose(syncService.dispose);
   return syncService;
 });
