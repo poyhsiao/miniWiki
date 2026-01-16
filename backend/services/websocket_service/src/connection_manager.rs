@@ -233,6 +233,7 @@ impl ConnectionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeDelta;
     use uuid::Uuid;
 
     #[test]

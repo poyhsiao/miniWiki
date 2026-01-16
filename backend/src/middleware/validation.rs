@@ -14,7 +14,6 @@
 //! ```
 
 use actix_web::{
-    body::MessageBody,
     dev::{ServiceRequest, ServiceResponse},
     http::StatusCode,
     Error, HttpResponse,
@@ -29,6 +28,9 @@ pub enum ValidationError {
 
     #[error("Content-Type must be application/json or multipart/form-data")]
     UnsupportedMediaType,
+
+    #[error("Missing or invalid Content-Length header")]
+    InvalidContentLength,
 }
 
 impl actix_web::ResponseError for ValidationError {
@@ -36,6 +38,7 @@ impl actix_web::ResponseError for ValidationError {
         match self {
             ValidationError::PayloadTooLarge(_) => StatusCode::PAYLOAD_TOO_LARGE,
             ValidationError::UnsupportedMediaType => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            ValidationError::InvalidContentLength => StatusCode::BAD_REQUEST,
         }
     }
 
@@ -50,19 +53,29 @@ impl actix_web::ResponseError for ValidationError {
 }
 
 /// Validate request content-length header against maximum size
-pub fn validate_request_size<B>(
+pub fn validate_request_size(
     req: &ServiceRequest,
     max_size: usize,
 ) -> Result<(), ValidationError> {
-    if let Some(content_length) = req.headers().get("content-length") {
-        if let Ok(size_str) = content_length.to_str() {
-            if let Ok(size) = size_str.parse::<usize>() {
-                if size > max_size {
-                    return Err(ValidationError::PayloadTooLarge(max_size));
-                }
-            }
-        }
+    let content_length = match req.headers().get("content-length") {
+        Some(header) => header,
+        None => return Err(ValidationError::InvalidContentLength),
+    };
+
+    let size_str = match content_length.to_str() {
+        Ok(s) => s,
+        Err(_) => return Err(ValidationError::InvalidContentLength),
+    };
+
+    let size = match size_str.parse::<usize>() {
+        Ok(n) => n,
+        Err(_) => return Err(ValidationError::InvalidContentLength),
+    };
+
+    if size > max_size {
+        return Err(ValidationError::PayloadTooLarge(max_size));
     }
+
     Ok(())
 }
 
@@ -74,15 +87,20 @@ pub fn validate_content_type(req: &ServiceRequest) -> Result<(), ValidationError
         || *method == actix_web::http::Method::PATCH;
 
     if has_body {
-        if let Some(content_type) = req.headers().get("content-type") {
-            if let Ok(ct_str) = content_type.to_str() {
-                // Allow application/json and multipart/form-data
-                if !ct_str.starts_with("application/json")
-                    && !ct_str.starts_with("multipart/form-data")
-                {
-                    return Err(ValidationError::UnsupportedMediaType);
-                }
-            }
+        let content_type = match req.headers().get("content-type") {
+            Some(header) => header,
+            None => return Err(ValidationError::UnsupportedMediaType),
+        };
+
+        let ct_str = match content_type.to_str() {
+            Ok(s) => s,
+            Err(_) => return Err(ValidationError::UnsupportedMediaType),
+        };
+
+        if !ct_str.starts_with("application/json")
+            && !ct_str.starts_with("multipart/form-data")
+        {
+            return Err(ValidationError::UnsupportedMediaType);
         }
     }
     Ok(())
@@ -92,12 +110,12 @@ pub fn validate_content_type(req: &ServiceRequest) -> Result<(), ValidationError
 pub type ValidationResult = Result<(), ValidationError>;
 
 /// Helper function to create a request size validator
-pub fn validate_request_size_fn<B: MessageBody + 'static>(max_bytes: usize) -> impl Fn(&ServiceRequest) -> ValidationResult {
-    move |req: &ServiceRequest| validate_request_size::<B>(req, max_bytes)
+pub fn validate_request_size_fn(max_bytes: usize) -> impl Fn(&ServiceRequest) -> ValidationResult {
+    move |req: &ServiceRequest| validate_request_size(req, max_bytes)
 }
 
 /// Helper function to create a content type validator
-pub fn validate_content_type_fn<B: MessageBody + 'static>() -> impl Fn(&ServiceRequest) -> ValidationResult {
+pub fn validate_content_type_fn() -> impl Fn(&ServiceRequest) -> ValidationResult {
     |req: &ServiceRequest| validate_content_type(req)
 }
 
@@ -128,18 +146,29 @@ mod tests {
     #[actix_web::test]
     async fn test_validate_request_size_pass() {
         let req = create_test_request(Method::POST, Some("application/json"), Some("100"));
-        let result = validate_request_size::<actix_web::body::BoxBody>(&req, 1024);
+        let result = validate_request_size(&req, 1024);
         assert!(result.is_ok());
     }
 
     #[actix_web::test]
     async fn test_validate_request_size_fail() {
         let req = create_test_request(Method::POST, Some("application/json"), Some("2048"));
-        let result = validate_request_size::<actix_web::body::BoxBody>(&req, 1024);
+        let result = validate_request_size(&req, 1024);
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
             "Request body exceeds maximum size of 1024 bytes"
+        );
+    }
+
+    #[actix_web::test]
+    async fn test_validate_request_size_missing_header() {
+        let req = create_test_request(Method::POST, Some("application/json"), None);
+        let result = validate_request_size(&req, 1024);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Missing or invalid Content-Length header"
         );
     }
 
@@ -162,8 +191,18 @@ mod tests {
     }
 
     #[actix_web::test]
+    async fn test_validate_content_type_missing_header() {
+        let req = create_test_request(Method::POST, None, Some("100"));
+        let result = validate_content_type(&req);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Content-Type must be application/json or multipart/form-data"
+        );
+    }
+
+    #[actix_web::test]
     async fn test_validate_content_type_get_request() {
-        // GET requests should pass validation (no body expected)
         let req = create_test_request(Method::GET, None, None);
         let result = validate_content_type(&req);
         assert!(result.is_ok());

@@ -110,7 +110,7 @@ ON document_versions(document_id, created_at DESC);
 -- Used by: Share link validation, access checking
 CREATE INDEX IF NOT EXISTS idx_share_links_active 
 ON share_links(document_id, is_active, expires_at)
-WHERE is_active = true AND (expires_at IS NULL OR expires_at > NOW());
+WHERE is_active = true;
 
 -- ============================================
 -- Full-Text Search Indexes (Optional)
