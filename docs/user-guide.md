@@ -7,13 +7,14 @@ A comprehensive guide to using miniWiki, your self-hosted knowledge management p
 1. [Getting Started](#getting-started)
 2. [Creating Documents](#creating-documents)
 3. [Organizing with Spaces](#organizing-with-spaces)
-4. [Collaboration](#collaboration)
-5. [Version History](#version-history)
-6. [File Attachments](#file-attachments)
-7. [Sharing](#sharing)
-8. [Search](#search)
-9. [Export](#export)
-10. [Keyboard Shortcuts](#keyboard-shortcuts)
+4. [Offline-First Access](#offline-first-access)
+5. [Collaboration](#collaboration)
+6. [Version History](#version-history)
+7. [File Attachments](#file-attachments)
+8. [Sharing](#sharing)
+9. [Search](#search)
+10. [Export](#export)
+11. [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -95,10 +96,10 @@ As a space owner or admin:
 3. Go to **Members** tab
 4. Click **Invite Member**
 5. Enter email address and select role:
-   - **Owner**: Full access, can delete space
-   - **Editor**: Can edit documents
-   - **Commenter**: Can view and comment
-   - **Viewer**: Read-only access
+- **Owner**: Full access, can delete space, manage members, transfer ownership
+- **Editor**: Can edit documents, add comments, manage own content
+- **Commenter**: Can view documents, add comments, edit own comments
+- **Viewer**: Read-only access to documents within the space
 
 ### Moving Documents Between Spaces
 
@@ -114,11 +115,18 @@ As a space owner or admin:
 ### Real-time Collaboration
 
 When others edit the same document, you'll see:
-- Their cursor position with name
-- Highlighted selections they're working on
-- Presence indicators in the header
 
-### Comments
+- **Presence Indicators**: Colored avatars in the header showing who's online
+- **Cursor Positions**: Colored cursors with user names tracking where others are editing
+- **Live Selections**: Highlighted text showing what others are selecting
+- **Typing Indicators**: "User is typing..." notifications
+
+**Connection Status**:
+- Green dot: Connected and syncing
+- Yellow dot: Reconnecting...
+- Red dot: Connection lost (changes saved locally)
+
+### Presence Indicators
 
 1. Select text in a document
 2. Click the **Comment** button in the floating toolbar
@@ -310,6 +318,88 @@ Export entire spaces:
 
 ---
 
+## Offline-First Access
+
+### Working Offline
+
+miniWiki is designed to work seamlessly without an internet connection:
+
+1. **Automatic Offline Mode**
+   - When you lose internet connectivity, miniWiki automatically switches to offline mode
+   - A status indicator in the header shows your connection status
+   - All documents you've recently opened are available for editing
+
+2. **Editing While Offline**
+   - Create and edit documents normally
+   - Changes are saved locally first
+   - The sync indicator shows pending changes (orange dot)
+   - All editing features work the same as online
+
+3. **Going Back Online**
+   - When connectivity is restored, miniWiki automatically syncs changes
+   - A notification shows when sync is complete
+   - Conflicts (if any) are resolved automatically using CRDT technology
+
+### Sync Status Indicators
+
+| Indicator | Meaning | Action Required |
+|-----------|---------|-----------------|
+| 🟢 Green dot | All changes synced | None |
+| 🟡 Yellow dot | Syncing in progress | Wait |
+| 🟠 Orange dot | Changes pending sync | None (auto-sync) |
+| 🔴 Red dot | Sync failed | Check connection |
+| ⚪ Gray dot | Offline mode | None (works normally) |
+
+### Managing Local Cache
+
+1. **View Offline Documents**
+   - Click the sync indicator
+   - See all documents cached for offline use
+   - Mark documents for offline availability
+
+2. **Clear Local Data**
+   - Go to **Settings > Privacy**
+   - Click **Clear Local Cache**
+   - Confirm to remove all cached documents
+
+3. **Sync Settings**
+   - Automatic sync when online (default)
+   - Manual sync option available
+   - Sync on app launch toggle
+
+### Conflict Resolution
+
+When the same document is edited offline by multiple users:
+
+1. **Automatic Merging**
+   - CRDT technology combines changes intelligently
+   - Most conflicts resolve without user input
+   - All edits are preserved where possible
+
+2. **Manual Resolution**
+   - If automatic resolution isn't possible, you'll be notified
+   - Choose which version to keep
+   - Compare versions side-by-side
+
+### Tips for Offline Use
+
+1. **Before Going Offline**
+   - Open documents you'll need
+   - Documents are cached automatically when opened
+   - Consider marking important docs for offline access
+
+2. **Battery Considerations**
+   - Offline mode uses less battery
+   - Background sync is disabled when app is closed
+   - Large documents may take longer to sync
+
+3. **Data Limits**
+   - Max document size: 10MB
+   - Max attachment size: 50MB
+   - Cached data stored locally on device
+
+---
+
 ## Troubleshooting
 
 ### Documents Not Loading
@@ -325,6 +415,40 @@ Export entire spaces:
 2. Check WebSocket connection (green dot in header)
 3. Try rejoining the document
 4. Disable browser extensions that might block WebSockets
+
+### Sync Issues
+
+#### Changes Not Syncing
+
+1. Check your internet connection
+2. Look for sync indicator in the header
+3. Click the sync indicator and select "Sync Now"
+4. Check if document is larger than 10MB limit
+5. Try closing and reopening the document
+
+#### Conflict Resolution
+
+1. If you see a conflict notification, click to view details
+2. Compare versions side-by-side
+3. Select which changes to keep
+4. Confirm merge
+
+#### Offline Mode Problems
+
+1. **Can't access documents offline**:
+   - Documents must be opened while online first
+   - Check sync status for cached documents
+   - Try reopening the document while online
+
+2. **Changes lost after going offline**:
+   - Verify auto-save was working (check sync status)
+   - Look for pending sync items
+   - Check if document was within size limits
+
+3. **Sync taking too long**:
+   - Large documents take more time
+   - Check your internet speed
+   - Try syncing during off-peak hours
 
 ### Export Fails
 
@@ -390,4 +514,4 @@ For issues not covered here:
 
 ---
 
-*Last updated: January 2025*
+*Last updated: January 2026*

@@ -206,8 +206,9 @@ void main() {
           'rust',
         );
 
-        // Assert - both occurrences should be highlighted
-        expect(result.length, 5);
+        // Assert - both occurrences should be highlighted (4 spans: text, match, text, match)
+        // Note: trailing empty text is not added as a span
+        expect(result.length, 4);
       });
 
       test('returns original text when no match', () {

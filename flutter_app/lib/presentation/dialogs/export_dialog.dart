@@ -92,23 +92,29 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
             ),
           if (exportState.error != null) const SizedBox(height: 16),
           // Export format options
-          RadioGroup<ExportFormat>(
-            groupValue: _selectedFormat,
-            onChanged: exportState.isExporting
-                ? null
-                : (value) {
-                    if (value != null) {
-                      setState(() => _selectedFormat = value);
-                    }
-                  },
-            child: Column(
-              children: ExportFormat.availableFormats.map(
-                (format) => _buildFormatOption(
-                  context,
-                  format,
-                  exportState.isExporting,
+          IgnorePointer(
+            ignoring: exportState.isExporting,
+            child: Opacity(
+              opacity: exportState.isExporting ? 0.5 : 1.0,
+              child: RadioGroup<ExportFormat>(
+                groupValue: _selectedFormat,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedFormat = value);
+                  }
+                },
+                child: Column(
+                  children: ExportFormat.availableFormats
+                      .map(
+                        (format) => _buildFormatOption(
+                          context,
+                          format,
+                          exportState.isExporting,
+                        ),
+                      )
+                      .toList(),
                 ),
-              ).toList(),
+              ),
             ),
           ),
           if (exportState.isExporting)
