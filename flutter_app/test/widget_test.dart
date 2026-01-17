@@ -1,30 +1,29 @@
-// This is a basic Flutter widget test.
+// Basic Flutter widget test for miniWiki.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// This test verifies the app can be built correctly without errors.
+// Full widget tests with providers should be added for specific features.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:miniwiki/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MiniWikiApp());
+  testWidgets('MiniWiki app builds without errors',
+      (WidgetTester tester) async {
+    // Build our app with ProviderScope and sized container to avoid layout overflow
+    await tester.pumpWidget(
+      const SizedBox(
+        width: 800,
+        height: 600,
+        child: ProviderScope(
+          child: MiniWikiApp(),
+        ),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // App should render MaterialApp without errors
+    expect(find.byType(MaterialApp), findsOneWidget);
   });
 }
