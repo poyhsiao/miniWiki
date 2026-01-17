@@ -5,11 +5,8 @@
 //!
 //! Run with: cargo test -p miniwiki-backend-tests documents::crud_test
 
-use actix_web::web;
-use chrono::Utc;
 use document_service::models::{CreateDocumentRequest, UpdateDocumentRequest};
-use crate::helpers::{TestApp, TestUser, TestSpace, TestDocument};
-use shared_errors::AppError;
+use crate::helpers::TestApp;
 use uuid::Uuid;
 
 #[tokio::test]
@@ -254,7 +251,7 @@ async fn test_list_documents_with_pagination() {
     let space = app.create_test_space_for_user(&user.id).await;
 
     // Create documents
-    for i in 0..10 {
+    for _ in 0..10 {
         app.create_test_document(&space.id, None).await;
     }
 

@@ -4,12 +4,13 @@
 /// These tests verify the version service works correctly.
 ///
 /// Run with: flutter test test/version_service_test.dart
+library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:miniwiki/domain/entities/document_version.dart';
-import 'package:miniwiki/services/version_service.dart';
-import 'package:miniwiki/domain/repositories/version_repository.dart';
 import 'package:miniwiki/core/network/network_error.dart';
+import 'package:miniwiki/domain/entities/document_version.dart';
+import 'package:miniwiki/domain/repositories/version_repository.dart';
+import 'package:miniwiki/services/version_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockVersionRepository extends Mock implements VersionRepository {}
@@ -80,19 +81,17 @@ void main() {
                   versionNumber: index + 1,
                   title: 'Version ${index + 1}',
                   content: {},
-                  changeSummary: null,
                   createdBy: 'user-1',
                   createdAt: DateTime.now(),
                   vectorClock: {},
                 ));
 
-        when(() => mockRepository.listVersions('doc-1', limit: 10, offset: 0))
+        when(() => mockRepository.listVersions('doc-1', limit: 10))
             .thenAnswer((_) async => versions);
 
         final result = await versionService.listVersions(
           'doc-1',
           limit: 10,
-          offset: 0,
         );
 
         expect(result.length, 10);
@@ -184,7 +183,6 @@ void main() {
             documentId: 'doc-1',
             title: 'New Version',
             content: {},
-            changeSummary: null,
             vectorClock: {},
           ),
           throwsArgumentError,
@@ -234,7 +232,6 @@ void main() {
           versionNumber: 5,
           title: 'Current Version',
           content: {},
-          changeSummary: null,
           createdBy: 'user-1',
           createdAt: DateTime.now(),
           vectorClock: {},

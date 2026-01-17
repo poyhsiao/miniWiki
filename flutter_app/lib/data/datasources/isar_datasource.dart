@@ -4,10 +4,12 @@
 /// Note: This is a placeholder implementation. For full Isar support,
 /// add `isar_community` and `isar_community_flutter_libs` to pubspec.yaml and generate
 /// the Isar schema.
+library;
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'local_storage.dart';
+import 'package:miniwiki/data/datasources/local_storage.dart';
 import 'package:miniwiki/data/models/document_entity.dart';
 
 /// Isar database configuration
@@ -36,19 +38,14 @@ class IsarDatabase {
         _storage = storage;
 
   /// Open database
-  Future<void> open() async {
-    return Future.value();
-  }
+  Future<void> open() => Future.value();
 
   /// Close database
-  Future<void> close() async {
-    return Future.value();
-  }
+  Future<void> close() => Future.value();
 
   /// Get collection
-  IsarCollection<T> collection<T>(String name) {
-    return IsarCollection<T>(_storage, name);
-  }
+  IsarCollection<T> collection<T>(String name) =>
+      IsarCollection<T>(_storage, name);
 
   /// Begin transaction
   Future<void> writeTxn(Future<void> Function() callback) async {
@@ -158,9 +155,11 @@ class IsarDatabase {
       }
       map = decoded;
     } on FormatException catch (e) {
-      throw ArgumentError('Invalid JSON for DocumentEntity: $e (length: $jsonLength)');
+      throw ArgumentError(
+          'Invalid JSON for DocumentEntity: $e (length: $jsonLength)');
     } on TypeError catch (e) {
-      throw ArgumentError('Invalid JSON for DocumentEntity: $e (length: $jsonLength)');
+      throw ArgumentError(
+          'Invalid JSON for DocumentEntity: $e (length: $jsonLength)');
     }
 
     // Validate required fields
@@ -250,6 +249,5 @@ final isarDatabaseProvider = Provider<IsarDatabase>((ref) {
 });
 
 /// Provider for Isar database configuration
-final isarConfigProvider = Provider<IsarDatabaseConfig>((ref) {
-  return const IsarDatabaseConfig();
-});
+final isarConfigProvider =
+    Provider<IsarDatabaseConfig>((ref) => const IsarDatabaseConfig());

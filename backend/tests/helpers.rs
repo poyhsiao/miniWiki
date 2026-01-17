@@ -2,9 +2,6 @@ use sqlx::PgPool;
 use sqlx::Error as SqlxError;
 use uuid::Uuid;
 use reqwest;
-use actix_web::{web, test, App, dev::ServiceFactory};
-use std::sync::Arc;
-use shared_database::connection::init_database;
 use auth_service::jwt::{JwtService, JwtConfig};
 
 const TEST_JWT_SECRET: &str = "test-secret-key-for-testing-only-do-not-use-in-production";

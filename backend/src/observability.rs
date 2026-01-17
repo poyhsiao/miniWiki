@@ -6,6 +6,8 @@
 //! - Error rate tracking
 //! - Distributed tracing for sync operations
 
+pub mod security_audit;
+
 use actix_web::web;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -84,7 +86,6 @@ impl MetricsSnapshot {
 }
 
 /// Latency histogram buckets for request timing (in milliseconds)
-const LATENCY_BUCKETS: &[u64] = &[10, 50, 100, 200, 500, 1000, 2000, 5000];
 
 /// Request timing middleware for metrics collection
 #[derive(Clone)]

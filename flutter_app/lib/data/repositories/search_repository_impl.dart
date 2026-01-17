@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import '../../core/network/api_client.dart';
-import '../../domain/entities/search_result.dart';
-import '../../domain/repositories/search_repository.dart';
+import 'package:miniwiki/core/network/api_client.dart';
+import 'package:miniwiki/domain/entities/search_result.dart';
+import 'package:miniwiki/domain/repositories/search_repository.dart';
 
 /// Implementation of SearchRepository using the API
 class SearchRepositoryImpl implements SearchRepository {

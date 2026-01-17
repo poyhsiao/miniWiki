@@ -1,9 +1,9 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use shared_models::entities::Document;
+// use std::sync::Arc;
+// use shared_models::entities::Document;
 
-const YJS_ENCODING_FORMAT: u8 = 0;
+// const YJS_ENCODING_FORMAT: u8 = 0;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SyncUpdateRequest {

@@ -22,7 +22,7 @@ sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls", "u
 # Authentication
 jsonwebtoken = "9.3"
 bcrypt = "0.15"
-password-hash = "0.6.0-rc.7"
+password-hash = "0.5.0"
 rand = "0.8"
 
 # Serialization

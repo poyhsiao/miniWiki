@@ -2,7 +2,6 @@
 // Testing SyncService for offline-first sync orchestration
 // Run with: flutter test test/sync_service_test.dart
 
-import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miniwiki/services/sync_service.dart' as ss;
@@ -122,19 +121,19 @@ void main() {
         type: ss.SyncEventType.started,
         documentId: 'doc-123',
         message: 'Starting sync',
-        timestamp: DateTime(2024, 1),
+        timestamp: DateTime(2024),
       );
 
       expect(event.type, ss.SyncEventType.started);
       expect(event.documentId, 'doc-123');
       expect(event.message, 'Starting sync');
-      expect(event.timestamp, DateTime(2024, 1));
+      expect(event.timestamp, DateTime(2024));
     });
 
     test('SyncEvent with minimal fields', () {
       final event = ss.SyncEvent(
         type: ss.SyncEventType.success,
-        timestamp: DateTime(2024, 1),
+        timestamp: DateTime(2024),
       );
 
       expect(event.type, ss.SyncEventType.success);
@@ -173,7 +172,7 @@ void main() {
         success: true,
         syncedCount: 10,
         failedCount: 2,
-        timestamp: DateTime(2024, 1),
+        timestamp: DateTime(2024),
       );
 
       final modified = original.copyWith(
@@ -191,7 +190,7 @@ void main() {
         success: false,
         syncedCount: 8,
         failedCount: 3,
-        timestamp: DateTime(2024, 1),
+        timestamp: DateTime(2024),
       );
 
       expect(summary.success, false);
@@ -359,7 +358,7 @@ void main() {
           {'entityType': 'comment', 'entityId': 'comment-1'},
           {'entityType': 'space', 'entityId': 'space-1'},
         ],
-        timestamp: DateTime(2024, 1),
+        timestamp: DateTime(2024),
       );
 
       expect(summary.skippedEntities.length, 2);
@@ -375,7 +374,7 @@ void main() {
         skippedEntities: [
           {'entityType': 'comment', 'entityId': 'comment-1'},
         ],
-        timestamp: DateTime(2024, 1),
+        timestamp: DateTime(2024),
       );
 
       final modified = original.copyWith(syncedCount: 15);

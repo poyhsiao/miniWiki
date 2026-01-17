@@ -8,8 +8,7 @@ class LoginPage extends ConsumerWidget {
   const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
       appBar: AppBar(title: const Text('Login')),
       body: SafeArea(
         child: Center(
@@ -23,11 +22,10 @@ class LoginPage extends ConsumerWidget {
         ),
       ),
     );
-  }
 }
 
 class _LoginForm extends ConsumerStatefulWidget {
-  const _LoginForm({super.key});
+  const _LoginForm();
 
   @override
   ConsumerState<_LoginForm> createState() => _LoginFormState();
@@ -58,11 +56,11 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
           );
 
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomePage()),
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const HomePage()),
         );
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Login failed: $e')),
@@ -196,11 +194,13 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(r"Don't have an account? "),
+              const Text("Don't have an account? "),
               TextButton(
                 onPressed: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const RegisterPage()),
+                    MaterialPageRoute<void>(
+                      builder: (_) => const RegisterPage(),
+                    ),
                   );
                 },
                 child: const Text('Sign up'),

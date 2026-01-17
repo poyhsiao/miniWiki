@@ -93,8 +93,9 @@ class DocumentService {
       content: content,
     );
 
-    if (autoSave && _syncService != null) {
-      await _syncService!.queueDocumentForSync(id, 'update', content);
+    final syncService = _syncService;
+    if (autoSave && syncService != null) {
+      await syncService.queueDocumentForSync(id, 'update', content);
     }
 
     return document;
@@ -123,8 +124,9 @@ class DocumentService {
       content: content,
     );
 
-    if (autoSave && _syncService != null && content != null) {
-      await _syncService!.queueDocumentForSync(id, 'update', content);
+    final syncService = _syncService;
+    if (autoSave && syncService != null && content != null) {
+      await syncService.queueDocumentForSync(id, 'update', content);
     }
 
     return document;

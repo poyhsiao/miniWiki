@@ -89,7 +89,7 @@ pub async fn create_document(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     // Validate request
     if let Err(validation_errors) = (&*req).validate() {
         return HttpResponse::BadRequest()
@@ -147,7 +147,7 @@ pub async fn get_document(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -191,7 +191,7 @@ pub async fn update_document(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     if let Err(validation_errors) = (&*req).validate() {
         return HttpResponse::BadRequest()
             .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
@@ -245,7 +245,7 @@ pub async fn delete_document(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -289,7 +289,7 @@ pub async fn list_documents(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -336,7 +336,7 @@ pub async fn get_document_children(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -378,7 +378,7 @@ pub async fn get_document_path(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -426,7 +426,7 @@ pub async fn create_version(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     if let Err(validation_errors) = (&*req).validate() {
         return HttpResponse::BadRequest()
             .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
@@ -482,7 +482,7 @@ pub async fn list_versions(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let document_id = document_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -529,7 +529,7 @@ pub async fn get_version(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let (document_id, version_number) = path.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -564,7 +564,7 @@ pub async fn restore_version(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let (document_id, version_number) = path.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -731,7 +731,7 @@ pub async fn export_document(
 
                             HttpResponse::Ok()
                                 .content_type(export_response.content_type)
-                                .header("Content-Disposition", content_disposition)
+                                .insert_header(("Content-Disposition", content_disposition))
                                 .body(file_content)
                         }
                         Err(e) => {
@@ -821,7 +821,7 @@ pub async fn get_space(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -864,7 +864,7 @@ pub async fn update_space(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     if let Err(validation_errors) = (&*req).validate() {
         return HttpResponse::BadRequest()
             .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
@@ -911,7 +911,7 @@ pub async fn delete_space(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -953,7 +953,7 @@ pub async fn list_space_members(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -996,7 +996,7 @@ pub async fn add_space_member(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let space_id = space_id.into_inner();
-    
+
     if let Err(validation_errors) = (&*req).validate() {
         return HttpResponse::BadRequest()
             .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
@@ -1044,7 +1044,7 @@ pub async fn update_space_member(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let (space_id, member_user_id) = path.into_inner();
-    
+
     if let Err(validation_errors) = (&*req).validate() {
         return HttpResponse::BadRequest()
             .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
@@ -1097,7 +1097,7 @@ pub async fn remove_space_member(
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
     let (space_id, member_user_id) = path.into_inner();
-    
+
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
@@ -1106,7 +1106,7 @@ pub async fn remove_space_member(
     // Check permissions: owner can remove anyone, member can remove themselves
     let is_owner = repo.is_space_owner(&space_id, &user_id).await.unwrap_or(false);
     let is_self = member_user_id == user_id;
-    
+
     if !is_owner && !is_self {
         return HttpResponse::Forbidden()
             .json(ApiResponse::<()>::error("ACCESS_DENIED", "Insufficient permissions to remove this member"));

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/space_membership.dart';
 import 'package:miniwiki/presentation/providers/space_provider.dart';
@@ -40,7 +40,8 @@ class MemberManagementPage extends ConsumerWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                      Icon(Icons.people_outline,
+                          size: 64, color: Colors.grey[400]),
                       const SizedBox(height: 16),
                       Text(
                         'No members yet',
@@ -69,13 +70,16 @@ class MemberManagementPage extends ConsumerWidget {
                           children: [
                             Expanded(child: Text(member.userId)),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: _getRoleColor(member.role).withOpacity(0.1),
+                                color:
+                                    _getRoleColor(member.role).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                member.role[0].toUpperCase() + member.role.substring(1),
+                                member.role[0].toUpperCase() +
+                                    member.role.substring(1),
                                 style: TextStyle(
                                   color: _getRoleColor(member.role),
                                   fontSize: 12,
@@ -85,9 +89,11 @@ class MemberManagementPage extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        subtitle: Text('Joined ${_formatDate(member.joinedAt)}'),
+                        subtitle:
+                            Text('Joined ${_formatDate(member.joinedAt)}'),
                         trailing: PopupMenuButton<String>(
-                          onSelected: (value) => _handleMenuAction(value, context, ref, member),
+                          onSelected: (value) =>
+                              _handleMenuAction(value, context, ref, member),
                           itemBuilder: (context) => [
                             const PopupMenuItem(
                               value: 'viewer',
@@ -133,7 +139,9 @@ class MemberManagementPage extends ConsumerWidget {
     }
   }
 
-  String _formatDate(DateTime date) => '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+  String _formatDate(DateTime date) =>
+      '${date.year}/${date.month.toString().padLeft(2, '0')}/'
+      '${date.day.toString().padLeft(2, '0')}';
 
   void _handleMenuAction(
     String value,
@@ -157,12 +165,14 @@ class MemberManagementPage extends ConsumerWidget {
     }
   }
 
-  void _showRemoveConfirmation(BuildContext context, WidgetRef ref, SpaceMembership member) {
+  void _showRemoveConfirmation(
+      BuildContext context, WidgetRef ref, SpaceMembership member) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Member'),
-        content: Text('Are you sure you want to remove ${member.userId} from this space?'),
+        content: Text(
+            'Are you sure you want to remove ${member.userId} from this space?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -172,7 +182,9 @@ class MemberManagementPage extends ConsumerWidget {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(context);
-              await ref.read(spaceProvider.notifier).removeMember(spaceId, member.userId);
+              await ref
+                  .read(spaceProvider.notifier)
+                  .removeMember(spaceId, member.userId);
             },
             child: const Text('Remove'),
           ),
@@ -219,7 +231,8 @@ class MemberManagementPage extends ConsumerWidget {
                             ),
                           ))
                       .toList(),
-                  onChanged: (value) => setState(() => selectedRole = value ?? 'viewer'),
+                  onChanged: (value) =>
+                      setState(() => selectedRole = value ?? 'viewer'),
                 ),
               ],
             ),

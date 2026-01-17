@@ -20,9 +20,7 @@ class LocalStorageService {
   String? getString(String key) => _prefs?.getString(key);
 
   /// Set a value by key
-  Future<bool> setString(String key, String value) async {
-    return await _prefs?.setString(key, value) ?? false;
-  }
+  Future<bool> setString(String key, String value) async => await _prefs?.setString(key, value) ?? false;
 
   /// Get a list of values by key prefix
   List<String> getValuesByPrefix(String prefix) {
@@ -42,9 +40,7 @@ class LocalStorageService {
   }
 
   /// Remove a key
-  Future<bool> remove(String key) async {
-    return await _prefs?.remove(key) ?? false;
-  }
+  Future<bool> remove(String key) async => await _prefs?.remove(key) ?? false;
 
   /// Remove all keys with a prefix
   Future<void> removeByPrefix(String prefix) async {
@@ -58,9 +54,7 @@ class LocalStorageService {
   bool containsKey(String key) => _prefs?.containsKey(key) ?? false;
 
   /// Clear all data
-  Future<bool> clear() async {
-    return await _prefs?.clear() ?? false;
-  }
+  Future<bool> clear() async => await _prefs?.clear() ?? false;
 }
 
 /// Global storage instance (initialized at app startup)
@@ -113,12 +107,10 @@ class DocumentCacheService {
   }
 
   /// Get all cached document IDs
-  List<String> getCachedDocIds() {
-    return _storage
+  List<String> getCachedDocIds() => _storage
         .getKeysByPrefix(_docPrefix)
         .map((key) => key.replaceFirst(_docPrefix, ''))
         .toList();
-  }
 
   /// Clear all cached documents
   Future<void> clearCache() async {
@@ -132,9 +124,7 @@ class DocumentCacheService {
   }
 
   /// Get cached content
-  String? getCachedContent(String docId) {
-    return _storage.getString('$_cachePrefix$docId');
-  }
+  String? getCachedContent(String docId) => _storage.getString('$_cachePrefix$docId');
 }
 
 /// Sync queue service using local storage
@@ -187,9 +177,7 @@ class SyncQueueService {
   }
 
   /// Get queue size
-  int getQueueSize() {
-    return getQueueItems().length;
-  }
+  int getQueueSize() => getQueueItems().length;
 
   // ============================================
   // FAILED QUEUE OPERATIONS
@@ -236,9 +224,7 @@ class SyncQueueService {
   }
 
   /// Get failed queue size
-  int getFailedQueueSize() {
-    return getFailedItems().length;
-  }
+  int getFailedQueueSize() => getFailedItems().length;
 
   // ============================================
   // SKIPPED QUEUE OPERATIONS
@@ -284,9 +270,7 @@ class SyncQueueService {
   }
 
   /// Get skipped queue size
-  int getSkippedQueueSize() {
-    return getSkippedItems().length;
-  }
+  int getSkippedQueueSize() => getSkippedItems().length;
 }
 
 /// User cache service
@@ -346,12 +330,10 @@ class SpaceCacheService {
   }
 
   /// Get all cached space IDs
-  List<String> getCachedSpaceIds() {
-    return _storage
+  List<String> getCachedSpaceIds() => _storage
         .getKeysByPrefix(_spacePrefix)
         .map((key) => key.replaceFirst(_spacePrefix, ''))
         .toList();
-  }
 
   /// Clear space cache
   Future<void> clearCache() async {

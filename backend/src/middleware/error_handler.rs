@@ -17,24 +17,6 @@ pub struct ErrorResponse {
     pub path: Option<String>,
 }
 
-fn create_error_response(
-    error: &str,
-    message: &str,
-    status_code: i32,
-    path: Option<&str>,
-) -> HttpResponse {
-    HttpResponse::build(
-        actix_web::http::StatusCode::from_u16(status_code as u16)
-            .unwrap_or(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR),
-    )
-    .json(ErrorResponse {
-        error: error.to_string(),
-        message: message.to_string(),
-        status_code,
-        timestamp: chrono::Utc::now().to_rfc3339(),
-        path: path.map(|p| p.to_string()),
-    })
-}
 
 pub struct ErrorHandler;
 
@@ -105,7 +87,7 @@ impl AppErrorResponse for AppError {
             AppError::ConfigurationError(_) => "CONFIGURATION_ERROR",
             AppError::ExternalServiceError(_) => "EXTERNAL_SERVICE_ERROR",
         };
-        
+
         HttpResponse::build(self.status_code()).json(ErrorResponse {
             error: error_code.to_string(),
             message: self.to_string(),

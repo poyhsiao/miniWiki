@@ -13,8 +13,8 @@ use std::sync::Arc;
 
 const SHARE_TOKEN_LENGTH: usize = 32;
 const DEFAULT_EXPIRY_DAYS: i64 = 30;
-const MAX_ACCESS_CODE_LENGTH: usize = 10;
-const MIN_ACCESS_CODE_LENGTH: usize = 4;
+// const MAX_ACCESS_CODE_LENGTH: usize = 10;
+// const MIN_ACCESS_CODE_LENGTH: usize = 4;
 
 /// Request to create a new share link
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
@@ -89,6 +89,7 @@ fn generate_share_token() -> String {
     token
 }
 
+/*
 /// Generate access code if not provided
 fn generate_access_code() -> String {
     const CODE_CHARSET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -101,6 +102,7 @@ fn generate_access_code() -> String {
         .collect();
     code
 }
+*/
 
 /// Create a new share link for a document
 pub async fn create_share_link(

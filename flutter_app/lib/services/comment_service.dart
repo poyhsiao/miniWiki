@@ -95,8 +95,6 @@ class CommentService {
 
   /// Sanitizes comment content before sending to API
   ///
-  /// Removes excessive whitespace and trims content
-  String _sanitizeContent(String content) {
-    return content.trim();
-  }
+  /// Trims leading and trailing whitespace
+  String _sanitizeContent(String content) => content.trim();
 }

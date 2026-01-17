@@ -23,16 +23,12 @@ enum Role {
       return true;
     }
     if (this == Role.editor) {
-      return targetRole.level < this.level && targetRole != Role.owner;
+      return targetRole.level < level && targetRole != Role.owner;
     }
     return false;
   }
 
-  Set<ActionType> get allowedActions {
-    return ActionType.values.where((action) {
-      return action.allowedRoles.contains(this);
-    }).toSet();
-  }
+  Set<ActionType> get allowedActions => ActionType.values.where((action) => action.allowedRoles.contains(this)).toSet();
 
   static Role? fromString(String role) {
     switch (role.toLowerCase()) {
@@ -71,9 +67,7 @@ enum Permission {
 
   const Permission(this.allowedRoles);
 
-  bool isAllowed(Role role) {
-    return allowedRoles.contains(role);
-  }
+  bool isAllowed(Role role) => allowedRoles.contains(role);
 
   bool requiresHigherRoleThan(Role role) {
     final minRoleIndex =
@@ -136,9 +130,7 @@ enum ActionType {
 
   const ActionType(this.allowedRoles);
 
-  bool isAllowed(Role role) {
-    return allowedRoles.contains(role);
-  }
+  bool isAllowed(Role role) => allowedRoles.contains(role);
 
   bool requiresHigherRoleThan(Role role) {
     final minRoleIndex =
@@ -184,21 +176,13 @@ enum ActionType {
 
 /// Helper extension to check multiple permissions at once
 extension RolePermissionsExtension on Role {
-  bool hasAllPermissions(Set<Permission> permissions) {
-    return permissions.every((p) => hasPermission(p));
-  }
+  bool hasAllPermissions(Set<Permission> permissions) => permissions.every(hasPermission);
 
-  bool hasAnyPermission(Set<Permission> permissions) {
-    return permissions.any((p) => hasPermission(p));
-  }
+  bool hasAnyPermission(Set<Permission> permissions) => permissions.any(hasPermission);
 
-  bool canPerformAction(ActionType action) {
-    return action.isAllowed(this);
-  }
+  bool canPerformAction(ActionType action) => action.isAllowed(this);
 
-  bool canPerformAllActions(Set<ActionType> actions) {
-    return actions.every((a) => canPerformAction(a));
-  }
+  bool canPerformAllActions(Set<ActionType> actions) => actions.every(canPerformAction);
 }
 
 /// RBAC configuration constants
@@ -241,9 +225,7 @@ class RbacConfig {
     },
   };
 
-  static Set<Permission> getPermissionsForRole(Role role) {
-    return rolePermissions[role] ?? {};
-  }
+  static Set<Permission> getPermissionsForRole(Role role) => rolePermissions[role] ?? {};
 
   static bool canRoleBeModifiedBy(Role targetRole, Role modifierRole) {
     if (targetRole == Role.owner) {

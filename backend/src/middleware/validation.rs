@@ -14,9 +14,9 @@
 //! ```
 
 use actix_web::{
-    dev::{ServiceRequest, ServiceResponse},
+    dev::ServiceRequest,
     http::StatusCode,
-    Error, HttpResponse,
+    HttpResponse,
 };
 use thiserror::Error;
 
@@ -122,9 +122,8 @@ pub fn validate_content_type_fn() -> impl Fn(&ServiceRequest) -> ValidationResul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::dev::{ServiceRequest, ServiceResponse};
-    use actix_web::http::{header, Method, StatusCode};
-    use actix_web::HttpResponse;
+    use actix_web::dev::ServiceRequest;
+    use actix_web::http::{header, Method};
     use actix_web::test::TestRequest;
 
     /// Helper to create a ServiceRequest for testing

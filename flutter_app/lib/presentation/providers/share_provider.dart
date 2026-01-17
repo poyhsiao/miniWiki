@@ -1,7 +1,7 @@
-import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/domain/entities/share_link.dart';
-import 'package:miniwiki/services/share_service.dart';
 import 'package:miniwiki/services/providers.dart';
+import 'package:miniwiki/services/share_service.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// State for share links list
 class ShareLinksState {
@@ -133,9 +133,7 @@ class ShareLinksNotifier extends StateNotifier<ShareLinksState> {
     }
   }
 
-  Future<bool> copyShareLink(ShareLink link) async {
-    return _service.copyShareLink(link);
-  }
+  Future<bool> copyShareLink(ShareLink link) async => _service.copyShareLink(link);
 }
 
 /// Provider for share link creation state

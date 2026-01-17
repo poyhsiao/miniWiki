@@ -46,18 +46,12 @@ class ShareLink {
     required this.documentTitle,
     required this.token,
     required this.requiresAccessCode,
-    this.expiresAt,
-    required this.permission,
-    required this.isActive,
-    required this.createdAt,
-    required this.accessCount,
+    required this.permission, required this.isActive, required this.createdAt, required this.accessCount, required this.createdBy, this.expiresAt,
     this.maxAccessCount,
-    required this.createdBy,
   });
 
   /// Create a ShareLink from JSON data
-  factory ShareLink.fromJson(Map<String, dynamic> json) {
-    return ShareLink(
+  factory ShareLink.fromJson(Map<String, dynamic> json) => ShareLink(
       id: json['id'] as String,
       documentId: json['document_id'] as String,
       documentTitle: json['document_title'] as String,
@@ -73,11 +67,9 @@ class ShareLink {
       maxAccessCount: json['max_access_count'] as int?,
       createdBy: json['created_by'] as String? ?? 'Unknown',
     );
-  }
 
   /// Convert ShareLink to JSON
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'id': id,
       'document_id': documentId,
       'document_title': documentTitle,
@@ -91,12 +83,9 @@ class ShareLink {
       'max_access_count': maxAccessCount,
       'created_by': createdBy,
     };
-  }
 
   /// Get the full share URL for this link
-  String getShareUrl(String baseUrl) {
-    return '$baseUrl/share/$token';
-  }
+  String getShareUrl(String baseUrl) => '$baseUrl/share/$token';
 
   /// Check if the share link has expired
   bool get isExpired {
@@ -112,9 +101,7 @@ class ShareLink {
   }
 
   /// Check if this share link can be used
-  bool get isUsable {
-    return isActive && !isExpired && !hasReachedMaxAccess;
-  }
+  bool get isUsable => isActive && !isExpired && !hasReachedMaxAccess;
 
   @override
   bool operator ==(Object other) {
@@ -157,15 +144,13 @@ class CreateShareLinkRequest {
     this.maxAccessCount,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'document_id': documentId,
       'access_code': accessCode,
       'expires_at': expiresAt?.toIso8601String(),
       'permission': permission,
       'max_access_count': maxAccessCount,
     };
-  }
 }
 
 /// Response when verifying an access code
@@ -197,12 +182,10 @@ class ShareLinkVerification {
     required this.documentTitle,
     required this.documentContent,
     required this.permission,
-    this.expiresAt,
-    required this.verified,
+    required this.verified, this.expiresAt,
   });
 
-  factory ShareLinkVerification.fromJson(Map<String, dynamic> json) {
-    return ShareLinkVerification(
+  factory ShareLinkVerification.fromJson(Map<String, dynamic> json) => ShareLinkVerification(
       id: json['id'] as String,
       documentId: json['document_id'] as String,
       documentTitle: json['document_title'] as String,
@@ -214,5 +197,4 @@ class ShareLinkVerification {
           : null,
       verified: json['verified'] as bool? ?? true,
     );
-  }
 }

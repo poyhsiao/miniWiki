@@ -76,17 +76,16 @@ pub struct S3StorageConfig {
 pub struct S3Storage {
     client: S3Client,
     bucket: String,
-    config: S3StorageConfig,
 }
 
 impl S3Storage {
     /// Create new S3 storage client
     pub async fn new(config: S3StorageConfig) -> Result<Self, StorageError> {
         let region = Region::new(config.region.clone());
-        
+
         // Load AWS config from environment
-        let aws_config = aws_config::load_from_env().await;
-        
+        let aws_config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
+
         // Create credentials
         let credentials = Credentials::new(
             &config.access_key,
@@ -122,7 +121,6 @@ impl S3Storage {
         Ok(Self {
             client,
             bucket: config.bucket.clone(),
-            config,
         })
     }
 
@@ -242,7 +240,7 @@ impl S3Storage {
 
         let data = result.body.collect().await
             .map_err(|e| StorageError::DownloadFailed(e.to_string()))?;
-        
+
         Ok(data.to_vec())
     }
 

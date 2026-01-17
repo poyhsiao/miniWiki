@@ -32,10 +32,10 @@ class PermissionState {
 
   const PermissionState({
     this.isLoading = false,
-    this.userRole = null,
+    this.userRole,
     this.permissions = const {},
     this.allowedActions = const {},
-    this.error = null,
+    this.error,
   });
 
   PermissionState copyWith({
@@ -44,15 +44,13 @@ class PermissionState {
     Set<Permission>? permissions,
     Set<ActionType>? allowedActions,
     Object? error = _undefined,
-  }) {
-    return PermissionState(
+  }) => PermissionState(
       isLoading: isLoading ?? this.isLoading,
       userRole: userRole == _undefined ? this.userRole : (userRole as Role?),
       permissions: permissions ?? this.permissions,
       allowedActions: allowedActions ?? this.allowedActions,
       error: error == _undefined ? this.error : (error as String?),
     );
-  }
 
   bool get canEdit => allowedActions.contains(ActionType.editDocument);
   bool get canCreate => allowedActions.contains(ActionType.createDocument);
@@ -131,33 +129,19 @@ class PermissionNotifier extends StateNotifier<PermissionState> {
     return rbacService.canPerformAction(spaceId, _currentUserId!, action);
   }
 
-  bool canEditDocument(String documentId) {
-    return state.canEdit;
-  }
+  bool canEditDocument(String documentId) => state.canEdit;
 
-  bool canDeleteDocument(String documentId) {
-    return state.canDelete;
-  }
+  bool canDeleteDocument(String documentId) => state.canDelete;
 
-  bool canCommentOnDocument(String documentId) {
-    return state.canComment;
-  }
+  bool canCommentOnDocument(String documentId) => state.canComment;
 
-  bool canShareDocument(String documentId) {
-    return state.canShare;
-  }
+  bool canShareDocument(String documentId) => state.canShare;
 
-  bool canManageSpaceMembers() {
-    return state.canManageMembers;
-  }
+  bool canManageSpaceMembers() => state.canManageMembers;
 
-  bool canManageSpaceRoles() {
-    return state.canManageRoles;
-  }
+  bool canManageSpaceRoles() => state.canManageRoles;
 
-  bool canDeleteSpace() {
-    return state.allowedActions.contains(ActionType.deleteSpace);
-  }
+  bool canDeleteSpace() => state.allowedActions.contains(ActionType.deleteSpace);
 
   void clear() {
     _currentUserId = null;

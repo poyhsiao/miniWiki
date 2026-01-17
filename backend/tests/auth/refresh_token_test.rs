@@ -90,7 +90,7 @@ mod refresh_token_test {
 
         let refresh_token = jwt_service.generate_refresh_token(user_id).unwrap();
 
-        let access_claims = jwt_service.validate_token(&access_token).unwrap();
+        let _access_claims = jwt_service.validate_token(&access_token).unwrap();
         let refresh_claims = jwt_service.validate_token(&refresh_token).unwrap();
 
         assert!(refresh_claims.email.is_empty());

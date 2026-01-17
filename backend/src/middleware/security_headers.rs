@@ -2,7 +2,7 @@ use actix_web::{
     body::MessageBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
     http::header::{self, HeaderValue},
-    Error, HttpResponse,
+    Error,
 };
 use futures_util::future::LocalBoxFuture;
 use std::future::Ready;

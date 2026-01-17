@@ -1,10 +1,9 @@
 // Flutter search service unit tests
-import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
-
-import 'package:miniwiki/services/search_service.dart';
-import 'package:miniwiki/domain/repositories/search_repository.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:miniwiki/domain/entities/search_result.dart';
+import 'package:miniwiki/domain/repositories/search_repository.dart';
+import 'package:miniwiki/services/search_service.dart';
 
 // Simple mock implementation for testing
 class MockSearchRepository implements SearchRepository {
@@ -71,9 +70,6 @@ void main() {
         // Act
         final result = await searchService.searchDocuments(
           query: 'Rust',
-          spaceId: null,
-          limit: 20,
-          offset: 0,
         );
 
         // Assert
@@ -100,7 +96,7 @@ void main() {
 
       test('filters by space when spaceId is provided', () async {
         // Arrange
-        final spaceId = 'space-filter-123';
+        const spaceId = 'space-filter-123';
         mockRepository.mockResults = [
           SearchResult(
             documentId: 'doc-3',

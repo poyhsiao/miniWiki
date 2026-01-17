@@ -7,7 +7,7 @@ version: 0.1.0
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
-  flutter: ">=3.22.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
@@ -47,6 +47,12 @@ dependencies:
   file_picker: ^10.3.8
   path_provider: ^2.1.0
   image_picker: ^1.0.0
+  # Note: share_plus 10.0.2 retained intentionally. Upgrade to 12.0.0 requires:
+  # - API migration: Share -> SharePlus (breaking change in 11.0.0)
+  # - Android: AGP >= 8.12.1, Gradle >= 8.13, Kotlin 2.2.0 (required by 12.0.0)
+  # - Full build/test verification on web and Android platforms
+  # See ANDROID_BUILD_VERIFICATION.md for upgrade checklist
+  share_plus: ^10.0.2
 
   # Utilities
   uuid: ^4.2.0
@@ -79,6 +85,7 @@ dependencies:
 
   # Diff for version comparison
   diff_match_patch: ^0.4.0
+  equatable: ^2.0.8
 
 dev_dependencies:
   flutter_test:

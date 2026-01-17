@@ -275,7 +275,7 @@ async fn test_complete_space_member_document_flow() {
 
     assert_eq!(resp.status(), 201, "Editor should be able to create documents");
     let document: serde_json::Value = resp.json().await.expect("Parse document response");
-    let doc_id = document["id"].as_str().expect("Document ID should be string");
+    let _doc_id = document["id"].as_str().expect("Document ID should be string");
 
     // Owner updates member role to viewer
     let update_role_req = serde_json::json!({

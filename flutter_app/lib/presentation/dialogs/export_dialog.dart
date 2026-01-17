@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/export_provider.dart';
@@ -17,6 +18,16 @@ class ExportDialog extends ConsumerStatefulWidget {
     this.onShare,
     super.key,
   });
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('documentTitle', documentTitle));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has(
+        'onExportComplete', onExportComplete));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onShare', onShare));
+  }
 
   @override
   ConsumerState<ExportDialog> createState() => _ExportDialogState();
@@ -81,27 +92,38 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
             ),
           if (exportState.error != null) const SizedBox(height: 16),
           // Export format options
-          ...ExportFormat.availableFormats.map(
-            (format) => _buildFormatOption(
-              context,
-              format,
-              exportState.isExporting,
+          RadioGroup<ExportFormat>(
+            groupValue: _selectedFormat,
+            onChanged: exportState.isExporting
+                ? null
+                : (value) {
+                    if (value != null) {
+                      setState(() => _selectedFormat = value);
+                    }
+                  },
+            child: Column(
+              children: ExportFormat.availableFormats.map(
+                (format) => _buildFormatOption(
+                  context,
+                  format,
+                  exportState.isExporting,
+                ),
+              ).toList(),
             ),
           ),
-          // Progress indicator
           if (exportState.isExporting)
             Padding(
               padding: const EdgeInsets.only(top: 16),
               child: Column(
                 children: [
                   LinearProgressIndicator(
-                    value: exportState.downloadProgress,
+                    value: exportState.downloadProgress ?? 0.0,
                     color: colorScheme.primary,
                     backgroundColor: colorScheme.surfaceContainerHighest,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Exporting... ${(exportState.downloadProgress! * 100).toInt()}%',
+                    'Exporting... ${((exportState.downloadProgress ?? 0.0) * 100).toInt()}%',
                     style: textTheme.bodySmall,
                   ),
                 ],
@@ -250,10 +272,6 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
               // Radio button
               Radio<ExportFormat>(
                 value: format,
-                groupValue: _selectedFormat,
-                onChanged: isExporting
-                    ? null
-                    : (value) => setState(() => _selectedFormat = value),
               ),
             ],
           ),
@@ -269,10 +287,9 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
       await ref.read(exportNotifierProvider.notifier).exportDocument(
             documentId: widget.documentId,
             format: _selectedFormat!,
-            downloadToDevice: true,
           );
       widget.onExportComplete?.call();
-    } catch (e) {
+    } on Exception {
       // Error is handled by the provider
     }
   }
@@ -285,14 +302,13 @@ Future<void> showExportDialog({
   required String documentTitle,
   VoidCallback? onExportComplete,
   VoidCallback? onShare,
-}) {
-  return showDialog(
-    context: context,
-    builder: (context) => ExportDialog(
-      documentId: documentId,
-      documentTitle: documentTitle,
-      onExportComplete: onExportComplete,
-      onShare: onShare,
-    ),
-  );
-}
+}) =>
+    showDialog<void>(
+      context: context,
+      builder: (context) => ExportDialog(
+        documentId: documentId,
+        documentTitle: documentTitle,
+        onExportComplete: onExportComplete,
+        onShare: onShare,
+      ),
+    );

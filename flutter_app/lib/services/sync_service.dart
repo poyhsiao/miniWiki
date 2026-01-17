@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
 
@@ -83,8 +83,8 @@ class SyncSummary {
     required this.success,
     required this.syncedCount,
     required this.failedCount,
-    this.skippedEntities = const [],
     required this.timestamp,
+    this.skippedEntities = const [],
   });
 
   SyncSummary copyWith({
@@ -163,10 +163,8 @@ class SyncService {
   }
 
   /// Check if online
-  bool get _isOnline {
-    return _connectivityStatus?.any((r) => r != ConnectivityResult.none) ??
-        false;
-  }
+  bool get _isOnline =>
+      _connectivityStatus?.any((r) => r != ConnectivityResult.none) ?? false;
 
   /// Handle connectivity changes
   void _onConnectivityChanged(List<ConnectivityResult> results) {
@@ -214,8 +212,8 @@ class SyncService {
         message: 'Processing ${items.length} items',
       ));
 
-      int successCount = 0;
-      int failedCount = 0;
+      var successCount = 0;
+      var failedCount = 0;
 
       for (final item in items) {
         final entityType = item['entityType'] as String;
@@ -224,7 +222,7 @@ class SyncService {
         final data = item['data'] as Map<String, dynamic>?;
 
         try {
-          bool success = false;
+          var success = false;
 
           switch (entityType) {
             case 'document':
@@ -240,7 +238,7 @@ class SyncService {
           } else {
             throw Exception('Sync returned false');
           }
-        } catch (e) {
+        } on Object catch (e) {
           print('[SyncService] Failed to sync $entityType:$entityId - $e');
           await _syncDatasource.removeFromQueue(entityType, entityId);
           await _syncDatasource.addToFailedQueue(
@@ -273,7 +271,8 @@ class SyncService {
           final spaceId = data['spaceId'] as String?;
           if (spaceId == null) {
             print(
-                '[SyncService] Cannot create document: missing spaceId in data: $data');
+              '[SyncService] Cannot create document: missing spaceId in data: $data',
+            );
             return false;
           }
           await _apiClient.post('/spaces/$spaceId/documents', data: data);
@@ -304,27 +303,20 @@ class SyncService {
   }
 
   /// Get pending sync count
-  int getPendingSyncCount() {
-    return _syncDatasource.getQueueSize();
-  }
+  int getPendingSyncCount() => _syncDatasource.getQueueSize();
 
   /// Get pending sync count (deprecated)
   @Deprecated('Use getPendingSyncCount instead')
-  int getPendingCount() {
-    return getPendingSyncCount();
-  }
+  int getPendingCount() => getPendingSyncCount();
 
   /// Get failed sync count
-  int getFailedCount() {
-    return _failedCount;
-  }
+  int getFailedCount() => _failedCount;
 
   /// Get total failed count (historical)
-  int getTotalFailedCount() {
-    return _totalFailedCount;
-  }
+  int getTotalFailedCount() => _totalFailedCount;
 
   /// Enable/disable auto-sync
+  // ignore: avoid_positional_boolean_parameters
   void setAutoSync(bool enabled) {
     _autoSyncEnabled = enabled;
     if (enabled && _isOnline) {
@@ -363,9 +355,9 @@ class SyncService {
       );
     }
 
-    int syncedCount = 0;
-    int failedCount = 0;
-    final List<Map<String, dynamic>> skippedEntities = [];
+    var syncedCount = 0;
+    var failedCount = 0;
+    final skippedEntities = <Map<String, dynamic>>[];
 
     for (final item in pendingItems) {
       final entityType = item['entityType'] as String?;
@@ -396,14 +388,14 @@ class SyncService {
       try {
         // Only process document entities
         if (entityType == 'document') {
-          final success = await _syncDocument(entityId!, operation!, data);
+          final success = await _syncDocument(entityId, operation, data);
           if (success) {
-            await _syncDatasource.removeFromQueue(entityType, entityId!);
+            await _syncDatasource.removeFromQueue(entityType, entityId);
             syncedCount++;
           } else {
-            await _syncDatasource.removeFromQueue(entityType, entityId!);
+            await _syncDatasource.removeFromQueue(entityType, entityId);
             await _syncDatasource.addToFailedQueue(
-                entityType, entityId!, operation!, data, 'sync returned false');
+                entityType, entityId, operation, data, 'sync returned false');
             failedCount++;
             _failedCount++;
             _totalFailedCount++;
@@ -416,16 +408,16 @@ class SyncService {
             'entityId': entityId,
           });
           final moved =
-              await _syncDatasource.moveToSkippedQueue(entityType, entityId!);
+              await _syncDatasource.moveToSkippedQueue(entityType, entityId);
           if (!moved) {
             logger.warn(
                 'Failed to move skipped item: $entityType:$entityId (not found in pending)');
           }
         }
-      } catch (e) {
-        await _syncDatasource.removeFromQueue(entityType, entityId!);
+      } on Object catch (e) {
+        await _syncDatasource.removeFromQueue(entityType, entityId);
         await _syncDatasource.addToFailedQueue(
-            entityType, entityId!, operation!, data, e.toString());
+            entityType, entityId, operation, data, e.toString());
         failedCount++;
         _failedCount++;
         _totalFailedCount++;
@@ -444,10 +436,9 @@ class SyncService {
   /// Sync a single document and return result
   Future<SyncResult> syncDocument(String documentId) async {
     if (!_isOnline) {
-      return SyncResult(
+      return const SyncResult(
         success: false,
         errorMessage: 'Not online',
-        documentsSynced: 0,
       );
     }
 
@@ -499,11 +490,11 @@ class SyncService {
           // Also remove potentially pending item for this document to prevent double-sync
           await _syncDatasource.removeFromQueue('document', documentId);
 
-          return SyncResult(
+          return const SyncResult(
             success: true,
             documentsSynced: 1,
           );
-        } catch (e) {
+        } on Object catch (e) {
           // Handle cached-document branch failures
           // Extract operation for failed queue
           final operation =
@@ -527,7 +518,6 @@ class SyncService {
           return SyncResult(
             success: false,
             errorMessage: e.toString(),
-            documentsSynced: 0,
           );
         }
       }
@@ -548,10 +538,9 @@ class SyncService {
           await _syncDatasource.removeFromQueue('document', documentId);
           await _syncDatasource.addToFailedQueue('document', documentId,
               'unknown', data, 'Missing operation metadata');
-          return SyncResult(
+          return const SyncResult(
             success: false,
             errorMessage: 'Missing operation metadata',
-            documentsSynced: 0,
           );
         }
 
@@ -570,7 +559,7 @@ class SyncService {
             errorMessage: success ? null : 'Sync failed',
             documentsSynced: success ? 1 : 0,
           );
-        } catch (e) {
+        } on Object catch (e) {
           // Move to failed queue on exception
           await _syncDatasource.removeFromQueue('document', documentId);
           await _syncDatasource.addToFailedQueue(
@@ -579,21 +568,18 @@ class SyncService {
           return SyncResult(
             success: false,
             errorMessage: e.toString(),
-            documentsSynced: 0,
           );
         }
       }
 
-      return SyncResult(
+      return const SyncResult(
         success: false,
         errorMessage: 'Document not found in cache or queue',
-        documentsSynced: 0,
       );
-    } catch (e) {
+    } on Object catch (e) {
       return SyncResult(
         success: false,
         errorMessage: e.toString(),
-        documentsSynced: 0,
       );
     }
   }
@@ -601,7 +587,9 @@ class SyncService {
   /// Dispose
   void dispose() {
     _connectivitySubscription?.cancel();
-    _syncTimers.values.forEach((t) => t.cancel());
+    for (final t in _syncTimers.values) {
+      t.cancel();
+    }
     _queueWorkerTimer?.cancel();
     _syncEventsController.close();
   }

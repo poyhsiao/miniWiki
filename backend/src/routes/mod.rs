@@ -1,6 +1,5 @@
 use actix_web::web;
 use std::sync::Arc;
-use file_service::storage::S3Storage;
 use document_service::sharing::{get_share_link_by_token, verify_share_link_access_code};
 
 const DEFAULT_JWT_SECRET: &str = "test-secret-key-for-testing-only-do-not-use-in-production";

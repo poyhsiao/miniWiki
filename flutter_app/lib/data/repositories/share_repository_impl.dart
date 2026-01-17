@@ -1,10 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/services.dart';
-import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/core/network/network_error.dart' as ne;
 import 'package:miniwiki/domain/entities/share_link.dart';
 import 'package:miniwiki/domain/repositories/share_repository.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// Implementation of ShareRepository for share link operations.
 ///
@@ -21,7 +22,7 @@ class ShareRepositoryImpl implements ShareRepository {
 
   @override
   Future<ShareLink> createShareLink(CreateShareLinkRequest request) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/documents/${request.documentId}/share',
       data: request.toJson(),
     );
@@ -38,7 +39,7 @@ class ShareRepositoryImpl implements ShareRepository {
 
   @override
   Future<List<ShareLink>> getShareLinks(String documentId) async {
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<List<dynamic>>(
       '$baseUrl/api/v1/documents/$documentId/share',
     );
 
@@ -49,7 +50,7 @@ class ShareRepositoryImpl implements ShareRepository {
       );
     }
 
-    final List<dynamic> data = response.data as List<dynamic>;
+    final data = response.data as List<dynamic>;
     return data
         .map((item) => ShareLink.fromJson(item as Map<String, dynamic>))
         .toList();
@@ -57,7 +58,7 @@ class ShareRepositoryImpl implements ShareRepository {
 
   @override
   Future<ShareLink?> getShareLinkByToken(String token) async {
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<Map<String, dynamic>>(
       '$baseUrl/api/v1/share/$token',
     );
 
@@ -90,7 +91,6 @@ class ShareRepositoryImpl implements ShareRepository {
         isActive: true,
         createdAt: DateTime.now(),
         accessCount: 0,
-        maxAccessCount: null,
         createdBy: 'Unknown',
       );
     }
@@ -103,7 +103,7 @@ class ShareRepositoryImpl implements ShareRepository {
     String token,
     String accessCode,
   ) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/share/$token/verify',
       data: {'accessCode': accessCode},
     );
@@ -121,7 +121,7 @@ class ShareRepositoryImpl implements ShareRepository {
 
   @override
   Future<void> deleteShareLink(String documentId, String token) async {
-    final response = await apiClient.dio.delete(
+    final response = await apiClient.dio.delete<dynamic>(
       '$baseUrl/api/v1/documents/$documentId/share/$token',
     );
 
@@ -153,7 +153,7 @@ final shareRepositoryProvider = Provider<ShareRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
 
   // Read and validate API_BASE_URL from environment
-  const envBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+  const envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
   // Validate: must be non-empty or use development default
   final baseUrl = envBaseUrl.isEmpty

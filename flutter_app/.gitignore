@@ -8,6 +8,11 @@ build/
 pubspec.lock
 *.log
 
+# Analysis reports
+analysis-output/
+analysis_output/
+analysis_report.txt
+
 # Firebase
 *.firebase
 .firebase/

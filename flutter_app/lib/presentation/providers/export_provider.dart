@@ -1,7 +1,8 @@
-import 'package:riverpod/riverpod.dart';
+import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/core/network/network_error.dart' as ne;
 import 'package:miniwiki/services/export_service.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// Export state for the provider
 class ExportUiState {
@@ -26,23 +27,55 @@ class ExportUiState {
   ExportUiState copyWith({
     bool? isExporting,
     ExportResult? lastExport,
-    String? error,
-    double? downloadProgress,
+    Object? error = _undefined,
+    Object? downloadProgress = _undefined,
     List<ExportResult>? exportHistory,
     ExportFormat? selectedFormat,
     bool? showExportDialog,
   }) {
+    // Validate error parameter type
+    String? validatedError;
+    if (identical(error, _undefined)) {
+      validatedError = this.error;
+    } else if (error == null || error is String) {
+      validatedError = error as String?;
+    } else {
+      throw ArgumentError(
+          'error parameter must be String or null, got ${error.runtimeType}');
+    }
+
+    // Validate downloadProgress parameter type
+    double? validatedProgress;
+    if (identical(downloadProgress, _undefined)) {
+      validatedProgress = this.downloadProgress;
+    } else if (downloadProgress == null) {
+      validatedProgress = null;
+    } else if (downloadProgress is num) {
+      validatedProgress = downloadProgress.toDouble();
+    } else {
+      throw ArgumentError(
+          'downloadProgress parameter must be num or null, '
+          'got ${downloadProgress.runtimeType}');
+    }
+
     return ExportUiState(
       isExporting: isExporting ?? this.isExporting,
       lastExport: lastExport ?? this.lastExport,
-      error: error ?? this.error,
-      downloadProgress: downloadProgress ?? this.downloadProgress,
+      error: validatedError,
+      downloadProgress: validatedProgress,
       exportHistory: exportHistory ?? this.exportHistory,
       selectedFormat: selectedFormat ?? this.selectedFormat,
       showExportDialog: showExportDialog ?? this.showExportDialog,
     );
   }
 }
+
+// Sentinel value class for copyWith to distinguish between null and not provided
+class _Undefined {
+  const _Undefined();
+}
+
+const _undefined = _Undefined();
 
 /// Provider for export operations
 class ExportNotifier extends StateNotifier<ExportUiState> {
@@ -58,7 +91,6 @@ class ExportNotifier extends StateNotifier<ExportUiState> {
   }) async {
     state = state.copyWith(
       isExporting: true,
-      error: null,
       downloadProgress: 0.0,
       selectedFormat: format,
     );
@@ -85,50 +117,44 @@ class ExportNotifier extends StateNotifier<ExportUiState> {
       state = state.copyWith(
         isExporting: false,
         error: e is ne.NetworkError ? e.message : e.toString(),
-        downloadProgress: null,
       );
       rethrow;
     }
   }
 
   /// Get supported export formats
-  Future<List<ExportFormat>> getSupportedFormats(String documentId) async {
-    return _exportService.getSupportedFormats(documentId);
-  }
+  Future<List<ExportFormat>> getSupportedFormats(String documentId) async =>
+      _exportService.getSupportedFormats(documentId);
 
   /// Check if export file exists locally
-  Future<bool> exportFileExists(String documentId, ExportFormat format) async {
-    return _exportService.exportFileExists(documentId, format);
-  }
+  Future<bool> exportFileExists(String documentId, ExportFormat format) async =>
+      _exportService.exportFileExists(documentId, format);
 
   /// Share exported file
   Future<String?> shareExport({
     required String documentId,
     required ExportFormat format,
-  }) async {
-    return _exportService.shareExport(documentId: documentId, format: format);
-  }
+  }) async =>
+      _exportService.shareExport(documentId: documentId, format: format);
 
   /// Get export URL for sharing
   Future<String> getExportUrl({
     required String documentId,
     required ExportFormat format,
-  }) async {
-    return _exportService.getExportUrl(documentId: documentId, format: format);
-  }
+  }) async =>
+      _exportService.getExportUrl(documentId: documentId, format: format);
 
   /// Show export dialog
   void showDialog({ExportFormat? initialFormat}) {
     state = state.copyWith(
       showExportDialog: true,
       selectedFormat: initialFormat,
-      error: null,
     );
   }
 
   /// Hide export dialog
   void hideDialog() {
-    state = state.copyWith(showExportDialog: false, selectedFormat: null);
+    state = state.copyWith(showExportDialog: false);
   }
 
   /// Select export format
@@ -144,20 +170,29 @@ class ExportNotifier extends StateNotifier<ExportUiState> {
   /// Clear export history
   Future<void> clearExportHistory() async {
     await _exportService.clearExportHistory();
-    state = state.copyWith(exportHistory: const [], lastExport: null);
+    state = state.copyWith(exportHistory: const []);
   }
 }
 
 /// Export service provider
 final exportServiceProvider = Provider<ExportService>((ref) {
+  final configValue = ref.watch(appConfigProvider);
+  if (configValue is! String) {
+    throw StateError(
+        'appConfigProvider returned non-String type: ${configValue.runtimeType}. Expected a String baseUrl.');
+  }
+  final config = configValue;
+  if (config.isEmpty) {
+    throw StateError(
+        'AppConfig baseUrl is empty. Ensure appConfigProvider is properly initialized.');
+  }
   return ExportService(
     apiClient: ref.watch(apiClientProvider),
-    baseUrl: '',
+    baseUrl: config,
   );
 });
 
 /// Export notifier provider
 final exportNotifierProvider =
-    StateNotifierProvider<ExportNotifier, ExportUiState>((ref) {
-  return ExportNotifier(ref.watch(exportServiceProvider));
-});
+    StateNotifierProvider<ExportNotifier, ExportUiState>(
+        (ref) => ExportNotifier(ref.watch(exportServiceProvider)));

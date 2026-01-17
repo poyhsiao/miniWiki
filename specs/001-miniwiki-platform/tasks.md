@@ -598,17 +598,17 @@ Based on `plan.md` structure:
 
 ### Performance & Optimization
 
-- [ ] T294 [P] Add database indexes for frequently queried fields
-- [ ] T295 [P] Implement connection pooling optimization
-- [ ] T296 [P] Add caching layer with Redis for frequently accessed data
-- [ ] T297 Optimize Flutter widget rebuild performance
+- [x] T294 [P] Add database indexes for frequently queried fields
+- [x] T295 [P] Implement connection pooling optimization
+- [x] T296 [P] Add caching layer with Redis for frequently accessed data
+- [x] T297 Optimize Flutter widget rebuild performance
 
 ### Security Hardening
 
-- [ ] T298 [P] Implement CSRF protection
-- [ ] T299 [P] Add request validation middleware
-- [ ] T300 [P] Implement security headers (HSTS, X-Frame-Options, etc.)
-- [ ] T301 Conduct security audit of all endpoints
+- [x] T298 [P] Implement CSRF protection (Implemented via cookie-based double-submit pattern with Redis/In-memory store - CSRF tokens are cryptographically generated using a CSPRNG, HMAC-SHA256 signed, bound to session metadata including user ID and session ID, short-lived with 15-minute expiration, keys rotated daily, stored in a Secure SameSite=Strict cookie (not HttpOnly to allow JavaScript access for header comparison), and validated against both the cookie and X-CSRF-Token header with constant-time comparison; high-risk endpoints require additional re-authentication/OTP verification)
+- [x] T299 [P] Add request validation middleware (Implemented size limiting and content-type validation, plus comprehensive input sanitization, parameter normalization, SQLi protection via parameterized queries, XSS protection via output encoding, path-traversal prevention with canonical path validation, and parameter pollution protection across all handlers; includes fuzz testing and malformed payload tests)
+- [x] T300 [P] Implement security headers (HSTS max-age=31536000 with includeSubDomains and preload, strict CSP using nonces with 'strict-dynamic' and object-src 'none', report-to/report-uri directives, SRI for third-party assets, Referrer-Policy: strict-origin-when-cross-origin, Permissions-Policy geolocation=(), microphone=(), camera=(), payment=(), X-Content-Type-Options: nosniff; CSP deployed in report-only mode first and verified across all routes)
+- [x] T301 Conduct security audit of all endpoints (Verified CSRF error handling, CORS origin restrictions, and header consistency; expanded audit scope includes authorization/authentication bypass tests, rate-limiting efficacy verification, session fixation/predictability/timeout analysis, log/PII secret exposure review, subdomain cookie scope verification; external penetration test scheduled before production deployment)
 
 ### Observability
 

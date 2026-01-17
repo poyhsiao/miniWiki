@@ -1,13 +1,16 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/dialogs/export_dialog.dart';
 import 'package:miniwiki/presentation/providers/document_provider.dart';
 import 'package:miniwiki/presentation/providers/export_provider.dart';
 import 'package:miniwiki/presentation/widgets/file_list.dart';
 import 'package:miniwiki/presentation/widgets/file_upload_widget.dart';
-import 'package:miniwiki/services/export_service.dart';
 import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
+import 'package:miniwiki/services/export_service.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
   final String spaceId;
@@ -42,7 +45,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   void initState() {
     super.initState();
     if (widget.documentId != null) {
-      Future.microtask(_loadDocument);
+      unawaited(Future.microtask(_loadDocument));
     }
   }
 
@@ -101,7 +104,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
           if (editState.error != null)
             Container(
               color: Colors.red.shade100,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsetsDirectional.all(8),
               child: Row(
                 children: [
                   const Icon(Icons.error, color: Colors.red),
@@ -196,13 +199,12 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
               child: FileListWidget(
                 spaceId: widget.spaceId,
                 documentId: widget.documentId,
-                showActions: true,
               ),
             ),
           if (state.hasUnsavedChanges)
             Container(
-              padding: const EdgeInsets.all(8),
-              color: Theme.of(context).colorScheme.surfaceVariant,
+              padding: const EdgeInsetsDirectional.all(8),
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: Row(
                 children: [
                   const Icon(Icons.info_outline, size: 16),
@@ -257,7 +259,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
       // Silently ignore errors when preloading versions for history sheet
     }
     if (!mounted) return;
-    showModalBottomSheet(
+    await showModalBottomSheet<void>(
       context: context,
       builder: (context) =>
           _VersionHistorySheet(documentId: widget.documentId!),
@@ -268,12 +270,13 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
     final document = ref.read(documentEditProvider).document;
     final documentTitle = document?.title ??
         (_titleController.text.isEmpty ? 'Untitled' : _titleController.text);
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => ExportDialog(
         documentId: widget.documentId!,
         documentTitle: documentTitle,
         onExportComplete: () {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Document exported successfully')),
           );
@@ -286,9 +289,19 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
                       format: ExportFormat.markdown,
                     );
             if (path != null && context.mounted) {
-              // TODO: Implement native share
+              // Native share using share_plus
+              try {
+                await Share.shareXFiles([XFile(path)],
+                    text: 'Check out this document!');
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to share: $e')),
+                  );
+                }
+              }
             }
-          } catch (e) {
+          } on Object catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to share: $e')),
@@ -301,7 +314,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   }
 
   void _showFileAttachments(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       builder: (context) => _FileAttachmentsSheet(
         spaceId: widget.spaceId,
@@ -311,7 +324,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   }
 
   void _showMoreOptions(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       builder: (context) => _MoreOptionsSheet(
         documentId: widget.documentId!,
@@ -357,7 +370,7 @@ class _VersionHistorySheet extends ConsumerWidget {
     final versions = state.versions;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsetsDirectional.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -408,15 +421,19 @@ class _VersionHistorySheet extends ConsumerWidget {
                           await ref
                               .read(documentEditProvider.notifier)
                               .restoreVersion(version.versionNumber);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    'Restored to version ${version.versionNumber}')),
-                          );
-                        } catch (e) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to restore: $e')),
-                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      'Restored to version ${version.versionNumber}')),
+                            );
+                          }
+                        } on Object catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to restore: $e')),
+                            );
+                          }
                         }
                       },
                       child: const Text('Restore'),
@@ -453,7 +470,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
               title: const Text('Share'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement share
+                // TODO(kimhsiao): Implement share
               },
             ),
             ListTile(
@@ -461,7 +478,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
               title: const Text('Duplicate'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement duplicate
+                // TODO(kimhsiao): Implement duplicate
               },
             ),
             ListTile(
@@ -469,7 +486,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
               title: const Text('Move to folder'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement move
+                // TODO(kimhsiao): Implement move
               },
             ),
             const Divider(),
@@ -498,13 +515,13 @@ class _MoreOptionsSheet extends ConsumerWidget {
                   ),
                 );
 
-                if (confirm == true) {
+                if (confirm ?? false) {
                   try {
                     await ref
                         .read(documentEditProvider.notifier)
                         .deleteDocument();
                     onDeleted();
-                  } catch (e) {
+                  } on Object catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Failed to delete: $e')),
@@ -535,40 +552,44 @@ class _FileAttachmentsSheet extends ConsumerWidget {
       {required this.spaceId, required this.documentId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text('Attachments',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
+  Widget build(BuildContext context, WidgetRef ref) => Container(
+        padding: const EdgeInsetsDirectional.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('Attachments',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FileListWidget(
+                spaceId: spaceId,
+                documentId: documentId,
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: FileListWidget(
+            ),
+            const SizedBox(height: 16),
+            FileUploadWidget(
               spaceId: spaceId,
               documentId: documentId,
-              showActions: true,
+              onDismiss: () => Navigator.pop(context),
             ),
-          ),
-          const SizedBox(height: 16),
-          FileUploadWidget(
-            spaceId: spaceId,
-            documentId: documentId,
-            showProgress: true,
-            onDismiss: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
+          ],
+        ),
+      );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('documentId', documentId));
   }
 }

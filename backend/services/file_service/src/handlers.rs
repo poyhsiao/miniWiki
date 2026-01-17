@@ -31,7 +31,7 @@ fn extract_user_id(req: &HttpRequest) -> Result<Uuid, AppError> {
     if let Some(user_uuid) = req.extensions().get::<Uuid>() {
         return Ok(*user_uuid);
     }
-    
+
     // Fallback to X-User-Id header
     req.headers()
         .get("X-User-Id")
@@ -42,12 +42,12 @@ fn extract_user_id(req: &HttpRequest) -> Result<Uuid, AppError> {
 
 /// Upload file handler - POST /api/v1/files/upload
 pub async fn upload_file(
-    mut payload: web::Payload,
+    payload: web::Payload,
     pool: web::Data<PgPool>,
     storage: web::Data<Arc<S3Storage>>,
     req: actix_web::HttpRequest,
 ) -> impl Responder {
-    let boundary = match extract_boundary(req.headers()) {
+    let _boundary = match extract_boundary(req.headers()) {
         Some(b) => b,
         None => {
             return HttpResponse::BadRequest()
@@ -61,7 +61,7 @@ pub async fn upload_file(
 
     // Parse multipart form
     let mut form = actix_multipart::Multipart::new(req.headers(), payload);
-    
+
     let mut space_id: Option<Uuid> = None;
     let mut document_id: Option<Uuid> = None;
     let mut file_name: Option<String> = None;
@@ -273,7 +273,6 @@ pub async fn upload_file(
 pub async fn init_chunked_upload(
     req: web::Json<InitChunkedUploadRequest>,
     pool: web::Data<PgPool>,
-    storage: web::Data<Arc<S3Storage>>,
 ) -> impl Responder {
     let upload_id = Uuid::new_v4();
     let now = Utc::now();
@@ -497,7 +496,7 @@ pub async fn complete_chunked_upload(
     sorted_chunks.sort();
 
     let mut assembled_content = Vec::new();
-    let temp_storage_path = format!("{}/{}", session.space_id, upload_id);
+    let _temp_storage_path = format!("{}/{}", session.space_id, upload_id);
 
     for chunk_num in &sorted_chunks {
         let chunk_path = format!("{}/{}/{}.chunk.{}", session.space_id, upload_id, session.file_name, chunk_num);

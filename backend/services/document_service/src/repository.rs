@@ -240,7 +240,7 @@ impl DocumentRepository {
 
         let total = sqlx::query!(
             r#"
-            SELECT COUNT(*) as count FROM documents
+            SELECT COUNT(*) as "count!" FROM documents
             WHERE space_id = $1 AND is_archived = false
             AND parent_id IS NOT DISTINCT FROM $2
             "#,
@@ -249,8 +249,7 @@ impl DocumentRepository {
         )
         .fetch_one(&self.pool)
         .await?
-        .count
-        .unwrap_or(0);
+        .count;
 
         Ok((documents, total as i64))
     }
@@ -365,13 +364,12 @@ impl DocumentRepository {
         .await?;
 
         let total = sqlx::query!(
-            r#"SELECT COUNT(*) as count FROM document_versions WHERE document_id = $1"#,
+            r#"SELECT COUNT(*) as "count!" FROM document_versions WHERE document_id = $1"#,
             doc_uuid
         )
         .fetch_one(&self.pool)
         .await?
-        .count
-        .unwrap_or(0);
+        .count;
 
         Ok((versions, total as i64))
     }
@@ -843,7 +841,7 @@ impl DocumentRepository {
         &self,
         document_id: &str,
         author_id: &str,
-        author_name: &str,
+        _author_name: &str,
         content: &str,
         parent_id: Option<&str>,
     ) -> Result<CommentRow, sqlx::Error> {

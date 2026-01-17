@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:miniwiki/domain/entities/document_version.dart';
 import 'package:miniwiki/presentation/providers/version_provider.dart';
-import 'package:intl/intl.dart';
 
 /// Page for viewing and managing document version history
 class VersionHistoryPage extends ConsumerWidget {
@@ -10,9 +11,7 @@ class VersionHistoryPage extends ConsumerWidget {
   final String documentTitle;
 
   const VersionHistoryPage({
-    super.key,
-    required this.documentId,
-    required this.documentTitle,
+    required this.documentId, required this.documentTitle, super.key,
   });
 
   @override
@@ -54,10 +53,9 @@ class VersionHistoryPage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     VersionComparisonState state,
-  ) {
-    return Container(
+  ) => Container(
       padding: const EdgeInsets.all(16),
-      color: Theme.of(context).colorScheme.surfaceVariant,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -112,11 +110,9 @@ class VersionHistoryPage extends ConsumerWidget {
         ],
       ),
     );
-  }
 
   Widget _buildVersionChip(
-      BuildContext context, String version, String summary) {
-    return Card(
+      BuildContext context, String version, String summary) => Card(
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Column(
@@ -136,7 +132,6 @@ class VersionHistoryPage extends ConsumerWidget {
         ),
       ),
     );
-  }
 
   Widget _buildDiffResults(Map<String, dynamic> diff) {
     final added = diff['added'] as List? ?? [];
@@ -253,6 +248,13 @@ class VersionHistoryPage extends ConsumerWidget {
       },
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('documentTitle', documentTitle));
+  }
 }
 
 /// List item for a single version
@@ -359,8 +361,9 @@ class _VersionListItem extends ConsumerWidget {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Restore Version?'),
         content: Text(
-          'This will create a new version with the content from version ${version.versionNumber}. '
-          'The current content will not be overwritten.',
+          'This will create a new version with the content from version '
+          '${version.versionNumber}. The current content will not be '
+          'overwritten.',
         ),
         actions: [
           TextButton(
@@ -380,7 +383,7 @@ class _VersionListItem extends ConsumerWidget {
                         content: Text('Version restored successfully')),
                   );
                 }
-              } catch (e) {
+              } on Exception catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Failed to restore: $e')),
@@ -444,8 +447,7 @@ class _VersionListItem extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
+  Widget _buildDetailRow(String label, String value) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -461,5 +463,15 @@ class _VersionListItem extends ConsumerWidget {
         ],
       ),
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<DocumentVersion>('version', version));
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(DiagnosticsProperty<bool>(
+        'isSelectedForComparison', isSelectedForComparison));
+    properties.add(ObjectFlagProperty<void Function(DocumentVersion)>.has(
+        'onCompare', onCompare));
   }
 }

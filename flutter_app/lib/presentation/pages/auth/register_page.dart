@@ -7,8 +7,7 @@ class RegisterPage extends ConsumerWidget {
   const RegisterPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
       appBar: AppBar(title: const Text('Sign Up')),
       body: SafeArea(
         child: Center(
@@ -22,11 +21,10 @@ class RegisterPage extends ConsumerWidget {
         ),
       ),
     );
-  }
 }
 
 class _RegisterForm extends ConsumerStatefulWidget {
-  const _RegisterForm({super.key});
+  const _RegisterForm();
 
   @override
   ConsumerState<_RegisterForm> createState() => _RegisterFormState();
@@ -221,7 +219,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(r"Already have an account? "),
+              const Text('Already have an account? '),
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();

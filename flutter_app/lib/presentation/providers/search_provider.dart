@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/search_result.dart';
-import '../../services/search_service.dart';
+import 'package:miniwiki/domain/entities/search_result.dart';
+import 'package:miniwiki/services/search_service.dart';
 
 /// Search provider using Riverpod StateNotifier
 class SearchProvider extends StateNotifier<AsyncValue<List<SearchResult>>> {
@@ -53,9 +53,7 @@ class SearchProvider extends StateNotifier<AsyncValue<List<SearchResult>>> {
   }
 
   /// Get suggestions for autocomplete
-  Future<List<String>> getSuggestions(String query) async {
-    return await searchService.getSuggestions(query);
-  }
+  Future<List<String>> getSuggestions(String query) async => searchService.getSuggestions(query);
 
   @override
   void dispose() {
@@ -76,6 +74,4 @@ final searchStateProvider =
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
 /// Derived loading state from the main search provider
-final searchLoadingProvider = Provider<bool>((ref) {
-  return ref.watch(searchStateProvider).isLoading;
-});
+final searchLoadingProvider = Provider<bool>((ref) => ref.watch(searchStateProvider).isLoading);

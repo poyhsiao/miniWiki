@@ -166,7 +166,7 @@ impl ConflictResolver {
     }
 
     /// Check if two state vectors can be merged without conflicts
-    pub fn can_merge(&self, sv1: &StateVector, sv2: &StateVector) -> bool {
+    pub fn can_merge(&self, _sv1: &StateVector, _sv2: &StateVector) -> bool {
         // State vectors can always be merged in CRDT
         true
     }

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/search_result.dart';
 import 'package:miniwiki/presentation/providers/search_provider.dart';
@@ -32,7 +32,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void initState() {
     super.initState();
     _queryController = TextEditingController(text: widget.initialQuery ?? '');
-    if (widget.initialQuery?.isNotEmpty == true) {
+    if (widget.initialQuery?.isNotEmpty ?? false) {
       Future.microtask(
         () => ref
             .read(searchStateProvider.notifier)
@@ -108,8 +108,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Widget _buildBody(
-      BuildContext context, AsyncValue<List<SearchResult>> state) {
-    return state.when(
+      BuildContext context, AsyncValue<List<SearchResult>> state) => state.when(
       data: (results) {
         if (_queryController.text.isEmpty) {
           return _buildEmptyState(context);
@@ -122,7 +121,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, stack) => _buildErrorState(context, error.toString()),
     );
-  }
 
   Widget _buildEmptyState(BuildContext context) => Center(
         child: Column(
@@ -196,14 +194,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         ),
       );
 
-  Widget _buildResultsList(BuildContext context, List<SearchResult> results) {
-    return ListView.builder(
+  Widget _buildResultsList(BuildContext context, List<SearchResult> results) => ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: results.length,
       itemBuilder: (context, index) =>
           _buildResultItem(context, results[index]),
     );
-  }
 
   Widget _buildResultItem(BuildContext context, SearchResult result) {
     final query = _queryController.text;

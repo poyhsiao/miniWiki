@@ -1,4 +1,4 @@
-import '../entities/search_result.dart';
+import 'package:miniwiki/domain/entities/search_result.dart';
 
 /// Repository interface for search operations
 abstract class SearchRepository {

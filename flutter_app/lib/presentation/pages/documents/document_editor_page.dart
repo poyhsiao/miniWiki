@@ -1,19 +1,19 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/presentation/providers/document_provider.dart';
-import 'package:miniwiki/presentation/providers/presence_provider.dart';
-import 'package:miniwiki/presentation/providers/comment_provider.dart';
-import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
-import 'package:miniwiki/presentation/widgets/cursor_overlay.dart';
-import 'package:miniwiki/presentation/widgets/comment_list.dart';
-import 'package:miniwiki/presentation/widgets/comment_input.dart';
 import 'package:miniwiki/core/config/auth_provider.dart';
-import 'package:miniwiki/services/providers.dart';
 import 'package:miniwiki/domain/entities/comment.dart';
 import 'package:miniwiki/presentation/dialogs/share_link_dialog.dart';
+import 'package:miniwiki/presentation/providers/comment_provider.dart';
+import 'package:miniwiki/presentation/providers/document_provider.dart';
+import 'package:miniwiki/presentation/providers/presence_provider.dart';
+import 'package:miniwiki/presentation/widgets/comment_input.dart';
+import 'package:miniwiki/presentation/widgets/comment_list.dart';
+import 'package:miniwiki/presentation/widgets/cursor_overlay.dart';
+import 'package:miniwiki/presentation/widgets/rich_text_editor.dart';
+import 'package:miniwiki/services/providers.dart';
 
 class DocumentEditorPage extends ConsumerStatefulWidget {
   final String documentId;
@@ -78,7 +78,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
     }
 
     try {
-      final userId = (authState).userId;
+      final userId = authState.userId;
       await ref.read(presenceProvider.notifier).connectToDocument(
             widget.documentId,
             userId,
@@ -242,8 +242,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   }
 
   Widget _buildCommentPanel(
-      BuildContext context, CommentListState commentState) {
-    return Container(
+      BuildContext context, CommentListState commentState) => Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
@@ -253,7 +252,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(-2, 0),
           ),
@@ -308,14 +307,12 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
             ),
             child: CommentInput(
               documentId: widget.documentId,
-              parentCommentId: null,
               onSubmitted: () {}, // Handled via provider
             ),
           ),
         ],
       ),
     );
-  }
 
   PreferredSizeWidget _buildAppBar(
           BuildContext context, DocumentEditState state) =>
@@ -526,7 +523,9 @@ class _VersionHistorySheet extends ConsumerWidget {
                     ),
                     title: Text(version.title),
                     subtitle: Text(
-                      '${version.createdAt.month}/${version.createdAt.day}/${version.createdAt.year} - ${version.changeSummary ?? 'No description'}',
+                      '${version.createdAt.month}/${version.createdAt.day}/'
+                      '${version.createdAt.year} - '
+                      '${version.changeSummary ?? 'No description'}',
                     ),
                     trailing: TextButton(
                       onPressed: () async {
@@ -673,5 +672,12 @@ class _MoreOptionsSheet extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }

@@ -190,11 +190,11 @@ impl ConnectionManager {
         let mut last_cleanup_guard = self.last_cleanup.lock().unwrap();
         let now = Instant::now();
 
-        if last_cleanup_guard.duration_since(now) < Duration::from_secs(60) {
+        if now.duration_since(*last_cleanup_guard) < Duration::from_secs(60) {
             return;
         }
 
-        let mut connections = self.connections.lock().unwrap();
+        let connections = self.connections.lock().unwrap();
         let mut stale_ids = Vec::new();
 
         for (session_id, session_arc) in connections.iter() {
@@ -318,4 +318,5 @@ mod tests {
         let duration = TimeDelta::try_seconds(300).unwrap();
         assert_eq!(duration.num_seconds(), 300);
     }
+
 }

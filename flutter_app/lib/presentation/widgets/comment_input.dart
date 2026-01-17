@@ -1,7 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/presentation/providers/comment_provider.dart';
 import 'package:miniwiki/core/config/providers.dart';
+import 'package:miniwiki/presentation/providers/comment_provider.dart';
 import 'package:miniwiki/services/providers.dart';
 
 /// Widget for inputting a new comment
@@ -12,8 +13,7 @@ class CommentInput extends ConsumerStatefulWidget {
   final VoidCallback? onCancelled;
 
   const CommentInput({
-    super.key,
-    required this.documentId,
+    required this.documentId, super.key,
     this.parentCommentId,
     this.onSubmitted,
     this.onCancelled,
@@ -21,6 +21,15 @@ class CommentInput extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<CommentInput> createState() => _CommentInputState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('parentCommentId', parentCommentId));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onSubmitted', onSubmitted));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onCancelled', onCancelled));
+  }
 }
 
 class _CommentInputState extends ConsumerState<CommentInput> {
@@ -48,7 +57,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -78,7 +87,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                   ),
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: theme.colorScheme.outline.withOpacity(0.5),
+                      color: theme.colorScheme.outline.withValues(alpha: 0.5),
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -161,7 +170,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                       hintText: 'Write your comment...',
                       hintStyle: TextStyle(
                         color:
-                            theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                            theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                       ),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -172,7 +181,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(
-                          color: theme.colorScheme.outline.withOpacity(0.5),
+                          color: theme.colorScheme.outline.withValues(alpha: 0.5),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
@@ -187,7 +196,7 @@ class _CommentInputState extends ConsumerState<CommentInput> {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    onChanged: (value) {
+                    onChanged: (String value) {
                       ref
                           .read(commentEditNotifierProvider.notifier)
                           .setContent(value);
@@ -294,13 +303,17 @@ class _CommentInputState extends ConsumerState<CommentInput> {
 class CommentFab extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const CommentFab({super.key, required this.onPressed});
+  const CommentFab({required this.onPressed, super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return FloatingActionButton.small(
+  Widget build(BuildContext context) => FloatingActionButton.small(
       onPressed: onPressed,
       child: const Icon(Icons.comment_outlined),
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(ObjectFlagProperty<VoidCallback>.has('onPressed', onPressed));
   }
 }

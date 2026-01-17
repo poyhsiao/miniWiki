@@ -141,7 +141,7 @@ async fn handle_sync(
     let sync_msg: SyncMessage = serde_json::from_value(payload)
         .map_err(|e| format!("Invalid sync message: {}", e))?;
 
-    let sync_state = SYNC_MANAGER.get_or_create_sync_state(session.document_id).await;
+    let _sync_state = SYNC_MANAGER.get_or_create_sync_state(session.document_id).await;
 
     tracing::debug!(
         "Received sync message for document {} from user {}",
@@ -236,7 +236,7 @@ async fn handle_sync_step2(session: &WebSocketSession, update: &[u8]) {
 }
 
 /// Compute Yjs diff between state vector and current document state
-async fn compute_yjs_diff(document_id: Uuid, _state_vector: &[u8]) -> Vec<u8> {
+async fn compute_yjs_diff(_document_id: Uuid, _state_vector: &[u8]) -> Vec<u8> {
     // Placeholder for Yjs diff computation
     // In production, this would:
     // 1. Load document state from database

@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/space.dart';
-import 'package:miniwiki/presentation/providers/space_provider.dart';
 import 'package:miniwiki/presentation/pages/spaces/space_detail_page.dart';
 import 'package:miniwiki/presentation/pages/spaces/space_settings_page.dart';
+import 'package:miniwiki/presentation/providers/space_provider.dart';
 
 class SpaceListPage extends ConsumerWidget {
   const SpaceListPage({super.key});
@@ -288,7 +288,11 @@ class SpaceCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const SpaceCard({
-    required this.space, required this.onTap, required this.onSettings, required this.onDelete, super.key,
+    required this.space,
+    required this.onTap,
+    required this.onSettings,
+    required this.onDelete,
+    super.key,
   });
 
   @override
@@ -392,7 +396,7 @@ class SpaceCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

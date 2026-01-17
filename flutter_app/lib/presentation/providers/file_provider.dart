@@ -1,8 +1,8 @@
 import 'package:file_picker/file_picker.dart';
-import 'package:riverpod/riverpod.dart';
+import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/domain/entities/file.dart';
 import 'package:miniwiki/services/file_service.dart';
-import 'package:miniwiki/core/config/providers.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// State for file list
 class FileListState {
@@ -29,6 +29,7 @@ class FileListState {
     int? total,
     bool? isLoading,
     String? error,
+    bool? clearError,
     String? spaceId,
     String? documentId,
     bool? hasMore,
@@ -38,7 +39,7 @@ class FileListState {
         files: files ?? this.files,
         total: total ?? this.total,
         isLoading: isLoading ?? this.isLoading,
-        error: error ?? this.error,
+        error: clearError == true ? null : (error ?? this.error),
         documentId: documentId ?? this.documentId,
         hasMore: hasMore ?? this.hasMore,
       );
@@ -90,7 +91,7 @@ class FileListNotifier extends StateNotifier<FileListState> {
   Future<void> loadFiles({int limit = 50, bool append = false}) async {
     if (state.spaceId.isEmpty) return;
 
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
 
     try {
       final files = await _service.listFiles(

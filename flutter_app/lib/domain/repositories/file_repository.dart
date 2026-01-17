@@ -95,14 +95,12 @@ class ChunkedUploadInit {
     required this.totalChunks,
   });
 
-  factory ChunkedUploadInit.fromJson(Map<String, dynamic> json) {
-    return ChunkedUploadInit(
+  factory ChunkedUploadInit.fromJson(Map<String, dynamic> json) => ChunkedUploadInit(
       uploadId: json['upload_id'] as String,
       uploadUrl: json['upload_url'] as String,
       chunkSize: json['chunk_size'] as int,
       totalChunks: json['total_chunks'] as int,
     );
-  }
 }
 
 /// Chunk upload result
@@ -119,14 +117,12 @@ class ChunkUploadResult {
     required this.totalChunks,
   });
 
-  factory ChunkUploadResult.fromJson(Map<String, dynamic> json) {
-    return ChunkUploadResult(
+  factory ChunkUploadResult.fromJson(Map<String, dynamic> json) => ChunkUploadResult(
       chunkNumber: json['chunk_number'] as int,
       uploadedBytes: json['uploaded_bytes'] as int,
       chunksUploaded: json['chunks_uploaded'] as int,
       totalChunks: json['total_chunks'] as int,
     );
-  }
 }
 
 /// Chunk information for completion
@@ -139,12 +135,10 @@ class ChunkInfo {
     required this.etag,
   });
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'chunk_number': chunkNumber,
       'etag': etag,
     };
-  }
 }
 
 /// Bulk delete result
@@ -157,14 +151,12 @@ class BulkDeleteResult {
     required this.failed,
   });
 
-  factory BulkDeleteResult.fromJson(Map<String, dynamic> json) {
-    return BulkDeleteResult(
+  factory BulkDeleteResult.fromJson(Map<String, dynamic> json) => BulkDeleteResult(
       deleted: List<String>.from(json['deleted'] as List),
       failed: (json['failed'] as List)
           .map((e) => FailedDelete.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
-  }
 }
 
 /// Failed delete item
@@ -177,10 +169,8 @@ class FailedDelete {
     required this.reason,
   });
 
-  factory FailedDelete.fromJson(Map<String, dynamic> json) {
-    return FailedDelete(
+  factory FailedDelete.fromJson(Map<String, dynamic> json) => FailedDelete(
       fileId: json['file_id'] as String,
       reason: json['reason'] as String,
     );
-  }
 }

@@ -1,10 +1,11 @@
+import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 
 part 'file.g.dart';
 
 /// File entity for attachments
 @JsonSerializable()
-class FileEntity {
+class FileEntity extends Equatable {
   final String id;
   final String spaceId;
   @JsonKey(fromJson: _fromNull, toJson: _toNull)
@@ -23,12 +24,12 @@ class FileEntity {
   const FileEntity({
     required this.id,
     required this.spaceId,
-    this.documentId,
     required this.uploadedBy,
     required this.fileName,
     required this.fileType,
     required this.fileSize,
     required this.downloadUrl,
+    this.documentId,
     this.createdAt,
     this.isDeleted = false,
     this.deletedAt,
@@ -39,19 +40,36 @@ class FileEntity {
 
   Map<String, dynamic> toJson() => _$FileEntityToJson(this);
 
-  static String? _fromNull(dynamic json) => json as String?;
+  static String? _fromNull(Object? json) {
+    if (json == null) return null;
+    if (json is String) return json;
+    throw FormatException(
+        '_fromNull expected String or null, got ${json.runtimeType}');
+  }
+
   static dynamic _toNull(String? value) => value;
-  static DateTime? _dateTimeFromJson(dynamic json) =>
-      json != null ? DateTime.tryParse(json as String) : null;
+  static DateTime? _dateTimeFromJson(Object? json) {
+    if (json == null) return null;
+    if (json is String) return DateTime.tryParse(json);
+    if (json is num) {
+      return DateTime.fromMillisecondsSinceEpoch(json.toInt());
+    }
+    throw FormatException(
+        '_dateTimeFromJson expected String, num, or null, '
+        'got ${json.runtimeType}');
+  }
+
   static String? _dateTimeToJson(DateTime? value) => value?.toIso8601String();
 
   /// Get human-readable file size
   String get formattedSize {
     if (fileSize < 1024) return '$fileSize B';
-    if (fileSize < 1024 * 1024)
+    if (fileSize < 1024 * 1024) {
       return '${(fileSize / 1024).toStringAsFixed(1)} KB';
-    if (fileSize < 1024 * 1024 * 1024)
+    }
+    if (fileSize < 1024 * 1024 * 1024) {
       return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(fileSize / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
@@ -97,21 +115,20 @@ class FileEntity {
     DateTime? createdAt,
     bool? isDeleted,
     DateTime? deletedAt,
-  }) {
-    return FileEntity(
-      id: id ?? this.id,
-      spaceId: spaceId ?? this.spaceId,
-      documentId: documentId ?? this.documentId,
-      uploadedBy: uploadedBy ?? this.uploadedBy,
-      fileName: fileName ?? this.fileName,
-      fileType: fileType ?? this.fileType,
-      fileSize: fileSize ?? this.fileSize,
-      downloadUrl: downloadUrl ?? this.downloadUrl,
-      createdAt: createdAt ?? this.createdAt,
-      isDeleted: isDeleted ?? this.isDeleted,
-      deletedAt: deletedAt ?? this.deletedAt,
-    );
-  }
+  }) =>
+      FileEntity(
+        id: id ?? this.id,
+        spaceId: spaceId ?? this.spaceId,
+        documentId: documentId ?? this.documentId,
+        uploadedBy: uploadedBy ?? this.uploadedBy,
+        fileName: fileName ?? this.fileName,
+        fileType: fileType ?? this.fileType,
+        fileSize: fileSize ?? this.fileSize,
+        downloadUrl: downloadUrl ?? this.downloadUrl,
+        createdAt: createdAt ?? this.createdAt,
+        isDeleted: isDeleted ?? this.isDeleted,
+        deletedAt: deletedAt ?? this.deletedAt,
+      );
 
   @override
   List<Object?> get props => [
@@ -149,16 +166,15 @@ class FileUploadProgress {
     this.error,
   });
 
-  factory FileUploadProgress.initial(String fileName, int totalBytes) {
-    return FileUploadProgress(
-      fileId: '',
-      fileName: fileName,
-      bytesUploaded: 0,
-      totalBytes: totalBytes,
-      progress: 0,
-      status: FileUploadStatus.pending,
-    );
-  }
+  factory FileUploadProgress.initial(String fileName, int totalBytes) =>
+      FileUploadProgress(
+        fileId: '',
+        fileName: fileName,
+        bytesUploaded: 0,
+        totalBytes: totalBytes,
+        progress: 0,
+        status: FileUploadStatus.pending,
+      );
 
   FileUploadProgress copyWith({
     String? fileId,
@@ -168,17 +184,16 @@ class FileUploadProgress {
     double? progress,
     FileUploadStatus? status,
     String? error,
-  }) {
-    return FileUploadProgress(
-      fileId: fileId ?? this.fileId,
-      fileName: fileName ?? this.fileName,
-      bytesUploaded: bytesUploaded ?? this.bytesUploaded,
-      totalBytes: totalBytes ?? this.totalBytes,
-      progress: progress ?? this.progress,
-      status: status ?? this.status,
-      error: error ?? this.error,
-    );
-  }
+  }) =>
+      FileUploadProgress(
+        fileId: fileId ?? this.fileId,
+        fileName: fileName ?? this.fileName,
+        bytesUploaded: bytesUploaded ?? this.bytesUploaded,
+        totalBytes: totalBytes ?? this.totalBytes,
+        progress: progress ?? this.progress,
+        status: status ?? this.status,
+        error: error ?? this.error,
+      );
 }
 
 enum FileUploadStatus {
