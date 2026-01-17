@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:miniwiki/data/repositories/space_repository_impl.dart';
 import 'package:miniwiki/domain/entities/space.dart';
 import 'package:miniwiki/domain/entities/space_membership.dart';
 import 'package:miniwiki/services/space_service.dart';
-import 'package:miniwiki/data/repositories/space_repository_impl.dart';
 
 class SpaceProvider extends StateNotifier<SpaceState> {
   final SpaceService spaceService;

@@ -1,8 +1,8 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
-import 'package:miniwiki/services/export_service.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:miniwiki/core/network/api_client.dart';
+import 'package:miniwiki/services/export_service.dart';
+import 'package:mocktail/mocktail.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 
@@ -190,7 +190,7 @@ void main() {
           fileName: 'test.md',
           fileSize: 1024,
           contentType: 'text/markdown',
-          exportedAt: DateTime(2024, 1, 15, 12, 0, 0),
+          exportedAt: DateTime(2024, 1, 15, 12),
           localFilePath: '/path/to/file.md',
         );
 

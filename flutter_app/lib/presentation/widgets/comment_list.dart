@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:miniwiki/domain/entities/comment.dart';
@@ -13,13 +14,7 @@ class CommentList extends StatelessWidget {
   final bool isLoading;
 
   const CommentList({
-    super.key,
-    required this.comments,
-    required this.currentUserId,
-    required this.onReply,
-    required this.onResolve,
-    required this.onUnresolve,
-    required this.onDelete,
+    required this.comments, required this.currentUserId, required this.onReply, required this.onResolve, required this.onUnresolve, required this.onDelete, super.key,
     this.isLoading = false,
   });
 
@@ -82,6 +77,18 @@ class CommentList extends StatelessWidget {
       },
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(IterableProperty<Comment>('comments', comments));
+    properties.add(StringProperty('currentUserId', currentUserId));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onReply', onReply));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onResolve', onResolve));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onUnresolve', onUnresolve));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onDelete', onDelete));
+    properties.add(DiagnosticsProperty<bool>('isLoading', isLoading));
+  }
 }
 
 /// A comment thread (parent + replies)
@@ -95,20 +102,13 @@ class CommentThread extends StatelessWidget {
   final Function(Comment) onDelete;
 
   const CommentThread({
-    super.key,
-    required this.comment,
-    required this.replies,
-    required this.currentUserId,
-    required this.onReply,
-    required this.onResolve,
-    required this.onUnresolve,
-    required this.onDelete,
+    required this.comment, required this.replies, required this.currentUserId, required this.onReply, required this.onResolve, required this.onUnresolve, required this.onDelete, super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormat = DateFormat('MMM d, yyyy \'at\' h:mm a');
+    final dateFormat = DateFormat("MMM d, yyyy 'at' h:mm a");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -209,9 +209,7 @@ class CommentThread extends StatelessWidget {
             padding: const EdgeInsets.only(left: 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: replies.map((reply) {
-                return _buildReplyCard(reply, context, theme, dateFormat);
-              }).toList(),
+              children: replies.map((reply) => _buildReplyCard(reply, context, theme, dateFormat)).toList(),
             ),
           ),
 
@@ -338,5 +336,17 @@ class CommentThread extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<Comment>('comment', comment));
+    properties.add(IterableProperty<Comment>('replies', replies));
+    properties.add(StringProperty('currentUserId', currentUserId));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onReply', onReply));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onResolve', onResolve));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onUnresolve', onUnresolve));
+    properties.add(ObjectFlagProperty<Function(Comment)>.has('onDelete', onDelete));
   }
 }

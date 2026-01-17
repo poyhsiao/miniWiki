@@ -2,9 +2,10 @@
 // Provides sync status, events, and actions throughout the app
 
 import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/services/sync_service.dart' as ss;
 import 'package:miniwiki/services/offline_service.dart';
+import 'package:miniwiki/services/sync_service.dart' as ss;
 
 /// Sync state for Riverpod
 class SyncState {
@@ -33,7 +34,6 @@ class SyncState {
         pendingCount: 0,
         isOnline: true,
         autoSyncEnabled: true,
-        recentEvents: [],
       );
 
   SyncState copyWith({
@@ -208,7 +208,7 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
 
   /// Get pending sync count
   Future<int> getPendingCount() async =>
-      await _syncService.getPendingSyncCount();
+      _syncService.getPendingSyncCount();
 
   /// Clear sync error
   void clearError() {

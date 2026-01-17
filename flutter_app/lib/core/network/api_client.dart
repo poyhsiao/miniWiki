@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/core/config/app_config_provider.dart';
@@ -15,11 +17,45 @@ class ApiError extends NetworkError {
   ApiError(String message, this.code, [int? statusCode])
       : super(message, statusCode);
 
-  factory ApiError.fromResponse(Response response) {
-    final data = response.data as Map<String, dynamic>;
+  factory ApiError.fromResponse(Response<dynamic> response) {
+    // Defensively handle different response.data types
+    String? message;
+    String? code;
+
+    if (response.data == null) {
+      message = 'Unknown error';
+      code = 'API_ERROR';
+    } else if (response.data is Map<String, dynamic>) {
+      final data = response.data as Map<String, dynamic>;
+      message = data['message'] as String? ?? 'Unknown error';
+      code = data['error'] as String? ?? 'API_ERROR';
+    } else if (response.data is String) {
+      // Try to parse as JSON string, otherwise use the string as message
+      try {
+        final decoded = jsonDecode(response.data as String);
+        if (decoded is Map<String, dynamic>) {
+          message = decoded['message'] as String? ?? response.data as String;
+          code = decoded['error'] as String? ?? 'API_ERROR';
+        } else {
+          // Decoded JSON is not a Map, treat as plain string message
+          message = response.data as String;
+          code = 'API_ERROR';
+        }
+      } catch (_) {
+        message = response.data as String;
+        code = 'API_ERROR';
+      }
+    } else {
+      // Fallback to statusMessage or toString()
+      message = response.statusMessage ??
+          response.data?.toString() ??
+          'Unknown error';
+      code = 'API_ERROR';
+    }
+
     return ApiError(
-      data['message'] as String? ?? 'Unknown error',
-      data['error'] as String? ?? 'API_ERROR',
+      message,
+      code,
       response.statusCode,
     );
   }
@@ -84,7 +120,7 @@ class ApiClient {
   Dio get dio => _dio;
 
   factory ApiClient.defaultInstance({String? baseUrl}) {
-    final envBaseUrl = const String.fromEnvironment('API_BASE_URL',
+    const envBaseUrl = String.fromEnvironment('API_BASE_URL',
         defaultValue: 'http://localhost:8080/api/v1');
     final dio = Dio(BaseOptions(
       baseUrl: baseUrl ?? envBaseUrl,
@@ -113,21 +149,44 @@ class ApiClient {
     return ApiClient(dio);
   }
 
-  Future<Response> get(String path,
-          {Map<String, dynamic>? queryParams, Options? options}) async =>
-      _dio.get(path, queryParameters: queryParams, options: options);
+  Future<Response<dynamic>> get(
+    String path, {
+    Map<String, dynamic>? queryParams,
+    Options? options,
+  }) async =>
+      _dio.get<dynamic>(
+        path,
+        queryParameters: queryParams,
+        options: options,
+      );
 
-  Future<Response> post(String path, {data, Options? options}) async =>
-      _dio.post(path, data: data, options: options);
+  Future<Response<dynamic>> post(
+    String path, {
+    Object? data,
+    Options? options,
+  }) async =>
+      _dio.post<dynamic>(path, data: data, options: options);
 
-  Future<Response> put(String path, {data, Options? options}) async =>
-      _dio.put(path, data: data, options: options);
+  Future<Response<dynamic>> put(
+    String path, {
+    Object? data,
+    Options? options,
+  }) async =>
+      _dio.put<dynamic>(path, data: data, options: options);
 
-  Future<Response> patch(String path, {data, Options? options}) async =>
-      _dio.patch(path, data: data, options: options);
+  Future<Response<dynamic>> patch(
+    String path, {
+    Object? data,
+    Options? options,
+  }) async =>
+      _dio.patch<dynamic>(path, data: data, options: options);
 
-  Future<Response> delete(String path, {data, Options? options}) async =>
-      _dio.delete(path, data: data, options: options);
+  Future<Response<dynamic>> delete(
+    String path, {
+    Object? data,
+    Options? options,
+  }) async =>
+      _dio.delete<dynamic>(path, data: data, options: options);
 
   void setAuthToken(String token) {
     _dio.options.headers['Authorization'] = 'Bearer $token';

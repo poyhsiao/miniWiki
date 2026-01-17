@@ -18,7 +18,6 @@ use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use uuid::Uuid;
 
 /// Export format enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -227,7 +226,7 @@ impl ExportService {
         // Frontmatter
         output.push_str("---\n");
         output.push_str(&format!("title: \"{}\"\n", escape_yaml(title)));
-        
+
         if let Some(meta) = metadata {
             if let Some(created_at) = meta.created_at {
                 output.push_str(&format!(
@@ -246,7 +245,7 @@ impl ExportService {
             }
             output.push_str(&format!("document_id: \"{}\"\n", meta.id));
         }
-        
+
         output.push_str("---\n\n");
 
         // Title
@@ -290,23 +289,23 @@ impl ExportService {
             line-height: 1.6;
             color: var(--text-color);
             background: var(--background-color);
-            max-width: 800px;
-            margin: 0 auto;
+            max-inline-size: 800px;
+            margin-inline: auto;
             padding: 2rem;
         }
-        h1 { color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 0.5rem; }
-        h2 { margin-top: 1.5rem; color: #374151; }
-        h3 { margin-top: 1.25rem; }
+        h1 { color: var(--primary-color); border-block-end: 2px solid var(--primary-color); padding-block-end: 0.5rem; }
+        h2 { margin-block-start: 1.5rem; color: #374151; }
+        h3 { margin-block-start: 1.25rem; }
         code { background: var(--code-background); padding: 0.2em 0.4em; border-radius: 4px; font-family: ui-monospace, monospace; }
         pre { background: var(--code-background); padding: 1rem; border-radius: 8px; overflow-x: auto; }
         pre code { background: none; padding: 0; }
-        blockquote { border-left: 4px solid var(--primary-color); margin: 1rem 0; padding-left: 1rem; color: #6b7280; }
-        ul, ol { padding-left: 1.5rem; }
-        table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
-        th, td { border: 1px solid var(--border-color); padding: 0.5rem 1rem; text-align: left; }
+        blockquote { border-inline-start: 4px solid var(--primary-color); margin-block: 1rem; padding-inline-start: 1rem; color: #6b7280; }
+        ul, ol { padding-inline-start: 1.5rem; }
+        table { border-collapse: collapse; inline-size: 100%; margin-block: 1rem; }
+        th, td { border: 1px solid var(--border-color); padding: 0.5rem 1rem; text-align: start; }
         th { background: var(--code-background); }
-        .metadata { color: #6b7280; font-size: 0.875rem; margin-bottom: 1rem; }
-        .metadata span { margin-right: 1rem; }
+        .metadata { color: #6b7280; font-size: 0.875rem; margin-block-end: 1rem; }
+        .metadata span { margin-inline-end: 1rem; }
     </style>
 </head>
 <body>
@@ -357,9 +356,9 @@ impl ExportService {
             Some(path) => path,
             None => {
                 // Return HTML with note that PDF requires weasyprint
-                return Ok(html + 
+                return Ok(html +
                     r#"
-<!-- 
+<!--
 NOTE: PDF export requires weasyprint to be installed.
 Install with: pip install weasyprint
 Or convert this HTML to PDF using another tool.
@@ -487,7 +486,6 @@ Or convert this HTML to PDF using another tool.
 
         if in_paragraph {
             html.push_str("</p>\n");
-            in_paragraph = false;
         }
 
         html.push_str("</div>\n");

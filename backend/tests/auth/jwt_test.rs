@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod jwt_test {
-    use auth_service::jwt::{JwtService, JwtConfig, Claims};
-    use chrono::{Duration, Utc};
+    use auth_service::jwt::{JwtService, JwtConfig};
 
     #[test]
     fn test_jwt_service_generate_access_token() {

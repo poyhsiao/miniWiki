@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:miniwiki/domain/value_objects/role.dart';
 import 'package:miniwiki/domain/entities/space_membership.dart';
-import 'package:miniwiki/services/rbac_service.dart';
 import 'package:miniwiki/domain/repositories/space_repository.dart';
+import 'package:miniwiki/domain/value_objects/role.dart';
+import 'package:miniwiki/services/rbac_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockSpaceRepository extends Mock implements SpaceRepository {}
@@ -315,7 +315,7 @@ void main() {
 
     group('getAllowedActions', () {
       test('Owner gets all actions', () {
-        final owner = Role.owner;
+        const owner = Role.owner;
         final allowedActions = owner.allowedActions;
 
         expect(allowedActions, contains(ActionType.viewDocument));
@@ -329,7 +329,7 @@ void main() {
       });
 
       test('Editor gets edit-related actions but not management', () {
-        final editor = Role.editor;
+        const editor = Role.editor;
         final allowedActions = editor.allowedActions;
 
         expect(allowedActions, contains(ActionType.viewDocument));
@@ -343,7 +343,7 @@ void main() {
       });
 
       test('Commenter gets limited actions', () {
-        final commenter = Role.commenter;
+        const commenter = Role.commenter;
         final allowedActions = commenter.allowedActions;
 
         expect(allowedActions, contains(ActionType.viewDocument));
@@ -357,7 +357,7 @@ void main() {
       });
 
       test('Viewer gets view-only actions', () {
-        final viewer = Role.viewer;
+        const viewer = Role.viewer;
         final allowedActions = viewer.allowedActions;
 
         expect(allowedActions, contains(ActionType.viewDocument));

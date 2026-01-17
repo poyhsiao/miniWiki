@@ -4,7 +4,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'local_storage.dart';
+import 'package:miniwiki/data/datasources/local_storage.dart';
 
 /// Datasource for managing pending sync operations and offline document caching
 class PendingSyncDatasource {
@@ -26,9 +26,7 @@ class PendingSyncDatasource {
   }
 
   /// Get all pending items
-  List<Map<String, dynamic>> getPendingItems() {
-    return _syncQueue.getQueueItems();
-  }
+  List<Map<String, dynamic>> getPendingItems() => _syncQueue.getQueueItems();
 
   /// Remove item from queue
   Future<void> removeFromQueue(String entityType, String entityId) async {
@@ -41,9 +39,7 @@ class PendingSyncDatasource {
   }
 
   /// Get queue size
-  int getQueueSize() {
-    return _syncQueue.getQueueSize();
-  }
+  int getQueueSize() => _syncQueue.getQueueSize();
 
   // ============================================
   // FAILED QUEUE OPERATIONS
@@ -57,9 +53,7 @@ class PendingSyncDatasource {
   }
 
   /// Get all failed items
-  List<Map<String, dynamic>> getFailedItems() {
-    return _syncQueue.getFailedItems();
-  }
+  List<Map<String, dynamic>> getFailedItems() => _syncQueue.getFailedItems();
 
   /// Remove item from failed queue
   Future<void> removeFromFailedQueue(String entityType, String entityId) async {
@@ -72,9 +66,7 @@ class PendingSyncDatasource {
   }
 
   /// Get failed queue size
-  int getFailedQueueSize() {
-    return _syncQueue.getFailedQueueSize();
-  }
+  int getFailedQueueSize() => _syncQueue.getFailedQueueSize();
 
   // ============================================
   // DOCUMENT CACHE OPERATIONS
@@ -86,9 +78,7 @@ class PendingSyncDatasource {
   }
 
   /// Get cached document
-  Map<String, dynamic>? getCachedDocument(String docId) {
-    return _documentCache.getDocument(docId);
-  }
+  Map<String, dynamic>? getCachedDocument(String docId) => _documentCache.getDocument(docId);
 
   /// Remove cached document
   Future<void> removeCachedDocument(String docId) async {
@@ -96,9 +86,7 @@ class PendingSyncDatasource {
   }
 
   /// Get all cached document IDs
-  List<String> getCachedDocIds() {
-    return _documentCache.getCachedDocIds();
-  }
+  List<String> getCachedDocIds() => _documentCache.getCachedDocIds();
 
   /// Clear document cache
   Future<void> clearDocumentCache() async {
@@ -115,9 +103,7 @@ class PendingSyncDatasource {
   }
 
   /// Get cached content
-  String? getCachedContent(String docId) {
-    return _documentCache.getCachedContent(docId);
-  }
+  String? getCachedContent(String docId) => _documentCache.getCachedContent(docId);
 
   // ============================================
   // SKIPPED QUEUE OPERATIONS
@@ -141,7 +127,7 @@ class PendingSyncDatasource {
     }
 
     // Try to add to skipped queue first
-    bool skippedAdded = false;
+    var skippedAdded = false;
     try {
       await _syncQueue.addSkippedItem(entityType, entityId);
       skippedAdded = true;
@@ -180,14 +166,10 @@ class PendingSyncDatasource {
   }
 
   /// Get all skipped items
-  List<Map<String, dynamic>> getSkippedItems() {
-    return _syncQueue.getSkippedItems();
-  }
+  List<Map<String, dynamic>> getSkippedItems() => _syncQueue.getSkippedItems();
 
   /// Get skipped queue size
-  int getSkippedQueueSize() {
-    return _syncQueue.getSkippedQueueSize();
-  }
+  int getSkippedQueueSize() => _syncQueue.getSkippedQueueSize();
 
   /// Clear skipped queue
   Future<void> clearSkippedQueue() async {

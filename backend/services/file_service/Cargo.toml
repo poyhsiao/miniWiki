@@ -42,10 +42,11 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 
 # S3 / MinIO
-aws-config = "1.1"
-aws-sdk-s3 = "1.35"
-aws-types = "1.1"
-aws-credential-types = "1.2"
+# Inherit workspace versions for AWS SDK to avoid dependency conflicts and API breaks
+aws-config = { workspace = true }
+aws-sdk-s3 = { workspace = true }
+aws-types = { workspace = true }
+aws-credential-types = { workspace = true }
 
 # MIME types
 mime = "0.3"

@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/document.dart';
-import 'package:miniwiki/presentation/providers/document_provider.dart';
 import 'package:miniwiki/presentation/pages/documents/document_editor_page.dart';
+import 'package:miniwiki/presentation/providers/document_provider.dart';
 
 class DocumentListPage extends ConsumerWidget {
   final String spaceId;

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:miniwiki/domain/entities/document_version.dart';
@@ -10,10 +11,7 @@ class VersionComparisonWidget extends StatelessWidget {
   final VoidCallback? onRestoreToVersion;
 
   const VersionComparisonWidget({
-    super.key,
-    required this.fromVersion,
-    required this.toVersion,
-    required this.diff,
+    required this.fromVersion, required this.toVersion, required this.diff, super.key,
     this.onRestoreFromVersion,
     this.onRestoreToVersion,
   });
@@ -45,8 +43,7 @@ class VersionComparisonWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
-    return Padding(
+  Widget _buildHeader(ThemeData theme) => Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
@@ -68,10 +65,8 @@ class VersionComparisonWidget extends StatelessWidget {
         ],
       ),
     );
-  }
 
-  Widget _buildVersionComparison(ThemeData theme) {
-    return Padding(
+  Widget _buildVersionComparison(ThemeData theme) => Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
@@ -94,15 +89,13 @@ class VersionComparisonWidget extends StatelessWidget {
         ],
       ),
     );
-  }
 
   Widget _buildVersionInfo(
     ThemeData theme,
     DocumentVersion version,
     String versionLabel,
     Color backgroundColor,
-  ) {
-    return Container(
+  ) => Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: backgroundColor,
@@ -146,15 +139,13 @@ class VersionComparisonWidget extends StatelessWidget {
         ],
       ),
     );
-  }
 
   Widget _buildDiffSection(
     ThemeData theme,
     List<String> added,
     List<String> removed,
     List<String> modified,
-  ) {
-    return Padding(
+  ) => Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,17 +171,15 @@ class VersionComparisonWidget extends StatelessWidget {
         ],
       ),
     );
-  }
 
   Widget _buildDiffGroup(
     String label,
     List<String> lines,
     Color color,
     ThemeData theme,
-  ) {
-    return Container(
+  ) => Container(
       decoration: BoxDecoration(
-        border: Border.all(color: color.withOpacity(0.5)),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -199,7 +188,7 @@ class VersionComparisonWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               borderRadius:
                   const BorderRadius.vertical(top: Radius.circular(7)),
             ),
@@ -215,8 +204,7 @@ class VersionComparisonWidget extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: lines.map((line) {
-                return Padding(
+              children: lines.map((line) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text(
                     line,
@@ -224,17 +212,14 @@ class VersionComparisonWidget extends StatelessWidget {
                       fontFamily: 'monospace',
                     ),
                   ),
-                );
-              }).toList(),
+                )).toList(),
             ),
           ),
         ],
       ),
     );
-  }
 
-  Widget _buildActions(BuildContext context, ThemeData theme) {
-    return Padding(
+  Widget _buildActions(BuildContext context, ThemeData theme) => Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -253,11 +238,20 @@ class VersionComparisonWidget extends StatelessWidget {
         ],
       ),
     );
-  }
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Unknown';
     return DateFormat.yMd().add_Hm().format(date);
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<DocumentVersion>('fromVersion', fromVersion));
+    properties.add(DiagnosticsProperty<DocumentVersion>('toVersion', toVersion));
+    properties.add(DiagnosticsProperty<Map<String, dynamic>>('diff', diff));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onRestoreFromVersion', onRestoreFromVersion));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onRestoreToVersion', onRestoreToVersion));
   }
 }
 
@@ -273,8 +267,7 @@ class _VersionBadge extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget build(BuildContext context) => Column(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -302,5 +295,12 @@ class _VersionBadge extends StatelessWidget {
         ),
       ],
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<DocumentVersion>('version', version));
+    properties.add(StringProperty('label', label));
+    properties.add(DiagnosticsProperty<bool>('isNew', isNew));
   }
 }

@@ -100,42 +100,63 @@ impl RedisMessage {
     }
 }
 
+use redis::aio::MultiplexedConnection;
+
 /// Redis Pub/Sub Manager for WebSocket presence
 #[derive(Clone)]
 pub struct RedisPubSubManager {
     client: Arc<RedisClient>,
-    config: RedisConfig,
+    _config: RedisConfig,
+    connection: Arc<tokio::sync::Mutex<Option<MultiplexedConnection>>>,
     local_sender: Arc<tokio::sync::Mutex<Option<broadcast::Sender<RedisMessage>>>>,
     subscribed_channels: Arc<tokio::sync::Mutex<Vec<String>>>,
-    is_connected: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl RedisPubSubManager {
     pub async fn new(config: Option<RedisConfig>) -> Result<Self, redis::RedisError> {
         let config = config.unwrap_or_default();
-        
+
         let client = redis::Client::open(config.url.clone())?;
-        let _connection = client.get_async_connection().await?;
-        
+        // Initialize the connection immediately - this will fail startup if Redis is unavailable
+        let connection = client.get_multiplexed_async_connection().await?;
+
         info!("Connected to Redis at {}", config.url);
 
         Ok(Self {
             client: Arc::new(client),
-            config,
+            _config: config,
+            connection: Arc::new(tokio::sync::Mutex::new(Some(connection))),
             local_sender: Arc::new(tokio::sync::Mutex::new(None)),
             subscribed_channels: Arc::new(tokio::sync::Mutex::new(Vec::new())),
-            is_connected: Arc::new(std::sync::atomic::AtomicBool::new(true)),
         })
+    }
+
+    async fn get_connection(&self) -> Result<MultiplexedConnection, redis::RedisError> {
+        let mut guard = self.connection.lock().await;
+
+        if let Some(conn) = guard.as_ref() {
+            // Cloning MultiplexedConnection is cheap and is the intended way to share it
+            return Ok(conn.clone());
+        }
+
+        // Try to reconnect
+        match self.client.get_multiplexed_async_connection().await {
+            Ok(conn) => {
+                *guard = Some(conn.clone());
+                Ok(conn)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     pub async fn get_local_receiver(&self) -> broadcast::Receiver<RedisMessage> {
         let mut guard = self.local_sender.lock().await;
-        
+
         if guard.is_none() {
-            let (sender, receiver) = broadcast::channel(1000);
+            let (sender, _receiver) = broadcast::channel(1000);
             *guard = Some(sender);
         }
-        
+
         guard.as_ref().unwrap().subscribe()
     }
 
@@ -183,13 +204,22 @@ impl RedisPubSubManager {
             }
         };
 
-        let mut connection = match self.client.get_async_connection().await {
-            Ok(conn) => conn,
-            Err(e) => return Err(e),
-        };
+        // Get the cached connection or reconnect
+        let mut connection = self.get_connection().await?;
 
+        // Attempt to publish
         if let Err(e) = connection.publish::<&str, &str, ()>(&channel, &json).await {
-            return Err(e);
+            // If publish fails, it might be because the connection is dead.
+            // Clear the cached connection and try one more time.
+            error!("Redis publish failed: {}. Attempting to reconnect...", e);
+
+            {
+                let mut guard = self.connection.lock().await;
+                *guard = None;
+            }
+
+            let mut connection = self.get_connection().await?;
+            connection.publish::<&str, &str, ()>(&channel, &json).await?;
         }
 
         Ok(())

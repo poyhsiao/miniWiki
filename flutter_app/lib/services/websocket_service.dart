@@ -5,7 +5,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 final websocketServiceProvider = Provider<WebSocketService>((ref) {
   final service = WebSocketService();
-  ref.onDispose(() => service.dispose());
+  ref.onDispose(service.dispose);
   return service;
 });
 
@@ -65,7 +65,7 @@ class WebSocketService {
       _updateConnectionState(ConnectionState.connected);
 
       unawaited(_sendJoinMessage());
-    } catch (e) {
+    } on Object catch (e) {
       _updateConnectionState(ConnectionState.error);
       _messageController.addError(e);
     }
@@ -168,17 +168,33 @@ class WebSocketService {
       'type': 'Ping',
       'document_id': _currentDocumentId,
       'user_id': _currentUserId,
-      'payload': {},
+      'payload': <String, dynamic>{},
       'timestamp': DateTime.now().toIso8601String(),
     };
 
     _channel!.sink.add(jsonEncode(message));
   }
 
-  void _handleMessage(data) {
+  void _handleMessage(Object? data) {
+    // Guard against null or non-String data
+    if (data == null || data is! String) {
+      // Silently ignore invalid message types to avoid noise in logs
+      return;
+    }
+
     try {
-      final json = jsonDecode(data as String) as Map<String, dynamic>;
-      final type = json['type'] as String;
+      final decoded = jsonDecode(data);
+      if (decoded is! Map<String, dynamic>) {
+        // Ignore non-Map payloads to avoid TypeError
+        return;
+      }
+      final json = decoded;
+      // Safely extract and validate message type
+      final type = json['type'];
+      if (type is! String) {
+        // Log warning for malformed type field and skip processing
+        return;
+      }
 
       switch (type) {
         case 'Sync':
@@ -204,7 +220,7 @@ class WebSocketService {
       }
 
       _messageController.add(json);
-    } catch (e) {
+    } on Object catch (e) {
       _messageController
           .addError(WebSocketException('Failed to parse message: $e'));
     }
@@ -215,13 +231,13 @@ class WebSocketService {
     if (payload['update'] != null) {
       // ignore: unused_local_variable
       final decodedUpdate = base64Decode(payload['update'] as String);
-      // TODO: Apply the decodedjs update to the Y local document
+      // TODO(kimhsiao): Apply the decoded Yjs update to the local document
     }
     if (payload['state_vector'] != null) {
       // ignore: unused_local_variable
       final decodedStateVector =
           base64Decode(payload['state_vector'] as String);
-      // TODO: Process the state vector for sync negotiation
+      // TODO(kimhsiao): Process the state vector for sync negotiation
     }
   }
 
@@ -234,7 +250,7 @@ class WebSocketService {
     if (payload['update'] != null) {
       // ignore: unused_local_variable
       final decoded = base64Decode(payload['update'] as String);
-      // TODO: Apply the decoded Yjs update to the local document
+      // TODO(kimhsiao): Apply the decoded Yjs update to the local document
       // This will be implemented when integrating with the CRDT service
     }
   }
@@ -243,12 +259,12 @@ class WebSocketService {
 
   void _handleUserLeave(Map<String, dynamic> json) {
     // final payload = json['payload'] as Map<String, dynamic>;
-    // TODO: Process user leave payload if needed
+    // TODO(kimhsiao): Process user leave payload if needed
   }
 
-  void _handleError(error) {
+  void _handleError(Object error) {
     _updateConnectionState(ConnectionState.error);
-    _messageController.addError(error as Object);
+    _messageController.addError(error);
   }
 
   void _handleDone() {
@@ -267,7 +283,7 @@ class WebSocketService {
       'type': 'UserJoin',
       'document_id': _currentDocumentId,
       'user_id': _currentUserId,
-      'payload': {},
+      'payload': <String, dynamic>{},
       'timestamp': DateTime.now().toIso8601String(),
     };
 
@@ -281,7 +297,7 @@ class WebSocketService {
       'type': 'UserLeave',
       'document_id': _currentDocumentId,
       'user_id': _currentUserId,
-      'payload': {},
+      'payload': <String, dynamic>{},
       'timestamp': DateTime.now().toIso8601String(),
     };
 
@@ -347,20 +363,73 @@ class ActiveUser {
         lastActive: lastActive ?? this.lastActive,
       );
 
-  factory ActiveUser.fromJson(Map<String, dynamic> json) => ActiveUser(
-        userId: json['user_id'] as String,
-        displayName: json['display_name'] as String,
-        color: json['color'] as String,
-        cursor: json['cursor'] != null
-            ? CursorPosition(
-                x: (json['cursor']['x'] as num).toDouble(),
-                y: (json['cursor']['y'] as num).toDouble(),
-                selectionStart: json['cursor']['selection_start'] as int?,
-                selectionEnd: json['cursor']['selection_end'] as int?,
-              )
-            : null,
-        lastActive: DateTime.parse(json['last_active'] as String),
-      );
+  factory ActiveUser.fromJson(Map<String, dynamic> json) {
+    // Validate required String fields
+    if (json['user_id'] is! String) {
+      throw ArgumentError('user_id must be a String');
+    }
+    if (json['display_name'] is! String) {
+      throw ArgumentError('display_name must be a String');
+    }
+    if (json['color'] is! String) {
+      throw ArgumentError('color must be a String');
+    }
+    if (json['last_active'] is! String) {
+      throw ArgumentError('last_active must be a String');
+    }
+
+    // Safely parse cursor with runtime type check
+    CursorPosition? cursor;
+    if (json['cursor'] != null) {
+      try {
+        if (json['cursor'] is Map<String, dynamic>) {
+          final cursorMap = json['cursor'] as Map<String, dynamic>;
+          // Validate required numeric fields before constructing
+          if (cursorMap['x'] is num && cursorMap['y'] is num) {
+            cursor = CursorPosition(
+              x: (cursorMap['x'] as num).toDouble(),
+              y: (cursorMap['y'] as num).toDouble(),
+              selectionStart: (cursorMap['selection_start'] as num?)?.toInt(),
+              selectionEnd: (cursorMap['selection_end'] as num?)?.toInt(),
+            );
+          }
+        } else if (json['cursor'] is Map) {
+          final cursorMap = (json['cursor'] as Map).cast<String, dynamic>();
+          if (cursorMap['x'] is num && cursorMap['y'] is num) {
+            cursor = CursorPosition(
+              x: (cursorMap['x'] as num).toDouble(),
+              y: (cursorMap['y'] as num).toDouble(),
+              selectionStart: (cursorMap['selection_start'] as num?)?.toInt(),
+              selectionEnd: (cursorMap['selection_end'] as num?)?.toInt(),
+            );
+          }
+        }
+        // If not a Map or missing required fields, cursor remains null
+      } catch (_) {
+        // Malformed cursor data, treat as no cursor
+        cursor = null;
+      }
+    }
+
+    // Safely parse lastActive with tryParse
+    DateTime? lastActive;
+    final lastActiveStr = json['last_active'] as String?;
+    if (lastActiveStr != null) {
+      lastActive = DateTime.tryParse(lastActiveStr);
+      if (lastActive == null) {
+        throw FormatException(
+            'Invalid last_active format for user ${json['user_id']}: $lastActiveStr');
+      }
+    }
+
+    return ActiveUser(
+      userId: json['user_id'] as String,
+      displayName: json['display_name'] as String,
+      color: json['color'] as String,
+      cursor: cursor,
+      lastActive: lastActive!,
+    );
+  }
 }
 
 class WebSocketException implements Exception {

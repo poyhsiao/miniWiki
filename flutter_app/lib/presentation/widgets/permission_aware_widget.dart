@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/value_objects/role.dart';
@@ -43,9 +44,7 @@ class PermissionAwareWidget extends ConsumerWidget {
   final String? spaceId;
 
   const PermissionAwareWidget({
-    super.key,
-    required this.permission,
-    required this.child,
+    required this.permission, required this.child, super.key,
     this.fallback,
     this.showFallback = true,
     this.spaceId,
@@ -70,6 +69,14 @@ class PermissionAwareWidget extends ConsumerWidget {
     }
 
     return const SizedBox.shrink();
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(EnumProperty<Permission>('permission', permission));
+    properties.add(DiagnosticsProperty<bool>('showFallback', showFallback));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }
 
@@ -101,9 +108,7 @@ class RoleBasedWidget extends ConsumerWidget {
   final String? spaceId;
 
   const RoleBasedWidget({
-    super.key,
-    required this.allowedRoles,
-    required this.child,
+    required this.allowedRoles, required this.child, super.key,
     this.fallback,
     this.spaceId,
   });
@@ -126,6 +131,13 @@ class RoleBasedWidget extends ConsumerWidget {
     }
 
     return const SizedBox.shrink();
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(IterableProperty<Role>('allowedRoles', allowedRoles));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }
 
@@ -158,9 +170,7 @@ class ActionBasedWidget extends ConsumerWidget {
   final String? spaceId;
 
   const ActionBasedWidget({
-    super.key,
-    required this.action,
-    required this.child,
+    required this.action, required this.child, super.key,
     this.fallback,
     this.hideOnDeny = false,
     this.spaceId,
@@ -189,6 +199,14 @@ class ActionBasedWidget extends ConsumerWidget {
     }
 
     return const SizedBox.shrink();
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(EnumProperty<ActionType>('action', action));
+    properties.add(DiagnosticsProperty<bool>('hideOnDeny', hideOnDeny));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }
 
@@ -219,8 +237,7 @@ class RoleIndicator extends ConsumerWidget {
   final String? spaceId;
 
   const RoleIndicator({
-    super.key,
-    required this.builder,
+    required this.builder, super.key,
     this.spaceId,
   });
 
@@ -228,6 +245,13 @@ class RoleIndicator extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final permissionState = ref.watch(permissionProvider(spaceId ?? ''));
     return builder(permissionState.userRole);
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(ObjectFlagProperty<Widget Function(Role? role)>.has('builder', builder));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }
 
@@ -249,16 +273,13 @@ class PermissionLockedWidget extends StatelessWidget {
   final String? spaceId;
 
   const PermissionLockedWidget({
-    super.key,
-    required this.permission,
-    required this.child,
+    required this.permission, required this.child, super.key,
     this.lockMessage,
     this.spaceId,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer(
+  Widget build(BuildContext context) => Consumer(
       builder: (context, ref, _) {
         final permissionState = ref.watch(permissionProvider(spaceId ?? ''));
         final hasPermission = permissionState.permissions.contains(permission);
@@ -277,6 +298,13 @@ class PermissionLockedWidget extends StatelessWidget {
         );
       },
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(EnumProperty<Permission>('permission', permission));
+    properties.add(StringProperty('lockMessage', lockMessage));
+    properties.add(StringProperty('spaceId', spaceId));
   }
 }
 
@@ -301,17 +329,14 @@ class PermissionReadOnlyField extends StatelessWidget {
   final String? editMessage;
 
   const PermissionReadOnlyField({
-    super.key,
-    required this.label,
-    required this.value,
+    required this.label, required this.value, super.key,
     this.canEdit = false,
     this.icon,
     this.editMessage = 'You do not have permission to edit this field',
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
+  Widget build(BuildContext context) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
@@ -345,7 +370,7 @@ class PermissionReadOnlyField extends StatelessWidget {
             filled: !canEdit,
             fillColor: canEdit
                 ? null
-                : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             border: const OutlineInputBorder(),
             helperText: canEdit ? null : editMessage,
             helperMaxLines: 2,
@@ -353,6 +378,14 @@ class PermissionReadOnlyField extends StatelessWidget {
         ),
       ],
     );
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('label', label));
+    properties.add(StringProperty('value', value));
+    properties.add(DiagnosticsProperty<bool>('canEdit', canEdit));
+    properties.add(StringProperty('editMessage', editMessage));
   }
 }
 
@@ -386,10 +419,8 @@ class PermissionGuardedButton extends ConsumerWidget {
   final String? spaceId;
 
   const PermissionGuardedButton({
-    super.key,
-    required this.permission,
+    required this.permission, required this.child, super.key,
     this.onPressed,
-    required this.child,
     this.style,
     this.isLoading = false,
     this.deniedMessage,
@@ -430,6 +461,18 @@ class PermissionGuardedButton extends ConsumerWidget {
       child: child,
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(EnumProperty<Permission>('permission', permission));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onPressed', onPressed));
+    properties.add(DiagnosticsProperty<ButtonStyle?>('style', style));
+    properties.add(DiagnosticsProperty<bool>('isLoading', isLoading));
+    properties.add(StringProperty('deniedMessage', deniedMessage));
+    properties.add(StringProperty('dialogTitle', dialogTitle));
+    properties.add(StringProperty('spaceId', spaceId));
+  }
 }
 
 /// Extension on Widget for quick permission-based wrapping.
@@ -439,28 +482,24 @@ extension PermissionAwareExtension on Widget {
     Permission permission, {
     Widget? fallback,
     String? spaceId,
-  }) {
-    return PermissionAwareWidget(
+  }) => PermissionAwareWidget(
       permission: permission,
-      child: this,
       fallback: fallback,
       spaceId: spaceId,
+      child: this,
     );
-  }
 
   /// Wrap this widget to only show for specific roles.
   Widget withRole(
     List<Role> allowedRoles, {
     Widget? fallback,
     String? spaceId,
-  }) {
-    return RoleBasedWidget(
+  }) => RoleBasedWidget(
       allowedRoles: allowedRoles,
-      child: this,
       fallback: fallback,
       spaceId: spaceId,
+      child: this,
     );
-  }
 
   /// Wrap this widget to only show if user can perform the action.
   Widget withAction(
@@ -468,27 +507,23 @@ extension PermissionAwareExtension on Widget {
     Widget? fallback,
     bool hideOnDeny = false,
     String? spaceId,
-  }) {
-    return ActionBasedWidget(
+  }) => ActionBasedWidget(
       action: action,
-      child: this,
       fallback: fallback,
       hideOnDeny: hideOnDeny,
       spaceId: spaceId,
+      child: this,
     );
-  }
 
   /// Wrap this widget to lock it when permission is denied.
   Widget lockedWith(
     Permission permission, {
     String? lockMessage,
     String? spaceId,
-  }) {
-    return PermissionLockedWidget(
+  }) => PermissionLockedWidget(
       permission: permission,
-      child: this,
       lockMessage: lockMessage,
       spaceId: spaceId,
+      child: this,
     );
-  }
 }

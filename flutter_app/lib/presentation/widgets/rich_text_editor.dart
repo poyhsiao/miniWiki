@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 class RichTextEditor extends StatefulWidget {
   final Map<String, dynamic> initialContent;
@@ -112,7 +112,7 @@ class _RichTextEditorState extends State<RichTextEditor> {
   Widget _buildToolbar(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant,
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: const BorderRadius.vertical(bottom: Radius.circular(8)),
         ),
         child: Wrap(
@@ -163,7 +163,7 @@ class _RichTextEditorState extends State<RichTextEditor> {
             _ToolbarButton(
               icon: Icons.link,
               tooltip: 'Link',
-              onPressed: () => _insertLink(),
+              onPressed: _insertLink,
             ),
           ],
         ),

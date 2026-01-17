@@ -1,7 +1,7 @@
-import 'package:riverpod/riverpod.dart';
+import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/domain/entities/document_version.dart';
 import 'package:miniwiki/services/version_service.dart';
-import 'package:miniwiki/core/config/providers.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// State for the version list
 class VersionListState {
@@ -29,6 +29,7 @@ class VersionListState {
     bool? isLoading,
     bool? isLoadingMore,
     String? error,
+    bool? clearError,
     String? documentId,
     int? limit,
   }) =>
@@ -37,7 +38,7 @@ class VersionListState {
         total: total ?? this.total,
         isLoading: isLoading ?? this.isLoading,
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-        error: error ?? this.error,
+        error: clearError == true ? null : (error ?? this.error),
         documentId: documentId ?? this.documentId,
         limit: limit ?? this.limit,
       );
@@ -73,7 +74,7 @@ class VersionComparisonState {
         toVersion: toVersion ?? this.toVersion,
         diff: diff ?? this.diff,
         isComparing: isComparing ?? this.isComparing,
-        error: error ?? this.error,
+        error: (isComparing == true) ? null : (error ?? this.error),
       );
 
   bool get canCompare => fromVersion != null && toVersion != null;
@@ -87,7 +88,7 @@ class VersionListNotifier extends StateNotifier<VersionListState> {
       : super(VersionListState(documentId: documentId));
 
   Future<void> loadVersions({int? limit}) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
 
     try {
       final versions = await _service.listVersions(
@@ -186,7 +187,7 @@ class VersionComparisonNotifier extends StateNotifier<VersionComparisonState> {
       return;
     }
 
-    state = state.copyWith(isComparing: true, error: null);
+    state = state.copyWith(isComparing: true);
 
     try {
       final diff = await _service.compareVersions(

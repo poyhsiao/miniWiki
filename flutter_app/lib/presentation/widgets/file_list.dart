@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/file.dart';
@@ -12,8 +13,7 @@ class FileListWidget extends ConsumerWidget {
   final VoidCallback? onFileDelete;
 
   const FileListWidget({
-    super.key,
-    required this.spaceId,
+    required this.spaceId, super.key,
     this.documentId,
     this.showActions = true,
     this.onFileTap,
@@ -74,7 +74,7 @@ class FileListWidget extends ConsumerWidget {
             Icon(
               Icons.folder_open,
               size: 48,
-              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(
@@ -87,7 +87,7 @@ class FileListWidget extends ConsumerWidget {
             Text(
               'Files you attach will appear here',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],
@@ -112,6 +112,16 @@ class FileListWidget extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(DiagnosticsProperty<bool>('showActions', showActions));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onFileTap', onFileTap));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onFileDelete', onFileDelete));
   }
 }
 
@@ -183,6 +193,15 @@ class _FileListTile extends StatelessWidget {
       ),
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<FileEntity>('file', file));
+    properties.add(DiagnosticsProperty<bool>('showActions', showActions));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onTap', onTap));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onDelete', onDelete));
+  }
 }
 
 /// Compact file list for use in panels
@@ -192,8 +211,7 @@ class CompactFileList extends ConsumerWidget {
   final int maxItems;
 
   const CompactFileList({
-    super.key,
-    required this.spaceId,
+    required this.spaceId, super.key,
     this.documentId,
     this.maxItems = 3,
   });
@@ -236,6 +254,14 @@ class CompactFileList extends ConsumerWidget {
       ],
     );
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(IntProperty('maxItems', maxItems));
+  }
 }
 
 class _CompactFileItem extends StatelessWidget {
@@ -268,5 +294,11 @@ class _CompactFileItem extends StatelessWidget {
         onTap: () {},
       ),
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<FileEntity>('file', file));
   }
 }

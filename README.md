@@ -20,7 +20,7 @@ A self-hosted, Notion-like knowledge management platform built with Flutter for 
 
 ### Frontend
 
-- **Flutter 3.22+** - Cross-platform framework
+- **Flutter 3.27+** - Cross-platform framework
 - **Riverpod** - State management
 - **Dio** - HTTP client
 - **Isar** - Offline database
@@ -47,7 +47,7 @@ A self-hosted, Notion-like knowledge management platform built with Flutter for 
 
 - Docker and Docker Compose
 - Rust 1.75+ (for backend development)
-- Flutter 3.22+ (for frontend development)
+- Flutter 3.27+ (for frontend development)
 
 ### 1. Clone the Repository
 

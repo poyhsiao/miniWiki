@@ -1,8 +1,8 @@
-FROM rust:1.83-alpine AS builder
+FROM rust:1.92-bookworm AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache musl-dev openssl-dev pkgconfig
+RUN apt-get update && apt-get install -y libssl-dev pkg-config
 
 COPY Cargo.toml .
 
@@ -12,15 +12,15 @@ WORKDIR /app
 
 RUN cargo build --release
 
-FROM alpine:3.19
+FROM debian:bookworm-slim
 
-RUN apk add --no-cache openssl ca-certificates
+RUN apt-get update && apt-get install -y ca-certificates openssl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY --from=builder /app/target/release/miniwiki-backend /app/
 COPY --from=builder /app/migrations ./migrations
-COPY --from=builder /app/.env.example ./.env.example
+
 
 EXPOSE 8080
 

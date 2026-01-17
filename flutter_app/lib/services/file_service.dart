@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/core/network/network_error.dart' as ne;
 import 'package:miniwiki/domain/entities/file.dart';
 import 'package:miniwiki/domain/repositories/file_repository.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// File type enumeration for filtering
 enum FileTypeFilter {
@@ -73,16 +74,15 @@ class FileState {
     String? error,
     Map<String, FileUploadProgress>? uploadProgress,
     double? downloadProgress,
-  }) {
-    return FileState(
-      isLoading: isLoading ?? this.isLoading,
-      files: files ?? this.files,
-      selectedFile: selectedFile ?? this.selectedFile,
-      error: error ?? this.error,
-      uploadProgress: uploadProgress ?? this.uploadProgress,
-      downloadProgress: downloadProgress ?? this.downloadProgress,
-    );
-  }
+  }) =>
+      FileState(
+        isLoading: isLoading ?? this.isLoading,
+        files: files ?? this.files,
+        selectedFile: selectedFile ?? this.selectedFile,
+        error: error ?? this.error,
+        uploadProgress: uploadProgress ?? this.uploadProgress,
+        downloadProgress: downloadProgress ?? this.downloadProgress,
+      );
 }
 
 /// Service for file operations
@@ -173,17 +173,21 @@ class FileService {
       chunkSize: config.defaultChunkSize,
     );
 
-    final bytes = await file.readAsBytes();
     final chunks = <ChunkInfo>[];
-    int chunkNumber = 0;
+    var chunkNumber = 0;
+    var totalRead = 0;
 
+    // Use RandomAccessFile for memory-efficient chunked reading
+    RandomAccessFile? raf;
     try {
-      // Upload chunks
-      for (int offset = 0;
-          offset < bytes.length;
-          offset += config.defaultChunkSize) {
-        final end = (offset + config.defaultChunkSize).clamp(0, bytes.length);
-        final chunkData = bytes.sublist(offset, end);
+      raf = await file.open(mode: FileMode.read);
+      final chunkSize = config.defaultChunkSize;
+
+      while (true) {
+        final chunkData = await raf.read(chunkSize);
+        if (chunkData.isEmpty) {
+          break; // EOF reached
+        }
 
         await fileRepository.uploadChunk(
           uploadId: init.uploadId,
@@ -198,10 +202,11 @@ class FileService {
         ));
 
         chunkNumber++;
+        totalRead += chunkData.length;
 
         // Report progress
         if (onProgress != null) {
-          onProgress(end / bytes.length);
+          onProgress(totalRead / actualSize);
         }
       }
 
@@ -214,6 +219,9 @@ class FileService {
       // Cancel on error
       await fileRepository.cancelChunkedUpload(init.uploadId);
       rethrow;
+    } finally {
+      // Ensure RandomAccessFile is closed
+      await raf?.close();
     }
   }
 
@@ -244,19 +252,17 @@ class FileService {
     required String fileName,
     required String contentType,
     required int contentLength,
-  }) async {
-    return fileRepository.getPresignedUploadUrl(
-      spaceId: spaceId,
-      fileName: fileName,
-      contentType: contentType,
-      contentLength: contentLength,
-    );
-  }
+  }) async =>
+      fileRepository.getPresignedUploadUrl(
+        spaceId: spaceId,
+        fileName: fileName,
+        contentType: contentType,
+        contentLength: contentLength,
+      );
 
   /// Get presigned download URL for private files
-  Future<String> getPresignedDownloadUrl(String fileId) async {
-    return fileRepository.getPresignedDownloadUrl(fileId);
-  }
+  Future<String> getPresignedDownloadUrl(String fileId) async =>
+      fileRepository.getPresignedDownloadUrl(fileId);
 
   /// List files in a space
   Future<List<FileEntity>> listFiles({
@@ -264,39 +270,33 @@ class FileService {
     String? documentId,
     int limit = 50,
     int offset = 0,
-  }) async {
-    return fileRepository.listFiles(
-      spaceId: spaceId,
-      documentId: documentId,
-      limit: limit,
-      offset: offset,
-    );
-  }
+  }) async =>
+      fileRepository.listFiles(
+        spaceId: spaceId,
+        documentId: documentId,
+        limit: limit,
+        offset: offset,
+      );
 
   /// Get a single file by ID
-  Future<FileEntity> getFile(String fileId) async {
-    return fileRepository.getFile(fileId);
-  }
+  Future<FileEntity> getFile(String fileId) async =>
+      fileRepository.getFile(fileId);
 
   /// Delete a file (soft delete)
-  Future<void> deleteFile(String fileId) async {
-    return fileRepository.deleteFile(fileId);
-  }
+  Future<void> deleteFile(String fileId) async =>
+      fileRepository.deleteFile(fileId);
 
   /// Restore a deleted file
-  Future<FileEntity> restoreFile(String fileId) async {
-    return fileRepository.restoreFile(fileId);
-  }
+  Future<FileEntity> restoreFile(String fileId) async =>
+      fileRepository.restoreFile(fileId);
 
   /// Permanently delete a file
-  Future<void> permanentDeleteFile(String fileId) async {
-    return fileRepository.permanentDeleteFile(fileId);
-  }
+  Future<void> permanentDeleteFile(String fileId) async =>
+      fileRepository.permanentDeleteFile(fileId);
 
   /// Bulk delete files
-  Future<BulkDeleteResult> bulkDeleteFiles(List<String> fileIds) async {
-    return fileRepository.bulkDeleteFiles(fileIds);
-  }
+  Future<BulkDeleteResult> bulkDeleteFiles(List<String> fileIds) async =>
+      fileRepository.bulkDeleteFiles(fileIds);
 
   /// Pick files from device
   Future<List<PlatformFile>> pickFiles({
@@ -403,8 +403,9 @@ extension FileUtils on FileEntity {
   /// Get human-readable file size
   String get formattedSize {
     if (fileSize < 1024) return '$fileSize B';
-    if (fileSize < 1024 * 1024)
+    if (fileSize < 1024 * 1024) {
       return '${(fileSize / 1024).toStringAsFixed(1)} KB';
+    }
     if (fileSize < 1024 * 1024 * 1024) {
       return '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
     }
@@ -430,13 +431,12 @@ extension FileUtils on FileEntity {
   bool get isAudio => fileType.startsWith('audio/');
 
   /// Check if this is a document
-  bool get isDocument {
-    return fileType.startsWith('text/') ||
-        fileType == 'application/pdf' ||
-        fileType.contains('word') ||
-        fileType.contains('excel') ||
-        fileType.contains('document');
-  }
+  bool get isDocument =>
+      fileType.startsWith('text/') ||
+      fileType == 'application/pdf' ||
+      fileType.contains('word') ||
+      fileType.contains('excel') ||
+      fileType.contains('document');
 
   /// Get icon based on file type
   String get icon {

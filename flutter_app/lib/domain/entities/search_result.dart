@@ -16,8 +16,7 @@ class SearchResult {
     required this.score,
   });
 
-  factory SearchResult.fromJson(Map<String, dynamic> json) {
-    return SearchResult(
+  factory SearchResult.fromJson(Map<String, dynamic> json) => SearchResult(
       documentId: json['documentId'] as String? ?? '',
       spaceId: json['spaceId'] as String? ?? '',
       spaceName: json['spaceName'] as String? ?? '',
@@ -25,10 +24,8 @@ class SearchResult {
       snippet: json['snippet'] as String? ?? '',
       score: (json['score'] as num?)?.toDouble() ?? 0.0,
     );
-  }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'documentId': documentId,
       'spaceId': spaceId,
       'spaceName': spaceName,
@@ -36,7 +33,6 @@ class SearchResult {
       'snippet': snippet,
       'score': score,
     };
-  }
 
   @override
   bool operator ==(Object other) {
@@ -73,8 +69,7 @@ class SearchResponse {
     required this.took,
   });
 
-  factory SearchResponse.fromJson(Map<String, dynamic> json) {
-    return SearchResponse(
+  factory SearchResponse.fromJson(Map<String, dynamic> json) => SearchResponse(
       results: (json['results'] as List<dynamic>?)
               ?.map((r) => SearchResult.fromJson(r as Map<String, dynamic>))
               .toList() ??
@@ -82,15 +77,12 @@ class SearchResponse {
       total: json['total'] as int? ?? 0,
       took: json['took'] as int? ?? 0,
     );
-  }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'results': results.map((r) => r.toJson()).toList(),
       'total': total,
       'took': took,
     };
-  }
 }
 
 /// Search parameters for querying

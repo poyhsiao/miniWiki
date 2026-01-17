@@ -1,5 +1,4 @@
 use crate::models::{CreateDocumentRequest, UpdateDocumentRequest, CreateVersionRequest};
-use validator::Validate;
 use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]

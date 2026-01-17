@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/space_provider.dart';
 
@@ -10,6 +10,12 @@ class SpaceSettingsPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<SpaceSettingsPage> createState() => _SpaceSettingsPageState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+  }
 }
 
 class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
@@ -46,8 +52,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
+  Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(
         title: const Text('Space Settings'),
       ),
@@ -157,7 +162,6 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
         ),
       ),
     );
-  }
 
   void _showDeleteConfirmation(BuildContext context) {
     showDialog(

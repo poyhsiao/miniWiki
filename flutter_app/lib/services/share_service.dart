@@ -43,34 +43,24 @@ class ShareService {
   }
 
   /// Get all share links for a document.
-  Future<List<ShareLink>> getShareLinks(String documentId) {
-    return _repository.getShareLinks(documentId);
-  }
+  Future<List<ShareLink>> getShareLinks(String documentId) => _repository.getShareLinks(documentId);
 
   /// Delete a share link.
-  Future<void> deleteShareLink(String documentId, String token) {
-    return _repository.deleteShareLink(documentId, token);
-  }
+  Future<void> deleteShareLink(String documentId, String token) => _repository.deleteShareLink(documentId, token);
 
   /// Copy a share link to clipboard.
   ///
   /// Returns true if successful.
-  Future<bool> copyShareLink(ShareLink shareLink) {
-    return _repository.copyShareLinkToClipboard(shareLink, _baseUrl);
-  }
+  Future<bool> copyShareLink(ShareLink shareLink) => _repository.copyShareLinkToClipboard(shareLink, _baseUrl);
 
   /// Get a share link by token (for public access).
-  Future<ShareLink?> getShareLinkByToken(String token) {
-    return _repository.getShareLinkByToken(token);
-  }
+  Future<ShareLink?> getShareLinkByToken(String token) => _repository.getShareLinkByToken(token);
 
   /// Verify access code for a protected share link.
   Future<ShareLinkVerification> verifyAccessCode(
     String token,
     String accessCode,
-  ) {
-    return _repository.verifyAccessCode(token, accessCode);
-  }
+  ) => _repository.verifyAccessCode(token, accessCode);
 
   /// Format expiration date for display.
   String formatExpiration(DateTime? expiresAt) {

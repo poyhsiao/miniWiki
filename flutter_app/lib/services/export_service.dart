@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/core/network/network_error.dart' as ne;
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Export format enumeration
 enum ExportFormat {
@@ -69,30 +71,26 @@ class ExportResult {
     this.localFilePath,
   });
 
-  factory ExportResult.fromJson(Map<String, dynamic> json) {
-    return ExportResult(
-      documentId: json['document_id'] as String,
-      format: ExportFormat.fromString(json['format'] as String) ??
-          ExportFormat.json,
-      fileName: json['file_name'] as String,
-      fileSize: json['file_size'] as int,
-      contentType: json['content_type'] as String,
-      exportedAt: DateTime.parse(json['exported_at'] as String),
-      localFilePath: json['local_file_path'] as String?,
-    );
-  }
+  factory ExportResult.fromJson(Map<String, dynamic> json) => ExportResult(
+        documentId: json['document_id'] as String,
+        format: ExportFormat.fromString(json['format'] as String) ??
+            ExportFormat.json,
+        fileName: json['file_name'] as String,
+        fileSize: json['file_size'] as int,
+        contentType: json['content_type'] as String,
+        exportedAt: DateTime.parse(json['exported_at'] as String),
+        localFilePath: json['local_file_path'] as String?,
+      );
 
-  Map<String, dynamic> toJson() {
-    return {
-      'document_id': documentId,
-      'format': format.apiValue,
-      'file_name': fileName,
-      'file_size': fileSize,
-      'content_type': contentType,
-      'exported_at': exportedAt.toIso8601String(),
-      'local_file_path': localFilePath,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'document_id': documentId,
+        'format': format.apiValue,
+        'file_name': fileName,
+        'file_size': fileSize,
+        'content_type': contentType,
+        'exported_at': exportedAt.toIso8601String(),
+        'local_file_path': localFilePath,
+      };
 }
 
 /// Export state for provider
@@ -117,15 +115,14 @@ class ExportState {
     String? error,
     double? downloadProgress,
     List<ExportResult>? exportHistory,
-  }) {
-    return ExportState(
-      isExporting: isExporting ?? this.isExporting,
-      lastExport: lastExport ?? this.lastExport,
-      error: error ?? this.error,
-      downloadProgress: downloadProgress ?? this.downloadProgress,
-      exportHistory: exportHistory ?? this.exportHistory,
-    );
-  }
+  }) =>
+      ExportState(
+        isExporting: isExporting ?? this.isExporting,
+        lastExport: lastExport ?? this.lastExport,
+        error: error ?? this.error,
+        downloadProgress: downloadProgress ?? this.downloadProgress,
+        exportHistory: exportHistory ?? this.exportHistory,
+      );
 }
 
 /// Service for document export operations
@@ -180,7 +177,7 @@ class ExportService {
 
     // Get content-disposition header for filename
     final contentDisposition = response.headers.value('content-disposition');
-    String fileName = 'document_$documentId${format.extension}';
+    var fileName = 'document_$documentId${format.extension}';
     if (contentDisposition != null) {
       final match =
           RegExp(r'filename="?([^";\n]+)"?').firstMatch(contentDisposition);
@@ -240,7 +237,6 @@ class ExportService {
     final result = await exportDocument(
       documentId: documentId,
       format: format,
-      downloadToDevice: true,
     );
 
     if (result.localFilePath == null) {
@@ -270,7 +266,7 @@ class ExportService {
 
     // Create export directory if it doesn't exist
     if (!exportDir.existsSync()) {
-      exportDir.create(recursive: true);
+      await exportDir.create(recursive: true);
     }
 
     // Create file path
@@ -280,7 +276,26 @@ class ExportService {
     final file = File(filePath);
     await file.writeAsBytes(bytes);
 
+    // Save filename mapping for future lookups
+    await _saveFilenameMapping(documentId, fileName, format);
+
     return filePath;
+  }
+
+  /// Save filename mapping to SharedPreferences
+  Future<void> _saveFilenameMapping(
+      String documentId, String fileName, ExportFormat format) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        'export_filename_${documentId}_${format.name}', fileName);
+  }
+
+  /// Get saved filename from mapping, fallback to default pattern
+  Future<String> _getFilename(String documentId, ExportFormat format) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedFilename =
+        prefs.getString('export_filename_${documentId}_${format.name}');
+    return savedFilename ?? 'document_$documentId${format.extension}';
   }
 
   /// Get export history for a document
@@ -310,9 +325,9 @@ class ExportService {
       return false;
     }
 
-    final filePath =
-        '${exportDir.path}/document_${documentId}${format.extension}';
-    return File(filePath).exists();
+    final fileName = await _getFilename(documentId, format);
+    final filePath = '${exportDir.path}/$fileName';
+    return await File(filePath).exists();
   }
 
   /// Delete local export file
@@ -321,11 +336,14 @@ class ExportService {
     final exportDir = Directory('${directory.path}/exports');
 
     if (exportDir.existsSync()) {
-      final filePath =
-          '${exportDir.path}/document_${documentId}${format.extension}';
+      final fileName = await _getFilename(documentId, format);
+      final filePath = '${exportDir.path}/$fileName';
       final file = File(filePath);
       if (file.existsSync()) {
         file.deleteSync();
+        // Clear the filename mapping
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('export_filename_${documentId}_${format.name}');
       }
     }
   }
@@ -344,13 +362,12 @@ class ExportService {
       await exportDocument(
         documentId: documentId,
         format: format,
-        downloadToDevice: true,
       );
     }
 
     final directory = await getApplicationDocumentsDirectory();
-    final filePath =
-        '${directory.path}/exports/document_${documentId}${format.extension}';
+    final fileName = await _getFilename(documentId, format);
+    final filePath = '${directory.path}/exports/$fileName';
     final file = File(filePath);
 
     if (file.existsSync()) {
@@ -392,12 +409,9 @@ extension ExportUtils on ExportFormat {
   }
 
   /// Check if this format supports offline viewing
-  bool get supportsOfflineViewing {
-    return this != ExportFormat.json;
-  }
+  bool get supportsOfflineViewing => this != ExportFormat.json;
 
   /// Check if this format is editable in external apps
-  bool get isEditable {
-    return this == ExportFormat.markdown || this == ExportFormat.html;
-  }
+  bool get isEditable =>
+      this == ExportFormat.markdown || this == ExportFormat.html;
 }

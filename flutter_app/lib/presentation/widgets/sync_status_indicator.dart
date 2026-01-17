@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/presentation/providers/sync_provider.dart';
 import 'package:miniwiki/services/sync_service.dart' as ss;
@@ -17,6 +17,14 @@ class _RotatingIcon extends StatefulWidget {
 
   @override
   State<_RotatingIcon> createState() => _RotatingIconState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<IconData>('icon', icon));
+    properties.add(DoubleProperty('size', size));
+    properties.add(ColorProperty('color', color));
+  }
 }
 
 class _RotatingIconState extends State<_RotatingIcon>
@@ -39,18 +47,14 @@ class _RotatingIconState extends State<_RotatingIcon>
   }
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
+  Widget build(BuildContext context) => AnimatedBuilder(
       animation: _controller,
-      builder: (context, child) {
-        return Transform.rotate(
+      builder: (context, child) => Transform.rotate(
           angle: _controller.value * 2 * 3.14159,
           child: child,
-        );
-      },
+        ),
       child: Icon(widget.icon, size: widget.size, color: widget.color),
     );
-  }
 }
 
 /// Sync status indicator widget
@@ -150,7 +154,7 @@ class SyncStatusIndicator extends ConsumerWidget {
   }
 
   Widget _buildStatusText(BuildContext context, SyncState syncState) {
-    var textStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+    final textStyle = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
 
     String statusText;
     Color? statusColor;
@@ -336,7 +340,7 @@ class SyncStatusBanner extends ConsumerWidget {
     final (icon, color, message) = _getBannerContent(syncState);
 
     return Material(
-      color: color.withOpacity(0.1),
+      color: color.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -359,7 +363,7 @@ class SyncStatusBanner extends ConsumerWidget {
                     Text(
                       syncState.lastError!,
                       style: TextStyle(
-                        color: color.withOpacity(0.8),
+                        color: color.withValues(alpha: 0.8),
                         fontSize: 12,
                       ),
                       maxLines: 2,

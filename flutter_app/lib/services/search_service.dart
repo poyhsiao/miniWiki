@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/core/network/api_client.dart';
-import '../../data/repositories/search_repository_impl.dart';
-import '../../domain/entities/search_result.dart';
-import '../../domain/repositories/search_repository.dart';
+import 'package:miniwiki/data/repositories/search_repository_impl.dart';
+import 'package:miniwiki/domain/entities/search_result.dart';
+import 'package:miniwiki/domain/repositories/search_repository.dart';
 
 /// Search service exception
 class SearchException implements Exception {
@@ -13,9 +13,7 @@ class SearchException implements Exception {
 
   SearchException(this.message, [this.statusCode]);
 
-  factory SearchException.apiError(int statusCode, String message) {
-    return SearchException('API error $statusCode: $message', statusCode);
-  }
+  factory SearchException.apiError(int statusCode, String message) => SearchException('API error $statusCode: $message', statusCode);
 
   @override
   String toString() => message;
@@ -98,7 +96,7 @@ class SearchService {
     );
 
     final spans = <TextSpan>[];
-    int lastEnd = 0;
+    var lastEnd = 0;
 
     for (final match in regex.allMatches(text)) {
       // Add text before the match

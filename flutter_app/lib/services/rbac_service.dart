@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:miniwiki/domain/entities/space_membership.dart';
-import 'package:miniwiki/domain/value_objects/role.dart';
 import 'package:miniwiki/domain/repositories/space_repository.dart';
+import 'package:miniwiki/domain/value_objects/role.dart';
 
 class RbacService {
   final SpaceRepository spaceRepository;
@@ -13,9 +13,7 @@ class RbacService {
     return memberships.firstWhereOrNull((m) => m.userId == userId);
   }
 
-  Role _parseRole(String roleString) {
-    return Role.fromString(roleString) ?? Role.viewer;
-  }
+  Role _parseRole(String roleString) => Role.fromString(roleString) ?? Role.viewer;
 
   Future<bool> canAccessSpace(String spaceId, String userId) async {
     if (spaceId.isEmpty) {
@@ -176,45 +174,27 @@ class RbacService {
     return roles.reduce((a, b) => a.level > b.level ? a : b);
   }
 
-  static bool canManageUser(Role managerRole, Role targetRole) {
-    return managerRole.level > targetRole.level;
-  }
+  static bool canManageUser(Role managerRole, Role targetRole) => managerRole.level > targetRole.level;
 
-  static Set<Role> getAssignableRoles(Role assignerRole) {
-    return Role.values.where((role) {
-      return assignerRole.canAssignRole(role);
-    }).toSet();
-  }
+  static Set<Role> getAssignableRoles(Role assignerRole) => Role.values.where((role) => assignerRole.canAssignRole(role)).toSet();
 
-  Future<bool> canDeleteSpace(String spaceId, String userId) async {
-    return hasPermissionForSpace(spaceId, userId, Permission.deleteSpace);
-  }
+  Future<bool> canDeleteSpace(String spaceId, String userId) async => hasPermissionForSpace(spaceId, userId, Permission.deleteSpace);
 
-  Future<bool> canManageMembers(String spaceId, String userId) async {
-    return hasPermissionForSpace(spaceId, userId, Permission.manageMembers);
-  }
+  Future<bool> canManageMembers(String spaceId, String userId) async => hasPermissionForSpace(spaceId, userId, Permission.manageMembers);
 
   Future<bool> canEditDocument(
     String spaceId,
     String documentId,
     String userId,
-  ) async {
-    return hasPermissionForSpace(spaceId, userId, Permission.editDocuments);
-  }
+  ) async => hasPermissionForSpace(spaceId, userId, Permission.editDocuments);
 
   Future<bool> canDeleteDocument(
     String spaceId,
     String documentId,
     String userId,
-  ) async {
-    return hasPermissionForSpace(spaceId, userId, Permission.deleteDocuments);
-  }
+  ) async => hasPermissionForSpace(spaceId, userId, Permission.deleteDocuments);
 
-  Future<bool> canComment(String spaceId, String userId) async {
-    return hasPermissionForSpace(spaceId, userId, Permission.comment);
-  }
+  Future<bool> canComment(String spaceId, String userId) async => hasPermissionForSpace(spaceId, userId, Permission.comment);
 
-  Future<bool> canShare(String spaceId, String userId) async {
-    return hasPermissionForSpace(spaceId, userId, Permission.share);
-  }
+  Future<bool> canShare(String spaceId, String userId) async => hasPermissionForSpace(spaceId, userId, Permission.share);
 }

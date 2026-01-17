@@ -2,8 +2,8 @@
 // Uses SharedPreferences for Web-compatible local storage
 
 import 'dart:async';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
 
 /// Offline service state
@@ -143,9 +143,8 @@ class OfflineService {
   }
 
   /// Get all pending queue items
-  List<Map<String, dynamic>> getPendingItems() {
-    return _syncDatasource.getPendingItems();
-  }
+  List<Map<String, dynamic>> getPendingItems() =>
+      _syncDatasource.getPendingItems();
 
   /// Mark queue item as synced
   Future<void> markQueueItemSynced(String entityType, String entityId) async {
@@ -166,9 +165,8 @@ class OfflineService {
   }
 
   /// Get failed queue items
-  List<Map<String, dynamic>> getFailedItems() {
-    return _syncDatasource.getFailedItems();
-  }
+  List<Map<String, dynamic>> getFailedItems() =>
+      _syncDatasource.getFailedItems();
 
   /// Retry failed items
   Future<void> retryFailedItems() async {
@@ -195,9 +193,7 @@ class OfflineService {
   }
 
   /// Get queue size
-  int getQueueSize() {
-    return _syncDatasource.getQueueSize();
-  }
+  int getQueueSize() => _syncDatasource.getQueueSize();
 
   /// Cache a document for offline access
   Future<void> cacheDocument({
@@ -209,9 +205,8 @@ class OfflineService {
   }
 
   /// Get cached document
-  Map<String, dynamic>? getCachedDocument(String documentId) {
-    return _syncDatasource.getCachedDocument(documentId);
-  }
+  Map<String, dynamic>? getCachedDocument(String documentId) =>
+      _syncDatasource.getCachedDocument(documentId);
 
   /// Remove cached document
   Future<void> removeCachedDocument(String documentId) async {
@@ -220,14 +215,12 @@ class OfflineService {
   }
 
   /// Get all cached document IDs
-  List<String> getAllCachedDocumentIds() {
-    return _syncDatasource.getCachedDocIds();
-  }
+  List<String> getAllCachedDocumentIds() => _syncDatasource.getCachedDocIds();
 
   /// Get cache size in bytes (approximate based on serialized JSON sizes)
   int getCacheSize() {
     final docIds = _syncDatasource.getCachedDocIds();
-    int totalSize = 0;
+    var totalSize = 0;
     for (final docId in docIds) {
       final content = _syncDatasource.getCachedContent(docId);
       totalSize += content?.length ?? 0;
@@ -257,6 +250,7 @@ class OfflineService {
   }
 
   /// Set syncing status
+  // ignore: avoid_positional_boolean_parameters
   void setSyncing(bool isSyncing) {
     _state = _state.copyWith(isSyncing: isSyncing);
     _stateController.add(_state);

@@ -82,8 +82,7 @@ class UserEntity {
     Object? lastLoginAt = _sentinel,
     Object? createdAt = _sentinel,
     Object? updatedAt = _sentinel,
-  }) {
-    return UserEntity(
+  }) => UserEntity(
       uuid: uuid ?? this.uuid,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
@@ -103,7 +102,6 @@ class UserEntity {
       updatedAt:
           updatedAt == _sentinel ? this.updatedAt : updatedAt as DateTime?,
     )..id = id ?? this.id;
-  }
 
   @override
   bool operator ==(Object other) {

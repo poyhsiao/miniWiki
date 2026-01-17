@@ -1,0 +1,55 @@
+name: Flutter Analysis
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.38.6'
+        channel: 'stable'
+    
+    - name: Verify Flutter version meets minimum requirement
+      working-directory: ./flutter_app
+      run: |
+        MINIMUM_VERSION="3.27.0"
+        CURRENT_VERSION=$(flutter --version | head -n1 | sed 's/Flutter //' | sed 's/.*git\///' | awk '{print $1}')
+        # Extract version numbers for comparison
+        CURRENT_MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+        CURRENT_MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+        MIN_MAJOR=$(echo $MINIMUM_VERSION | cut -d. -f1)
+        MIN_MINOR=$(echo $MINIMUM_VERSION | cut -d. -f2)
+        if [ "$CURRENT_MAJOR" -lt "$MIN_MAJOR" ] || ([ "$CURRENT_MAJOR" -eq "$MIN_MAJOR" ] && [ "$CURRENT_MINOR" -lt "$MIN_MINOR" ]); then
+          echo "Flutter version $CURRENT_VERSION is below minimum required $MINIMUM_VERSION"
+          exit 1
+        fi
+        echo "Flutter version $CURRENT_VERSION meets minimum requirement of $MINIMUM_VERSION"
+    
+    - name: Install dependencies
+      working-directory: ./flutter_app
+      run: flutter pub get
+    
+    - name: Run flutter analyze and upload analysis output
+      working-directory: ./flutter_app
+      run: |
+        mkdir -p analysis-output
+        flutter analyze --write analysis-output/analysis_report.txt
+      continue-on-error: true
+    
+    - name: Upload analysis report as artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: flutter-analysis-report
+        path: flutter_app/analysis-output/
+        retention-days: 7

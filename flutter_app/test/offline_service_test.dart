@@ -4,8 +4,9 @@
 
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:flutter_test/flutter_test.dart';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 // Offline queue item for testing
 class OfflineQueueItem {
@@ -404,7 +405,7 @@ void main() {
         id: 'test-1',
         documentId: 'doc-1',
         data: {'operation': 'update'},
-        queuedAt: DateTime(2024, 1),
+        queuedAt: DateTime(2024),
       );
 
       expect(item.id, 'test-1');

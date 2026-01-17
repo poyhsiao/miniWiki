@@ -1,0 +1,4 @@
+reviews:
+  tools:
+    markdownlint:
+      enabled: false

@@ -5,8 +5,6 @@
 //!
 //! Run with: cargo test -p miniwiki-backend-tests sync::sync_test
 
-use actix_web::web;
-use chrono::Utc;
 use futures_util::future::join_all;
 use uuid::Uuid;
 use crate::helpers::TestApp;
@@ -105,7 +103,7 @@ async fn test_post_sync_update_invalid_format() {
 #[tokio::test]
 async fn test_get_sync_status_success() {
     let app = TestApp::create().await;
-    let user = app.create_test_user().await;
+    let _user = app.create_test_user().await;
 
     let response = app
         .get("/api/v1/sync/offline/status")
@@ -125,7 +123,7 @@ async fn test_get_sync_status_success() {
 #[tokio::test]
 async fn test_post_full_sync_trigger() {
     let app = TestApp::create().await;
-    let user = app.create_test_user().await;
+    let _user = app.create_test_user().await;
 
     let response = app
         .post("/api/v1/sync/offline/sync")

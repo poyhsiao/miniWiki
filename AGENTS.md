@@ -22,7 +22,7 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 
 # PR #367 Code Review Fixes Checklist
 
-## Status: IN PROGRESS
+## Status: COMPLETED
 ## Started: 2026-01-15
 
 ### Resolved Issues (✅)
@@ -57,9 +57,18 @@ Keep this managed block so 'openspec update' can refresh the instructions.
 - [x] Close button handler in Flutter (uses removeUpload)
 - [x] upload_url set to None for chunked uploads
 - [x] Backend build artifacts removed from git
+- [x] CSRF token consumption timing fix (commit 2026-01-17)
+  - [x] Token generated AFTER downstream service call (not before)
+  - [x] Fresh token always issued on successful state-changing requests
+  - [x] Errors from downstream are propagated correctly
+  - [x] Fixed ownership/borrow checker issues in middleware
+- [x] Flutter version requirement updated to 3.27+ (2026-01-17)
+  - [x] README.md updated (Tech Stack and Prerequisites sections)
+  - [x] .github/workflows/flutter-analysis.yml added version verification step
+- [x] Fixed PERFORMANCE_GUIDE.md UI Performance URL (2026-01-17)
 
 ### Unresolved Issues (❌)
-- [ ] Mark all review threads as resolved
+- [x] Mark all review threads as resolved (PR #367 is merged; all review comments addressed)
 
 ### Files Modified
 - backend/services/file_service/src/handlers.rs

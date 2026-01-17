@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/share_link.dart';
@@ -65,6 +66,13 @@ class ShareLinkDialog extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<ShareLinkDialog> createState() => _ShareLinkDialogState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(StringProperty('documentTitle', documentTitle));
+  }
 }
 
 class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
@@ -97,7 +105,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                border: Border(
+                border: BorderDirectional(
                   bottom: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
@@ -138,7 +146,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                border: Border(
+                border: BorderDirectional(
                   bottom: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
@@ -232,8 +240,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
               const Spacer(),
               Switch(
                 value: createState.requireAccessCode,
-                onChanged: (value) =>
-                    createNotifier.setRequireAccessCode(value),
+                onChanged: createNotifier.setRequireAccessCode,
               ),
             ],
           ),
@@ -245,7 +252,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                 border: OutlineInputBorder(),
               ),
               obscureText: true,
-              onChanged: (value) => createNotifier.setAccessCode(value),
+              onChanged: createNotifier.setAccessCode,
             ),
           ],
           const SizedBox(height: 20),
@@ -259,12 +266,10 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
               const Spacer(),
               DropdownButton<ExpirationOption>(
                 value: _expirationOption,
-                items: ExpirationOption.values.map((option) {
-                  return DropdownMenuItem(
+                items: ExpirationOption.values.map((option) => DropdownMenuItem(
                     value: option,
                     child: Text(option.label),
-                  );
-                }).toList(),
+                  )).toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
@@ -358,7 +363,8 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                           onPressed: () async {
                             final success = await shareService
                                 .copyShareLink(createState.createdLink!);
-                            if (success && mounted) {
+                            if (!context.mounted) return;
+                            if (success) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content: Text('Link copied to clipboard')),
@@ -379,7 +385,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
             child: FilledButton.icon(
               onPressed: createState.isCreating
                   ? null
-                  : () => createNotifier.createShareLink(),
+                  : createNotifier.createShareLink,
               icon: createState.isCreating
                   ? const SizedBox(
                       width: 16,
@@ -458,7 +464,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
         ref.read(shareLinksNotifierProvider(widget.documentId).notifier);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsetsDirectional.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -525,7 +531,8 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                     icon: const Icon(Icons.copy, size: 18),
                     onPressed: () async {
                       final success = await linksNotifier.copyShareLink(link);
-                      if (success && mounted) {
+                      if (!context.mounted) return;
+                      if (success) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                               content: Text('Link copied to clipboard')),
@@ -581,7 +588,8 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                         title: const Text('Delete Share Link'),
                         content: const Text(
                           'Are you sure you want to delete this share link? '
-                          'Anyone with the link will no longer be able to access the document.',
+                          'Anyone with the link will no longer be able to '
+                          'access the document.',
                         ),
                         actions: [
                           TextButton(
@@ -599,30 +607,30 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                       ),
                     );
 
-                    if (confirmed == true) {
-                      final success =
-                          await linksNotifier.deleteShareLink(link.token);
-                      if (success) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Share link deleted successfully'),
-                            ),
-                          );
-                        }
-                      } else {
-                        if (mounted) {
-                          final linksState = ref.read(
-                              shareLinksNotifierProvider(widget.documentId));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Failed to delete share link: ${linksState.error ?? "Unknown error"}'),
-                              backgroundColor: colorScheme.error,
-                            ),
-                          );
-                        }
-                      }
+                    if (!(confirmed ?? false)) return;
+
+                    final success =
+                        await linksNotifier.deleteShareLink(link.token);
+
+                    if (!context.mounted) return;
+
+                    if (success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Share link deleted successfully'),
+                        ),
+                      );
+                    } else {
+                      final linksState = ref.read(
+                          shareLinksNotifierProvider(widget.documentId));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              'Failed to delete share link: '
+                              '${linksState.error ?? "Unknown error"}'),
+                          backgroundColor: colorScheme.error,
+                        ),
+                      );
                     }
                   },
                   icon: const Icon(Icons.delete, size: 18),

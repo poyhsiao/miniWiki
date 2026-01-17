@@ -1,9 +1,9 @@
-import 'package:riverpod/riverpod.dart';
+import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/domain/entities/document.dart';
 import 'package:miniwiki/domain/repositories/document_repository.dart';
 import 'package:miniwiki/services/document_service.dart';
 import 'package:miniwiki/services/sync_service.dart';
-import 'package:miniwiki/core/config/providers.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// State for the document list
 class DocumentListState {
@@ -43,6 +43,11 @@ class DocumentListState {
   bool get hasMore => documents.length < total;
 }
 
+/// Sentinel value for copyWith to distinguish between null and not provided
+class _Unchanged {
+  const _Unchanged();
+}
+
 /// State for the current document being edited
 class DocumentEditState {
   final Document? document;
@@ -71,7 +76,7 @@ class DocumentEditState {
     bool? isLoading,
     bool? isSaving,
     bool? hasUnsavedChanges,
-    Object? error,
+    Object? error = const _Unchanged(),
     List<DocumentVersion>? versions,
     int? selectedVersion,
   }) =>
@@ -81,9 +86,11 @@ class DocumentEditState {
         isLoading: isLoading ?? this.isLoading,
         isSaving: isSaving ?? this.isSaving,
         hasUnsavedChanges: hasUnsavedChanges ?? this.hasUnsavedChanges,
-        error: error == null
-            ? null
-            : (error is String ? error as String : this.error),
+        error: identical(error, const _Unchanged())
+            ? this.error
+            : (error == null
+                ? null
+                : (error is String ? error : error.toString())),
         versions: versions ?? this.versions,
         selectedVersion: selectedVersion ?? this.selectedVersion,
       );

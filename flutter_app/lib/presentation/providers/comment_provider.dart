@@ -1,7 +1,7 @@
-import 'package:riverpod/riverpod.dart';
+import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/domain/entities/comment.dart';
 import 'package:miniwiki/services/comment_service.dart';
-import 'package:miniwiki/core/config/providers.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// State for the comment list
 class CommentListState {
@@ -84,7 +84,15 @@ class CommentListNotifier extends StateNotifier<CommentListState> {
       : super(CommentListState(documentId: documentId));
 
   Future<void> loadComments({String? parentId, int limit = 50}) async {
-    state = state.copyWith(isLoading: true, error: null, parentId: parentId);
+    // Construct new state explicitly to clear previous error on new load
+    state = CommentListState(
+      documentId: documentId,
+      isLoading: true,
+      parentId: parentId,
+      comments: state.comments,
+      total: state.total,
+      error: null,
+    );
 
     try {
       final result = await _service.listComments(

@@ -1,10 +1,11 @@
 import 'dart:io';
+
 import 'package:dio/dio.dart';
-import 'package:riverpod/riverpod.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/core/network/network_error.dart' as ne;
 import 'package:miniwiki/domain/entities/file.dart';
 import 'package:miniwiki/domain/repositories/file_repository.dart';
+import 'package:riverpod/riverpod.dart';
 
 /// Implementation of FileRepository
 class FileRepositoryImpl implements FileRepository {
@@ -37,7 +38,7 @@ class FileRepositoryImpl implements FileRepository {
       'file_name': fileName,
     });
 
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/upload',
       data: formData,
       onSendProgress: (count, total) {
@@ -64,7 +65,7 @@ class FileRepositoryImpl implements FileRepository {
     required String contentType,
     required int contentLength,
   }) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/upload/presigned-url',
       data: {
         'space_id': spaceId,
@@ -90,7 +91,7 @@ class FileRepositoryImpl implements FileRepository {
     required String savePath,
     void Function(double)? onProgress,
   }) async {
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<List<int>>(
       '$baseUrl/api/v1/files/$fileId/download',
       options: Options(responseType: ResponseType.bytes),
       onReceiveProgress: (count, total) {
@@ -114,7 +115,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<String> getPresignedDownloadUrl(String fileId) async {
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/$fileId/download/presigned-url',
     );
 
@@ -130,7 +131,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<FileEntity> getFile(String fileId) async {
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/$fileId',
     );
 
@@ -165,7 +166,7 @@ class FileRepositoryImpl implements FileRepository {
       queryParams['document_id'] = documentId;
     }
 
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/spaces/$spaceId/files',
       queryParameters: queryParams,
     );
@@ -186,7 +187,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<void> deleteFile(String fileId) async {
-    final response = await apiClient.dio.delete(
+    final response = await apiClient.dio.delete<dynamic>(
       '$baseUrl/api/v1/files/$fileId',
     );
 
@@ -200,7 +201,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<FileEntity> restoreFile(String fileId) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/$fileId/restore',
     );
 
@@ -216,7 +217,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<void> permanentDeleteFile(String fileId) async {
-    final response = await apiClient.dio.delete(
+    final response = await apiClient.dio.delete<dynamic>(
       '$baseUrl/api/v1/files/$fileId/permanent-delete',
     );
 
@@ -236,7 +237,7 @@ class FileRepositoryImpl implements FileRepository {
     required int totalSize,
     int chunkSize = 5 * 1024 * 1024,
   }) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/upload/chunked/init',
       data: {
         'space_id': spaceId,
@@ -263,7 +264,7 @@ class FileRepositoryImpl implements FileRepository {
     required int chunkNumber,
     required List<int> chunkData,
   }) async {
-    final response = await apiClient.dio.put(
+    final response = await apiClient.dio.put<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/upload/chunked/$uploadId',
       data: chunkData,
       options: Options(
@@ -289,7 +290,7 @@ class FileRepositoryImpl implements FileRepository {
     required List<ChunkInfo> chunks,
     String? checksum,
   }) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/upload/chunked/$uploadId',
       data: {
         'chunks': chunks.map((e) => e.toJson()).toList(),
@@ -309,7 +310,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<void> cancelChunkedUpload(String uploadId) async {
-    final response = await apiClient.dio.delete(
+    final response = await apiClient.dio.delete<dynamic>(
       '$baseUrl/api/v1/files/upload/chunked/$uploadId',
     );
 
@@ -323,7 +324,7 @@ class FileRepositoryImpl implements FileRepository {
 
   @override
   Future<BulkDeleteResult> bulkDeleteFiles(List<String> fileIds) async {
-    final response = await apiClient.dio.post(
+    final response = await apiClient.dio.post<Map<String, dynamic>>(
       '$baseUrl/api/v1/files/bulk/delete',
       data: {'file_ids': fileIds},
     );

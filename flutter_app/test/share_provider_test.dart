@@ -9,7 +9,7 @@ import 'package:miniwiki/presentation/providers/share_provider.dart';
 void main() {
   group('ShareLinksState - copyWith', () {
     test('copyWith can explicitly clear error field', () {
-      final state = ShareLinksState(
+      const state = ShareLinksState(
         documentId: 'doc-id',
         error: 'Some error',
       );
@@ -20,7 +20,7 @@ void main() {
     });
 
     test('copyWith preserves error when not specified', () {
-      final state = ShareLinksState(
+      const state = ShareLinksState(
         documentId: 'doc-id',
         error: 'Some error',
       );
@@ -31,7 +31,7 @@ void main() {
     });
 
     test('copyWith can set new error', () {
-      final state = ShareLinksState(
+      const state = ShareLinksState(
         documentId: 'doc-id',
       );
 
@@ -43,7 +43,7 @@ void main() {
 
   group('ShareLinkCreateState - copyWith', () {
     test('copyWith can explicitly clear error field', () {
-      final state = ShareLinkCreateState(
+      const state = ShareLinkCreateState(
         error: 'Some error',
       );
 
@@ -86,7 +86,7 @@ void main() {
     });
 
     test('copyWith can explicitly clear maxAccessCount field', () {
-      final state = ShareLinkCreateState(
+      const state = ShareLinkCreateState(
         maxAccessCount: 10,
       );
 

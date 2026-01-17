@@ -76,8 +76,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Builder(
-                      builder: (context) {
-                        return Stepper(
+                      builder: (context) => Stepper(
                           currentStep: _currentStep,
                           steps: [
                             Step(
@@ -89,8 +88,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                               content: _buildPasswordStep(context),
                             ),
                           ],
-                        );
-                      },
+                        ),
                     ),
                   ],
                 ),

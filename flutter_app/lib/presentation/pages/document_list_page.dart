@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:miniwiki/domain/entities/document.dart';
-import 'package:miniwiki/presentation/providers/document_provider.dart';
-import 'package:miniwiki/presentation/pages/document_editor_page.dart';
 import 'package:intl/intl.dart';
+import 'package:miniwiki/domain/entities/document.dart';
+import 'package:miniwiki/presentation/pages/document_editor_page.dart';
+import 'package:miniwiki/presentation/providers/document_provider.dart';
 
 class DocumentListPage extends ConsumerStatefulWidget {
   final String spaceId;
@@ -91,7 +91,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
 
   Widget _buildBreadcrumb(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        color: Theme.of(context).colorScheme.surfaceVariant,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
         child: Row(
           children: [
             const Icon(Icons.folder, size: 16),
@@ -185,7 +185,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
   }
 
   void _showSearchBottomSheet(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       builder: (context) => Padding(
         padding: EdgeInsets.only(
@@ -217,7 +217,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
   Future<void> _createNewDocument(BuildContext context) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<bool>(
         builder: (context) => DocumentEditorPage(
           spaceId: widget.spaceId,
           parentId: _parentId,
@@ -225,15 +225,15 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
       ),
     );
 
-    if (result == true) {
-      ref.read(documentListProvider(widget.spaceId).notifier).refresh();
+    if (result ?? false) {
+      await ref.read(documentListProvider(widget.spaceId).notifier).refresh();
     }
   }
 
   Future<void> _openDocument(BuildContext context, Document document) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<bool>(
         builder: (context) => DocumentEditorPage(
           spaceId: widget.spaceId,
           documentId: document.id,
@@ -241,8 +241,8 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
       ),
     );
 
-    if (result == true) {
-      ref.read(documentListProvider(widget.spaceId).notifier).refresh();
+    if (result ?? false) {
+      await ref.read(documentListProvider(widget.spaceId).notifier).refresh();
     }
   }
 
@@ -269,7 +269,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
       try {
         await ref.read(documentEditProvider.notifier).loadDocument(document.id);
         await ref.read(documentEditProvider.notifier).deleteDocument();
-        ref.read(documentListProvider(widget.spaceId).notifier).refresh();
+        await ref.read(documentListProvider(widget.spaceId).notifier).refresh();
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

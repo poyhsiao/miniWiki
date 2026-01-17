@@ -5,9 +5,7 @@
 //!
 //! Run with: cargo test -p miniwiki-backend-tests documents::integration
 
-use crate::helpers::{TestApp, TestUser, TestSpace, TestDocument};
-use document_service::models::{CreateDocumentRequest, UpdateDocumentRequest};
-use uuid::Uuid;
+use crate::helpers::TestApp;
 
 #[tokio::test]
 async fn test_t095_document_crud_with_postgresql() {
@@ -421,7 +419,7 @@ async fn test_document_pagination_integration() {
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
 
-    for i in 0..15 {
+    for _ in 0..15 {
         app.create_test_document(&space.id, None).await;
     }
 

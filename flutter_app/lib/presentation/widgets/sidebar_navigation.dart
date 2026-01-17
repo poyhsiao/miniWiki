@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/domain/entities/space.dart';
 import 'package:miniwiki/presentation/providers/space_provider.dart';
@@ -305,7 +305,7 @@ class _SpaceItemState extends State<_SpaceItem> {
       children: [
         Material(
           color: widget.isSelected
-              ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
               : Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
@@ -425,7 +425,7 @@ class _DocumentTreeItem extends StatelessWidget {
 
     return Material(
       color: isSelected
-          ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
           : Colors.transparent,
       child: InkWell(
         onTap: onTap,

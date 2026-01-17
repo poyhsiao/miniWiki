@@ -46,7 +46,7 @@ impl SpaceRepository {
     ) -> Result<Space, sqlx::Error> {
         let id = Uuid::new_v4();
         let now = chrono::Utc::now().naive_utc();
-        
+
         let space = sqlx::query_as!(
             Space,
             r#"
@@ -65,7 +65,7 @@ impl SpaceRepository {
         )
         .fetch_one(pool)
         .await?;
-        
+
         sqlx::query!(
             r#"
             INSERT INTO space_memberships (id, space_id, user_id, role, joined_at, invited_by)
@@ -80,7 +80,7 @@ impl SpaceRepository {
         )
         .execute(pool)
         .await?;
-        
+
         Ok(space)
     }
 
@@ -114,7 +114,7 @@ impl SpaceRepository {
         )
         .fetch_one(pool)
         .await?;
-        
+
         Ok(space)
     }
 
@@ -122,27 +122,26 @@ impl SpaceRepository {
         sqlx::query!("DELETE FROM space_memberships WHERE space_id = $1", id)
             .execute(pool)
             .await?;
-        
+
         sqlx::query!("DELETE FROM spaces WHERE id = $1", id)
             .execute(pool)
             .await?;
-        
+
         Ok(())
     }
 
     pub async fn check_membership(pool: &PgPool, space_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Error> {
         let count = sqlx::query_scalar!(
             r#"
-            SELECT COUNT(*) FROM space_memberships
+            SELECT COUNT(*) as "count!" FROM space_memberships
             WHERE space_id = $1 AND user_id = $2
             "#,
             space_id,
             user_id
         )
         .fetch_one(pool)
-        .await?
-        .unwrap_or(0);
-        
+        .await?;
+
         Ok(count > 0)
     }
 
@@ -172,7 +171,7 @@ impl SpaceRepository {
         let user_uuid = Uuid::parse_str(user_id).map_err(|_| sqlx::Error::Decode("Invalid user_id UUID".into()))?;
         let invited_by_uuid = Uuid::parse_str(invited_by).map_err(|_| sqlx::Error::Decode("Invalid invited_by UUID".into()))?;
         let now = chrono::Utc::now().naive_utc();
-        
+
         let membership = sqlx::query_as!(
             SpaceMembership,
             r#"
@@ -189,7 +188,7 @@ impl SpaceRepository {
         )
         .fetch_one(pool)
         .await?;
-        
+
         Ok(membership)
     }
 
@@ -212,7 +211,7 @@ impl SpaceRepository {
         id: Uuid,
         role: &str,
     ) -> Result<SpaceMembership, sqlx::Error> {
-        let membership = sqlx::query_as!(
+        let _membership = sqlx::query_as!(
             SpaceMembership,
             r#"SELECT id, space_id, user_id, role, joined_at, invited_by FROM space_memberships WHERE id = $1"#,
             id
@@ -243,7 +242,7 @@ impl SpaceRepository {
         sqlx::query!("DELETE FROM space_memberships WHERE id = $1", id)
             .execute(pool)
             .await?;
-        
+
         Ok(())
     }
 }

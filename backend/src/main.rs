@@ -1,138 +1,153 @@
-use actix_web::{web, App, HttpServer, Responder};
+use actix_web::{App, HttpServer, middleware as actix_middleware, web};
+use actix_cors::Cors;
 use dotenv::dotenv;
+use tracing::{info, warn, error};
 use std::sync::Arc;
-use tracing::info;
-use tracing_subscriber::{fmt, EnvFilter};
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
-mod routes;
-mod config;
-mod observability;
-mod middleware;
-
-use config::Config;
-use shared_database::connection::init_database;
-use file_service::storage::{S3Storage, S3StorageConfig};
-use observability::RequestMetrics;
-use middleware::SecurityHeaders;
-
-/// Initialize structured logging with JSON formatting for production
-fn init_logging() {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info,actix_web=info,sqlx=warn"));
-
-    // In production, use JSON logging; in development, use pretty printing
-    if std::env::var("RUST_LOG_JSON").is_ok() {
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(tracing_subscriber::fmt::layer()
-                .json()
-                .with_thread_names(true)
-                .with_span_list(true))
-            .init();
-    } else {
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(fmt::layer())
-            .init();
-    }
-
-    info!("Structured logging initialized");
-}
-
-/// Create a detailed health check response including dependency status
-async fn health_check(
-    db: &web::Data<sqlx::PgPool>,
-    metrics: &web::Data<Arc<RequestMetrics>>,
-) -> impl Responder {
-    let db_healthy = sqlx::query("SELECT 1")
-        .fetch_optional(db.as_ref())
-        .await
-        .is_ok();
-
-    let metrics_snapshot = metrics.get_ref().snapshot();
-
-    let status = if db_healthy { "healthy" } else { "degraded" };
-
-    actix_web::web::Json(serde_json::json!({
-        "status": status,
-        "service": "miniwiki-api",
-        "version": env!("CARGO_PKG_VERSION"),
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-        "dependencies": {
-            "database": {
-                "status": if db_healthy { "healthy" } else { "unhealthy" },
-                "type": "postgresql"
-            }
-        },
-        "metrics": {
-            "total_requests": metrics_snapshot.total_requests,
-            "successful_requests": metrics_snapshot.successful_requests,
-            "failed_requests": metrics_snapshot.failed_requests,
-            "avg_latency_ms": format!("{:.2}", metrics_snapshot.avg_latency_ms()),
-            "error_rate_percent": format!("{:.2}", metrics_snapshot.error_rate_percent())
-        }
-    }))
-}
+// Use symbols from the library crate
+use miniwiki_backend::{
+    config::Config,
+    middleware::{
+        error_handler::ErrorHandler,
+        security_headers::SecurityHeaders,
+        csrf::{CsrfMiddleware, CsrfConfig, CsrfStore, InMemoryCsrfStore, RedisCsrfStore},
+    },
+    routes,
+    observability::RequestMetrics,
+};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    // Initialize structured logging first for proper startup logging
-    init_logging();
-
     dotenv().ok();
 
-    let config = Config::from_env().expect("Failed to load configuration");
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::new(
+                std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string())
+            )
+        )
+        .init();
 
-    let host = config.host.clone();
-    let port = config.port;
+    info!("Starting miniWiki backend...");
 
-    info!(host = %host, port = %port, "Starting miniWiki API server");
+    let config = Config::from_env().unwrap_or_else(|e| {
+        error!("Failed to load configuration: {}", e);
+        std::process::exit(1);
+    });
 
-    let db = Arc::new(
-        init_database(&config.database_url)
-            .await
-            .expect("Failed to connect to database")
-    );
-
-    info!("Database connection established");
-
-    // Initialize S3/MinIO storage
-    let s3_config = S3StorageConfig {
-        endpoint: config.minio_endpoint.clone(),
-        access_key: config.minio_access_key.clone(),
-        secret_key: config.minio_secret_key.clone(),
-        bucket: config.minio_bucket.clone(),
-        region: config.minio_region.clone(),
-        use_ssl: config.minio_use_ssl,
+    let csrf_config = CsrfConfig {
+        cookie_name: std::env::var("CSRF_COOKIE_NAME")
+            .unwrap_or_else(|_| "csrf_token".to_string()),
+        cookie_max_age: std::env::var("CSRF_COOKIE_MAX_AGE")
+            .unwrap_or_else(|_| "3600".to_string())
+            .parse::<u64>()
+            .unwrap_or(3600),
+        header_name: std::env::var("CSRF_HEADER_NAME")
+            .unwrap_or_else(|_| "X-CSRF-Token".to_string()),
+        secure_cookie: std::env::var("CSRF_SECURE_COOKIE")
+            .map(|v| v.to_lowercase() == "true")
+            .unwrap_or(config.app_env != "development"),
     };
 
-    let s3_storage = Arc::new(
-        S3Storage::new(s3_config)
-            .await
-            .expect("Failed to connect to S3/MinIO storage")
-    );
 
-    info!("S3/MinIO storage initialized");
+    // Initialize CSRF Store (Redis if configured, otherwise In-Memory)
+    let csrf_store: Arc<dyn CsrfStore> = if !config.redis_url.is_empty() {
+        match redis::Client::open(config.redis_url.as_str()) {
+            Ok(client) => match client.get_multiplexed_async_connection().await {
+                Ok(conn) => Arc::new(RedisCsrfStore::new(Arc::new(conn))),
+                Err(e) => {
+                    let error_msg = format!("Failed to connect to Redis for CSRF store: {}", e);
+                    if config.csrf_strict_redis || config.app_env != "development" {
+                        tracing::error!("{}", error_msg);
+                        std::process::exit(1);
+                    } else {
+                        warn!("{}. Falling back to in-memory for development.", error_msg);
+                        Arc::new(InMemoryCsrfStore::new())
+                    }
+                }
+            },
+            Err(e) => {
+                let error_msg = format!("Failed to open Redis client for CSRF store: {}", e);
+                if config.csrf_strict_redis || config.app_env != "development" {
+                    tracing::error!("{}", error_msg);
+                    std::process::exit(1);
+                } else {
+                    warn!("{}. Falling back to in-memory for development.", error_msg);
+                    Arc::new(InMemoryCsrfStore::new())
+                }
+            }
+        }
+    } else {
+        info!("Redis URL not configured, using in-memory CSRF store.");
+        Arc::new(InMemoryCsrfStore::new())
+    };
 
-    let jwt_secret = Arc::new(config.jwt_secret.clone());
+    // Spawn background cleanup task for CSRF store
+    // This is especially important for InMemoryCsrfStore which doesn't have auto-expiry like Redis
+    let store_for_cleanup = csrf_store.clone();
+    tokio::spawn(async move {
+        // Run cleanup every hour
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
+        loop {
+            interval.tick().await;
+            tracing::debug!("Running scheduled CSRF token cleanup");
+            store_for_cleanup.cleanup_expired().await;
+        }
+    });
 
-    // Initialize request metrics
     let metrics = Arc::new(RequestMetrics::new());
+    let pool = match config.create_pool().await {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Failed to create database pool: {}", e);
+            std::process::exit(1);
+        }
+    };
 
-    info!("Request metrics initialized");
+    let port = config.port;
 
-    HttpServer::new(move || {
+    let allow_all_origins = std::env::var("ALLOW_ALL_ORIGINS").unwrap_or_default() == "true";
+
+    let server = HttpServer::new(move || {
+        let cors_config = config.clone();
+        let cors = Cors::default()
+            .allowed_origin_fn(move |origin, _req_head| {
+                let origin_str = origin.to_str().unwrap_or("");
+
+                // Allow all ONLY in development AND if explicitly allowed via env var
+                if cors_config.app_env == "development" && allow_all_origins {
+                    return true;
+                }
+
+                // Check against configured allowlist
+                cors_config.api_cors_origins.iter().any(|o| o == origin_str)
+            })
+            .allowed_methods(vec!["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+            .allowed_headers(vec![
+                actix_web::http::header::AUTHORIZATION,
+                actix_web::http::header::ACCEPT,
+                actix_web::http::header::CONTENT_TYPE,
+                actix_web::http::header::HeaderName::from_static("x-csrf-token"),
+            ])
+            .supports_credentials()
+            .max_age(3600);
+
         App::new()
-            .wrap(SecurityHeaders)
-            .app_data(web::Data::new(db.clone()))
-            .app_data(web::Data::new(s3_storage.clone()))
-            .app_data(web::Data::new(jwt_secret.clone()))
+            .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(metrics.clone()))
+            .app_data(web::Data::new(csrf_config.clone()))
+            .app_data(web::Data::new(csrf_store.clone()))
+            .wrap(actix_middleware::Logger::default())
+            .wrap(ErrorHandler)
+            .wrap(SecurityHeaders)
+            .wrap(CsrfMiddleware::new(csrf_config.clone(), csrf_store.clone()))
+            .wrap(cors)
             .configure(routes::config)
     })
-    .bind((host.as_str(), port))?
-    .run()
-    .await
+    .bind(("0.0.0.0", port))?
+    .run();
+
+    info!("Server listening on http://0.0.0.0:{}", port);
+
+    server.await
 }

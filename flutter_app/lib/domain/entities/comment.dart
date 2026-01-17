@@ -42,11 +42,8 @@ class Comment {
   const Comment({
     required this.id,
     required this.documentId,
-    this.parentId,
-    required this.authorId,
-    required this.authorName,
+    required this.authorId, required this.authorName, required this.content, this.parentId,
     this.authorAvatar,
-    required this.content,
     this.isResolved = false,
     this.resolvedBy,
     this.resolvedAt,

@@ -1,10 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/domain/entities/file.dart';
 import 'package:miniwiki/presentation/providers/file_provider.dart';
-import 'package:miniwiki/core/config/providers.dart';
-import 'package:miniwiki/services/providers.dart';
 import 'package:miniwiki/services/file_service.dart';
+import 'package:miniwiki/services/providers.dart';
 
 /// Widget for uploading files
 class FileUploadWidget extends ConsumerWidget {
@@ -15,9 +16,9 @@ class FileUploadWidget extends ConsumerWidget {
   final VoidCallback? onDismiss;
 
   const FileUploadWidget({
-    super.key,
     required this.spaceId,
     required this.documentId,
+    super.key,
     this.showProgress = true,
     this.onUploadComplete,
     this.onDismiss,
@@ -47,50 +48,48 @@ class FileUploadWidget extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     ThemeData theme,
-  ) {
-    return ElevatedButton.icon(
-      onPressed: () => _pickAndUpload(context, ref),
-      icon: const Icon(Icons.attach_file),
-      label: const Text('Attach File'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: theme.colorScheme.secondaryContainer,
-        foregroundColor: theme.colorScheme.onSecondaryContainer,
-      ),
-    );
-  }
+  ) =>
+      ElevatedButton.icon(
+        onPressed: () => _pickAndUpload(context, ref),
+        icon: const Icon(Icons.attach_file),
+        label: const Text('Attach File'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: theme.colorScheme.secondaryContainer,
+          foregroundColor: theme.colorScheme.onSecondaryContainer,
+        ),
+      );
 
   Widget _buildOverallProgress(
     BuildContext context,
     FileUploadState uploadState,
     ThemeData theme,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.cloud_upload, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Uploading ${uploadState.uploads.length} file(s)...',
-                style: theme.textTheme.bodyMedium,
+  ) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cloud_upload, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Uploading ${uploadState.uploads.length} file(s)...',
+                  style: theme.textTheme.bodyMedium,
+                ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: uploadState.overallProgress,
-          minHeight: 4,
-          backgroundColor: theme.colorScheme.surfaceVariant,
-          valueColor: AlwaysStoppedAnimation<Color>(
-            theme.colorScheme.primary,
+            ],
           ),
-        ),
-      ],
-    );
-  }
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: uploadState.overallProgress,
+            minHeight: 4,
+            backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            valueColor: AlwaysStoppedAnimation<Color>(
+              theme.colorScheme.primary,
+            ),
+          ),
+        ],
+      );
 
   Widget _buildUploadList(
     BuildContext context,
@@ -98,16 +97,15 @@ class FileUploadWidget extends ConsumerWidget {
     ThemeData theme,
     WidgetRef ref,
     String uploadKey,
-  ) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: uploadState.uploads.entries.map((entry) {
-        final progress = entry.value;
-        return _buildUploadItem(context, progress, theme, ref, uploadKey);
-      }).toList(),
-    );
-  }
+  ) =>
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: uploadState.uploads.entries.map((entry) {
+          final progress = entry.value;
+          return _buildUploadItem(context, progress, theme, ref, uploadKey);
+        }).toList(),
+      );
 
   Widget _buildUploadItem(
     BuildContext context,
@@ -147,7 +145,7 @@ class FileUploadWidget extends ConsumerWidget {
                   LinearProgressIndicator(
                     value: progress.progress,
                     minHeight: 3,
-                    backgroundColor: theme.colorScheme.surfaceVariant,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
                   ),
                 if (progress.error != null)
                   Text(
@@ -177,15 +175,13 @@ class FileUploadWidget extends ConsumerWidget {
     );
   }
 
-  IconData _getStatusIcon(FileUploadStatus status) {
-    return switch (status) {
-      FileUploadStatus.pending => Icons.hourglass_empty,
-      FileUploadStatus.uploading => Icons.cloud_upload,
-      FileUploadStatus.completed => Icons.check_circle,
-      FileUploadStatus.failed => Icons.error,
-      FileUploadStatus.cancelled => Icons.cancel,
-    };
-  }
+  IconData _getStatusIcon(FileUploadStatus status) => switch (status) {
+        FileUploadStatus.pending => Icons.hourglass_empty,
+        FileUploadStatus.uploading => Icons.cloud_upload,
+        FileUploadStatus.completed => Icons.check_circle,
+        FileUploadStatus.failed => Icons.error,
+        FileUploadStatus.cancelled => Icons.cancel,
+      };
 
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
     try {
@@ -194,8 +190,8 @@ class FileUploadWidget extends ConsumerWidget {
       final uploader = ref.read(fileUploadNotifierProvider(uploadKey).notifier);
 
       final files = await service.pickFiles(
-        type: FileTypeFilter.all,
         allowMultiple: true,
+        type: FileTypeFilter.all,
       );
 
       if (files.isEmpty) return;
@@ -213,6 +209,18 @@ class FileUploadWidget extends ConsumerWidget {
       }
     }
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(DiagnosticsProperty<bool>('showProgress', showProgress));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has(
+        'onUploadComplete', onUploadComplete));
+    properties
+        .add(ObjectFlagProperty<VoidCallback?>.has('onDismiss', onDismiss));
+  }
 }
 
 /// Compact file upload button for use in toolbars
@@ -222,9 +230,9 @@ class FileUploadButton extends ConsumerWidget {
   final VoidCallback? onFilesUploaded;
 
   const FileUploadButton({
-    super.key,
     required this.spaceId,
     required this.documentId,
+    super.key,
     this.onFilesUploaded,
   });
 
@@ -254,8 +262,8 @@ class FileUploadButton extends ConsumerWidget {
       final uploader = ref.read(fileUploadNotifierProvider(uploadKey).notifier);
 
       final files = await service.pickFiles(
-        type: FileTypeFilter.all,
         allowMultiple: true,
+        type: FileTypeFilter.all,
       );
 
       if (files.isEmpty) return;
@@ -272,5 +280,14 @@ class FileUploadButton extends ConsumerWidget {
         );
       }
     }
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(StringProperty('spaceId', spaceId));
+    properties.add(StringProperty('documentId', documentId));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has(
+        'onFilesUploaded', onFilesUploaded));
   }
 }
