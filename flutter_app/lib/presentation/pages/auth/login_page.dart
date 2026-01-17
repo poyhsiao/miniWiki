@@ -194,6 +194,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text("Don't have an account? "),
