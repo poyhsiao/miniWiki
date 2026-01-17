@@ -518,5 +518,5 @@ final documentsProvider = FutureProvider.autoDispose.family<List<Document>, Docu
 
 - [Flutter Performance Best Practices](https://docs.flutter.dev/perf/best-practices)
 - [Flutter UI Performance](https://docs.flutter.dev/perf/ui-performance)
-- [Riverpod Family Modifier](https://riverpod.dev/docs/concepts2/family)
+- [Riverpod Family Modifier](https://riverpod.dev/docs/concepts/modifiers/family)
 

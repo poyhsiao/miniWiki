@@ -23,8 +23,8 @@ websocket = "0.24"
 # Database
 sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-native-tls", "uuid", "chrono", "json"] }
 
-# Redis
-redis = { version = "0.25", features = ["tokio-native-tls-comp"] }
+# Redis - use workspace version
+redis = { workspace = true }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }

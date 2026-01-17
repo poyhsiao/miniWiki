@@ -51,8 +51,12 @@ class FileEntity extends Equatable {
   static DateTime? _dateTimeFromJson(Object? json) {
     if (json == null) return null;
     if (json is String) return DateTime.tryParse(json);
-    if (json is num) return DateTime.fromMillisecondsSinceEpoch((json).toInt());
-    return null;
+    if (json is num) {
+      return DateTime.fromMillisecondsSinceEpoch(json.toInt());
+    }
+    throw FormatException(
+        '_dateTimeFromJson expected String, num, or null, '
+        'got ${json.runtimeType}');
   }
 
   static String? _dateTimeToJson(DateTime? value) => value?.toIso8601String();

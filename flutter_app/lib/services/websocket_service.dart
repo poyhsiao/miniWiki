@@ -389,8 +389,12 @@ class ActiveUser {
             cursor = CursorPosition(
               x: (cursorMap['x'] as num).toDouble(),
               y: (cursorMap['y'] as num).toDouble(),
-              selectionStart: (cursorMap['selection_start'] as num?)?.toInt(),
-              selectionEnd: (cursorMap['selection_end'] as num?)?.toInt(),
+              selectionStart: cursorMap['selection_start'] is num
+                  ? (cursorMap['selection_start'] as num).toInt()
+                  : null,
+              selectionEnd: cursorMap['selection_end'] is num
+                  ? (cursorMap['selection_end'] as num).toInt()
+                  : null,
             );
           }
         } else if (json['cursor'] is Map) {
@@ -399,13 +403,17 @@ class ActiveUser {
             cursor = CursorPosition(
               x: (cursorMap['x'] as num).toDouble(),
               y: (cursorMap['y'] as num).toDouble(),
-              selectionStart: (cursorMap['selection_start'] as num?)?.toInt(),
-              selectionEnd: (cursorMap['selection_end'] as num?)?.toInt(),
+              selectionStart: cursorMap['selection_start'] is num
+                  ? (cursorMap['selection_start'] as num).toInt()
+                  : null,
+              selectionEnd: cursorMap['selection_end'] is num
+                  ? (cursorMap['selection_end'] as num).toInt()
+                  : null,
             );
           }
         }
         // If not a Map or missing required fields, cursor remains null
-      } catch (_) {
+      } on Object catch (_) {
         // Malformed cursor data, treat as no cursor
         cursor = null;
       }
@@ -418,7 +426,8 @@ class ActiveUser {
       lastActive = DateTime.tryParse(lastActiveStr);
       if (lastActive == null) {
         throw FormatException(
-            'Invalid last_active format for user ${json['user_id']}: $lastActiveStr');
+            'Invalid last_active format for user '
+            '${json['user_id']}: $lastActiveStr');
       }
     }
 

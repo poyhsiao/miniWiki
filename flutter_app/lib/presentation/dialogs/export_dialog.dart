@@ -92,11 +92,23 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
             ),
           if (exportState.error != null) const SizedBox(height: 16),
           // Export format options
-          ...ExportFormat.availableFormats.map(
-            (format) => _buildFormatOption(
-              context,
-              format,
-              exportState.isExporting,
+          RadioGroup<ExportFormat>(
+            groupValue: _selectedFormat,
+            onChanged: exportState.isExporting
+                ? null
+                : (value) {
+                    if (value != null) {
+                      setState(() => _selectedFormat = value);
+                    }
+                  },
+            child: Column(
+              children: ExportFormat.availableFormats.map(
+                (format) => _buildFormatOption(
+                  context,
+                  format,
+                  exportState.isExporting,
+                ),
+              ).toList(),
             ),
           ),
           if (exportState.isExporting)
@@ -258,15 +270,8 @@ class _ExportDialogState extends ConsumerState<ExportDialog> {
                 ),
               ),
               // Radio button
-              // ignore: deprecated_member_use
               Radio<ExportFormat>(
                 value: format,
-                // ignore: deprecated_member_use
-                groupValue: _selectedFormat,
-                // ignore: deprecated_member_use
-                onChanged: isExporting
-                    ? null
-                    : (value) => setState(() => _selectedFormat = value),
               ),
             ],
           ),

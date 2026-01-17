@@ -218,9 +218,11 @@ pub async fn post_sync_update(
                 }
             };
 
-            // Sync in-memory clock with persisted value
+            // Sync in-memory clock with persisted value (avoid stale writes under concurrency)
             let mut clock = state.server_clock.lock().await;
-            *clock = new_clock;
+            if new_clock > *clock {
+                *clock = new_clock;
+            }
             drop(clock);
 
             // Extract client's state vector
@@ -240,7 +242,7 @@ pub async fn post_sync_update(
 
             // For now, simulate successful merge
             let missing_updates = if let Some(client_sv) = &client_sv {
-                calculate_missing_updates(&client_sv, server_clock)
+                calculate_missing_updates(&client_sv, new_clock)
             } else {
                 None
             };
@@ -281,7 +283,7 @@ pub async fn post_sync_update(
             HttpResponse::Ok().json(SyncUpdateResponse {
                 success: true,
                 merged: false,
-                server_clock,
+                server_clock: new_clock,
                 missing_updates,
                 error: None,
             })

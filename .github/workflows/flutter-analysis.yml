@@ -43,7 +43,7 @@ jobs:
       working-directory: ./flutter_app
       run: |
         mkdir -p analysis-output
-        flutter analyze --write analysis-output/analysis_report.txt
+        flutter analyze > analysis-output/analysis_report.txt 2>&1 || true
       continue-on-error: true
     
     - name: Upload analysis report as artifact

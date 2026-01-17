@@ -24,7 +24,7 @@ final commentServiceProvider = Provider<CommentService>((ref) {
 final fileServiceProvider = Provider<FileService>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final repository = ref.watch(fileRepositoryProvider);
-  final baseUrl = ref.watch(appConfigProvider) as String;
+  final baseUrl = ref.watch(appConfigProvider);
   return FileService(
     apiClient: apiClient,
     fileRepository: repository,
@@ -35,6 +35,6 @@ final fileServiceProvider = Provider<FileService>((ref) {
 /// Provider for ShareService
 final shareServiceProvider = Provider<ShareService>((ref) {
   final repository = ref.watch(shareRepositoryProvider);
-  final baseUrl = ref.watch(appConfigProvider) as String;
+  final baseUrl = ref.watch(appConfigProvider);
   return ShareService(repository, baseUrl);
 });

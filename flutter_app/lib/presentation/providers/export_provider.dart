@@ -32,18 +32,42 @@ class ExportUiState {
     List<ExportResult>? exportHistory,
     ExportFormat? selectedFormat,
     bool? showExportDialog,
-  }) =>
-      ExportUiState(
-        isExporting: isExporting ?? this.isExporting,
-        lastExport: lastExport ?? this.lastExport,
-        error: identical(error, _undefined) ? this.error : error as String?,
-        downloadProgress: identical(downloadProgress, _undefined)
-            ? this.downloadProgress
-            : downloadProgress as double?,
-        exportHistory: exportHistory ?? this.exportHistory,
-        selectedFormat: selectedFormat ?? this.selectedFormat,
-        showExportDialog: showExportDialog ?? this.showExportDialog,
-      );
+  }) {
+    // Validate error parameter type
+    String? validatedError;
+    if (identical(error, _undefined)) {
+      validatedError = this.error;
+    } else if (error == null || error is String) {
+      validatedError = error as String?;
+    } else {
+      throw ArgumentError(
+          'error parameter must be String or null, got ${error.runtimeType}');
+    }
+
+    // Validate downloadProgress parameter type
+    double? validatedProgress;
+    if (identical(downloadProgress, _undefined)) {
+      validatedProgress = this.downloadProgress;
+    } else if (downloadProgress == null) {
+      validatedProgress = null;
+    } else if (downloadProgress is num) {
+      validatedProgress = downloadProgress.toDouble();
+    } else {
+      throw ArgumentError(
+          'downloadProgress parameter must be num or null, '
+          'got ${downloadProgress.runtimeType}');
+    }
+
+    return ExportUiState(
+      isExporting: isExporting ?? this.isExporting,
+      lastExport: lastExport ?? this.lastExport,
+      error: validatedError,
+      downloadProgress: validatedProgress,
+      exportHistory: exportHistory ?? this.exportHistory,
+      selectedFormat: selectedFormat ?? this.selectedFormat,
+      showExportDialog: showExportDialog ?? this.showExportDialog,
+    );
+  }
 }
 
 // Sentinel value class for copyWith to distinguish between null and not provided

@@ -316,8 +316,8 @@ class SyncService {
   int getTotalFailedCount() => _totalFailedCount;
 
   /// Enable/disable auto-sync
-  void setAutoSync(bool enabled) // ignore: avoid_positional_boolean_parameters
-  {
+  // ignore: avoid_positional_boolean_parameters
+  void setAutoSync(bool enabled) {
     _autoSyncEnabled = enabled;
     if (enabled && _isOnline) {
       _startAutoSync();

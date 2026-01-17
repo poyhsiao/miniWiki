@@ -457,8 +457,11 @@ mod tests {
             let mut data = self.data.write().await;
             // Insert or update
             let entry = data.entry(key).or_insert((std::collections::HashSet::new(), ttl));
-            entry.0.insert(token);
-            entry.1 = ttl; // Update TTL
+            let inserted = entry.0.insert(token);
+            // Only refresh TTL when token was newly inserted
+            if inserted {
+                entry.1 = ttl;
+            }
             Ok(())
         }
         async fn remove_token(&self, key: String, token: String) -> Result<bool, redis::RedisError> {

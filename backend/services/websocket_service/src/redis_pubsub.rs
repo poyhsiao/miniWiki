@@ -196,8 +196,9 @@ impl RedisPubSubManager {
         let json = match message.to_json() {
             Ok(j) => j,
             Err(e) => {
+                // In redis 1.0.2, ResponseError moved to ServerErrorKind
                 return Err(redis::RedisError::from((
-                    redis::ErrorKind::ResponseError,
+                    redis::ErrorKind::Server(redis::ServerErrorKind::ResponseError),
                     "Failed to serialize message",
                     e.to_string(),
                 )));
