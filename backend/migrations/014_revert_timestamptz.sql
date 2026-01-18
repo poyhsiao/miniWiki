@@ -69,8 +69,8 @@ ALTER TABLE refresh_tokens ALTER COLUMN created_at TYPE TIMESTAMP USING created_
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'email_verifications') THEN
-        ALTER TABLE email_verifications ALTER COLUMN expires_at TYPE TIMESTAMP;
-        ALTER TABLE email_verifications ALTER COLUMN created_at TYPE TIMESTAMP;
+        ALTER TABLE email_verifications ALTER COLUMN expires_at TYPE TIMESTAMP USING expires_at AT TIME ZONE 'UTC';
+        ALTER TABLE email_verifications ALTER COLUMN created_at TYPE TIMESTAMP USING created_at AT TIME ZONE 'UTC';
     END IF;
 END $$;
 
@@ -78,9 +78,9 @@ END $$;
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'chunk_uploads') THEN
-        ALTER TABLE chunk_uploads ALTER COLUMN expires_at TYPE TIMESTAMP;
-        ALTER TABLE chunk_uploads ALTER COLUMN created_at TYPE TIMESTAMP;
-        ALTER TABLE chunk_uploads ALTER COLUMN assembled_at TYPE TIMESTAMP;
+        ALTER TABLE chunk_uploads ALTER COLUMN expires_at TYPE TIMESTAMP USING expires_at AT TIME ZONE 'UTC';
+        ALTER TABLE chunk_uploads ALTER COLUMN created_at TYPE TIMESTAMP USING created_at AT TIME ZONE 'UTC';
+        ALTER TABLE chunk_uploads ALTER COLUMN assembled_at TYPE TIMESTAMP USING assembled_at AT TIME ZONE 'UTC';
     END IF;
 END $$;
 
@@ -88,8 +88,8 @@ END $$;
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'server_clock_persistence') THEN
-        ALTER TABLE server_clock_persistence ALTER COLUMN created_at TYPE TIMESTAMP;
-        ALTER TABLE server_clock_persistence ALTER COLUMN updated_at TYPE TIMESTAMP;
+        ALTER TABLE server_clock_persistence ALTER COLUMN created_at TYPE TIMESTAMP USING created_at AT TIME ZONE 'UTC';
+        ALTER TABLE server_clock_persistence ALTER COLUMN updated_at TYPE TIMESTAMP USING updated_at AT TIME ZONE 'UTC';
     END IF;
 END $$;
 

@@ -19,10 +19,12 @@ ALTER TABLE documents ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 
 ALTER TABLE document_versions ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 
-ALTER TABLE files ALTER COLUMN deleted_at SET DEFAULT CURRENT_TIMESTAMP;
+-- deleted_at should remain nullable with no default (set explicitly when is_deleted = true)
+ALTER TABLE files ALTER COLUMN deleted_at DROP DEFAULT;
 ALTER TABLE files ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 
-ALTER TABLE comments ALTER COLUMN resolved_at SET DEFAULT CURRENT_TIMESTAMP;
+-- resolved_at should remain nullable with no default (set explicitly when is_resolved = true)
+ALTER TABLE comments ALTER COLUMN resolved_at DROP DEFAULT;
 ALTER TABLE comments ALTER COLUMN created_at SET DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE comments ALTER COLUMN updated_at SET DEFAULT CURRENT_TIMESTAMP;
 
@@ -101,4 +103,4 @@ BEGIN
         'Restored to version ' || p_version_number::VARCHAR
     );
 END;
-$$ LANGUAGE PLPGSQL SECURITY DEFINER;
+$$ LANGUAGE PLPGSQL SECURITY DEFINER SET search_path = public;
