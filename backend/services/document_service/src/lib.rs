@@ -1,4 +1,3 @@
-pub mod config;
 pub mod export;
 pub mod comments;
 pub mod handlers;
