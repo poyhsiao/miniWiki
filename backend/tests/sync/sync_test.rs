@@ -39,6 +39,8 @@ macro_rules! create_test_service {
                 .configure(miniwiki_backend::routes::config)
         ).await;
 
+        // Return both test_app and app wrapped in Rc for sharing across async tasks
+        let app = std::rc::Rc::new(app);
         (test_app, app)
     }};
 }
@@ -268,8 +270,8 @@ async fn test_concurrent_sync_updates() {
         }),
     ];
 
-    // Use Arc to share the app and token across spawned tasks (Arc is Send, unlike Rc)
-    let app_arc = std::sync::Arc::new(app);
+    // Clone the Rc to share the app and token across spawned tasks
+    let app_rc = app.clone();
     let token_clone = token.clone();
     let document_id = document.id;
 
@@ -277,7 +279,7 @@ async fn test_concurrent_sync_updates() {
     let handles: Vec<_> = updates
         .into_iter()
         .map(move |payload| {
-            let app = std::sync::Arc::clone(&app_arc);
+            let app = app_rc.clone();
             let token = token_clone.clone();
             async move {
                 let req = test::TestRequest::post()
@@ -285,7 +287,8 @@ async fn test_concurrent_sync_updates() {
                     .insert_header(("Authorization", format!("Bearer {}", token)))
                     .set_json(&payload)
                     .to_request();
-                test::call_service(&app, req).await
+                // Dereference the Rc once to get the inner service
+                test::call_service(&*app, req).await
             }
         })
         .collect();
@@ -321,7 +324,7 @@ async fn test_sync_with_empty_update() {
         .set_json(&empty_payload)
         .to_request();
 
-    let resp: ServiceResponse = test::call_service(&app, req).await;
+    let resp: ServiceResponse = test::call_service(&*app, req).await;
     // Empty update should be handled gracefully (200 or 400)
     assert!(resp.status() == 200 || resp.status() == 400,
         "Expected 200 or 400, got: {}", resp.status());
