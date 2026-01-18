@@ -108,6 +108,33 @@ impl TestApp {
             .post(&format!("http://localhost:{}{}", self.port, path))
     }
 
+    /// Perform login via POST /v1/auth/login and return server-issued token
+    pub async fn login_user(&self, email: &str, password: &str) -> Result<String, String> {
+        let response = self.client
+            .post(&format!("http://localhost:{}/v1/auth/login", self.port))
+            .json(&serde_json::json!({
+                "email": email,
+                "password": password
+            }))
+            .send()
+            .await
+            .map_err(|e| format!("Login request failed: {}", e))?;
+
+        if response.status() != 200 {
+            return Err(format!("Login failed with status: {}", response.status()));
+        }
+
+        let body: serde_json::Value = response.json()
+            .await
+            .map_err(|e| format!("Failed to parse login response: {}", e))?;
+
+        body.get("token")
+            .or_else(|| body.get("access_token"))
+            .and_then(|t| t.as_str())
+            .map(|s| s.to_string())
+            .ok_or_else(|| "Token not found in response".to_string())
+    }
+
     pub fn patch(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
             .patch(&format!("http://localhost:{}{}", self.port, path))
@@ -123,12 +150,15 @@ impl TestApp {
         let email = format!("test_{}@example.com", id.to_string().replace('-', ""));
         let display_name = format!("Test User {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
 
+        // Password hash for "TestPass123!" - known test password
+        let password_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4aYJGYxMnC6C5.Oy";
+
         sqlx::query(
             "INSERT INTO users (id, email, password_hash, display_name, is_active, is_email_verified, timezone, language) VALUES ($1, $2, $3, $4, true, false, 'UTC', 'en') ON CONFLICT (id) DO NOTHING"
         )
         .bind(id)
         .bind(email.clone())
-        .bind("$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4aYJGYxMnC6C5.Oy")
+        .bind(password_hash)
         .bind(display_name.clone())
         .execute(&self.pool)
         .await
