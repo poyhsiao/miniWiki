@@ -14,6 +14,7 @@
 //! Run with: cargo test -p document-service export
 
 use serde::{Deserialize, Serialize};
+use chrono::NaiveDateTime;
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::PathBuf;
@@ -79,7 +80,7 @@ pub struct ExportResponse {
     pub file_name: String,
     pub file_size: u64,
     pub content_type: String,
-    pub exported_at: chrono::NaiveDateTime,
+    pub exported_at: NaiveDateTime,
 }
 
 /// Export error types
@@ -106,8 +107,8 @@ pub enum ExportError {
 pub struct DocumentMetadata {
     pub id: String,
     pub title: String,
-    pub created_at: Option<chrono::NaiveDateTime>,
-    pub updated_at: Option<chrono::NaiveDateTime>,
+    pub created_at: Option<NaiveDateTime>,
+    pub updated_at: Option<NaiveDateTime>,
     pub created_by: Option<String>,
     pub icon: Option<String>,
 }

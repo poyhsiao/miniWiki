@@ -45,6 +45,59 @@ impl TestApp {
         }
     }
 
+    /// Get auth data - returns (token, user_id). Creates user if not provided.
+    pub async fn get_auth_data(&self, user_id: Option<Uuid>, email: Option<String>) -> (String, String) {
+        let user = if let Some(id) = user_id {
+            // Use existing user
+            let email = email.unwrap_or_else(|| format!("test_{}@example.com", id.to_string().replace('-', "")));
+            TestUser {
+                id,
+                email,
+                display_name: format!("Test User {}", id.to_string().chars().take(8).collect::<String>()),
+            }
+        } else {
+            self.create_test_user().await
+        };
+        let token = generate_test_jwt_token(user.id, &user.email);
+        (token, user.id.to_string())
+    }
+
+    /// Create a request builder with Authorization header and X-User-Id header
+    pub async fn auth_get(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
+        let (token, user_id_str) = self.get_auth_data(user_id, email).await;
+        self.client
+            .get(&format!("http://localhost:{}{}", self.port, path))
+            .header("Authorization", format!("Bearer {}", token))
+            .header("X-User-Id", user_id_str)
+    }
+
+    /// Create a POST request with Authorization header and X-User-Id header
+    pub async fn auth_post(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
+        let (token, user_id_str) = self.get_auth_data(user_id, email).await;
+        self.client
+            .post(&format!("http://localhost:{}{}", self.port, path))
+            .header("Authorization", format!("Bearer {}", token))
+            .header("X-User-Id", user_id_str)
+    }
+
+    /// Create a PATCH request with Authorization header and X-User-Id header
+    pub async fn auth_patch(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
+        let (token, user_id_str) = self.get_auth_data(user_id, email).await;
+        self.client
+            .patch(&format!("http://localhost:{}{}", self.port, path))
+            .header("Authorization", format!("Bearer {}", token))
+            .header("X-User-Id", user_id_str)
+    }
+
+    /// Create a DELETE request with Authorization header and X-User-Id header
+    pub async fn auth_delete(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
+        let (token, user_id_str) = self.get_auth_data(user_id, email).await;
+        self.client
+            .delete(&format!("http://localhost:{}{}", self.port, path))
+            .header("Authorization", format!("Bearer {}", token))
+            .header("X-User-Id", user_id_str)
+    }
+
     pub fn get(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
             .get(&format!("http://localhost:{}{}", self.port, path))

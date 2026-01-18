@@ -8,7 +8,7 @@ use uuid::Uuid;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::state_vector::StateVector;
-use chrono::{Utc, TimeZone, DateTime};
+use chrono::NaiveDateTime;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SyncDocument {
@@ -16,7 +16,7 @@ pub struct SyncDocument {
     pub title: String,
     pub content: serde_json::Value,
     pub version: i32,
-    pub updated_at: DateTime<Utc>,
+    pub updated_at: NaiveDateTime,
 }
 
 /// Request body for sync update submission
@@ -61,7 +61,7 @@ pub struct SyncStateResponse {
     pub title: String,
     pub state_vector: Vec<u8>,
     pub version: i32,
-    pub last_modified: chrono::DateTime<chrono::Utc>,
+    pub last_modified: chrono::NaiveDateTime,
     pub error: Option<String>,
 }
 
@@ -69,7 +69,7 @@ pub struct SyncStateResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SyncStatusResponse {
     pub pending_documents: i64,
-    pub last_sync_time: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_sync_time: Option<chrono::NaiveDateTime>,
     pub documents_in_sync: i64,
     pub failed_syncs: i64,
 }
@@ -134,7 +134,7 @@ pub async fn get_sync_state(
                 title: String::new(),
                 state_vector: Vec::new(),
                 version: 0,
-                last_modified: chrono::Utc::now(),
+                last_modified: chrono::Utc::now().naive_utc(),
                 error: Some("Document not found".to_string()),
             })
         }
@@ -144,7 +144,7 @@ pub async fn get_sync_state(
                 title: String::new(),
                 state_vector: Vec::new(),
                 version: 0,
-                last_modified: chrono::Utc::now(),
+                last_modified: chrono::Utc::now().naive_utc(),
                 error: Some(format!("Database error: {}", e)),
             })
         }

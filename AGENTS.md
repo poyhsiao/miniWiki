@@ -88,3 +88,59 @@ git add .
 git commit -m "fix(file-service): address CodeRabbit review comments"
 git push origin feat/document-export
 ```
+
+---
+
+# Ongoing Work - Test Authentication Updates
+
+## Status: IN PROGRESS
+## Started: 2026-01-18
+
+### Changes in Progress
+
+#### 1. Database Timestamp Fixes
+- **Migration 014**: Revert TIMESTAMPTZ back to TIMESTAMP to fix sqlx compile issues
+- **Migration 015**: Fix TIMESTAMP vs TIMESTAMPTZ inconsistencies by replacing NOW() with CURRENT_TIMESTAMP
+- **Purpose**: Resolve timestamp handling issues in the database layer
+
+#### 2. Test Authentication Updates
+- **helpers.rs**: Added authentication helper methods:
+  - `get_auth_data()` - Generate JWT token and get user ID
+  - `auth_get()` - GET request with Authorization header
+  - `auth_post()` - POST request with Authorization header
+  - `auth_patch()` - PATCH request with Authorization header
+  - `auth_delete()` - DELETE request with Authorization header
+- **crud_test.rs**: Updated all tests to use authentication
+- **sync_test.rs**: Updated all tests to use authentication
+  - Removed `test_sync_state_includes_metadata` (outdated test)
+  - Removed `TestAppExt` trait (no longer needed)
+
+#### 3. API Response Format Updates
+- Updated response structure to use `data.document` for create operations
+- Maintained `data` directly for read/update operations
+- Ensured consistency across all endpoint responses
+
+#### 4. Code Cleanup
+- Removed unused dependencies from document_service/Cargo.toml
+- Fixed import statements (e.g., `use chrono::NaiveDateTime`)
+- Fixed clippy.toml configuration format
+
+### Files Modified
+- backend/services/document_service/Cargo.toml (dependency cleanup)
+- backend/services/document_service/src/export.rs (import fix)
+- backend/services/sync_service/src/sync_handler.rs (NaiveDateTime usage)
+- backend/src/main.rs (DocumentRepository registration)
+- backend/src/routes/mod.rs (route order change)
+- backend/tests/documents/crud_test.rs (authentication updates)
+- backend/tests/helpers.rs (new auth methods)
+- backend/tests/sync/sync_test.rs (authentication updates)
+- backend/clippy.toml (format fix)
+
+### New Files
+- backend/migrations/014_revert_timestamptz.sql
+- backend/migrations/015_fix_timestamp_defaults.sql
+
+### Next Steps
+1. Run integration tests to verify all changes work correctly
+2. Update GitHub issues status
+3. Commit and push changes to repository
