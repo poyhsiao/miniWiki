@@ -6,7 +6,7 @@
 //! Run with: cargo test -p miniwiki-backend-tests documents::versions_test
 
 use document_service::models::CreateVersionRequest;
-use crate::helpers::{create_test_app, create_test_document, create_test_space, create_test_user};
+use crate::helpers::{create_test_app, create_test_document, create_test_space, create_test_user, generate_test_jwt_token};
 
 #[tokio::test]
 async fn test_create_version_success() {
@@ -14,6 +14,7 @@ async fn test_create_version_success() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let request = CreateVersionRequest {
         content: serde_json::json!({
@@ -30,12 +31,13 @@ async fn test_create_version_success() {
 
     let response = app
         .post(&format!("/api/v1/documents/{}/versions", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request)
         .send()
         .await
         .expect("Create version request failed");
 
-    assert!(response.status().is_success());
+    assert!(response.status().is_success(), "Create version should succeed, got: {:?}", response.status());
     let version: serde_json::Value = response.json().await.expect("Parse response failed");
     assert_eq!(version["data"]["version_number"], 1);
     assert_eq!(version["data"]["change_summary"], "First edit");
@@ -49,6 +51,7 @@ async fn test_create_version_auto_increments() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create multiple versions
     for i in 1..=3 {
@@ -60,6 +63,7 @@ async fn test_create_version_auto_increments() {
 
         let response = app
             .post(&format!("/api/v1/documents/{}/versions", document.id))
+            .header("Authorization", format!("Bearer {}", token))
             .json(&request)
             .send()
             .await
@@ -79,6 +83,7 @@ async fn test_list_document_versions() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create some versions
     for i in 1..=5 {
@@ -90,6 +95,7 @@ async fn test_list_document_versions() {
 
         let _ = app
             .post(&format!("/api/v1/documents/{}/versions", document.id))
+            .header("Authorization", format!("Bearer {}", token))
             .json(&request)
             .send()
             .await
@@ -98,6 +104,7 @@ async fn test_list_document_versions() {
 
     let response = app
         .get(&format!("/api/v1/documents/{}/versions", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("List versions request failed");
@@ -116,6 +123,7 @@ async fn test_get_specific_version() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create versions
     for i in 1..=3 {
@@ -127,6 +135,7 @@ async fn test_get_specific_version() {
 
         let _ = app
             .post(&format!("/api/v1/documents/{}/versions", document.id))
+            .header("Authorization", format!("Bearer {}", token))
             .json(&request)
             .send()
             .await
@@ -136,6 +145,7 @@ async fn test_get_specific_version() {
     // Get version 2
     let response = app
         .get(&format!("/api/v1/documents/{}/versions/2", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get version request failed");
@@ -154,9 +164,11 @@ async fn test_get_version_not_found() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let response = app
         .get(&format!("/api/v1/documents/{}/versions/999", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get version request failed");
@@ -170,6 +182,7 @@ async fn test_restore_version() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create initial version
     let request = CreateVersionRequest {
@@ -180,6 +193,7 @@ async fn test_restore_version() {
 
     let _ = app
         .post(&format!("/api/v1/documents/{}/versions", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request)
         .send()
         .await
@@ -188,6 +202,7 @@ async fn test_restore_version() {
     // Update document
     let update_response = app
         .patch(&format!("/api/v1/documents/{}", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Modified Title",
             "content": {"content": "modified"}
@@ -200,6 +215,7 @@ async fn test_restore_version() {
     // Restore to version 1
     let restore_response = app
         .post(&format!("/api/v1/documents/{}/versions/1/restore", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Restore version request failed");
@@ -213,6 +229,7 @@ async fn test_restore_version() {
     // Verify current document state
     let get_response = app
         .get(&format!("/api/v1/documents/{}", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get document request failed");
@@ -228,6 +245,7 @@ async fn test_version_pagination() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create 15 versions
     for i in 1..=15 {
@@ -239,6 +257,7 @@ async fn test_version_pagination() {
 
         let _ = app
             .post(&format!("/api/v1/documents/{}/versions", document.id))
+            .header("Authorization", format!("Bearer {}", token))
             .json(&request)
             .send()
             .await
@@ -251,6 +270,7 @@ async fn test_version_pagination() {
             "/api/v1/documents/{}/versions?limit=5&offset=0",
             document.id
         ))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("List versions request failed");
@@ -270,6 +290,7 @@ async fn test_version_diff() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create version 1
     let request1 = CreateVersionRequest {
@@ -280,6 +301,7 @@ async fn test_version_diff() {
 
     let _ = app
         .post(&format!("/api/v1/documents/{}/versions", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request1)
         .send()
         .await
@@ -294,6 +316,7 @@ async fn test_version_diff() {
 
     let _ = app
         .post(&format!("/api/v1/documents/{}/versions", document.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&request2)
         .send()
         .await
@@ -305,6 +328,7 @@ async fn test_version_diff() {
             "/api/v1/documents/{}/versions/diff?from=1&to=2",
             document.id
         ))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get version diff request failed");
@@ -320,6 +344,7 @@ async fn test_version_retention_enforced() {
     let user = create_test_user(&app).await.expect("Create test user failed");
     let space = create_test_space(&app, &user.id).await.expect("Create test space failed");
     let document = create_test_document(&app, &space.id, None, "Test Doc").await.expect("Create test document failed");
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     // Create many versions (more than retention limit)
     for i in 1..=50 {
@@ -331,6 +356,7 @@ async fn test_version_retention_enforced() {
 
         let response = app
             .post(&format!("/api/v1/documents/{}/versions", document.id))
+            .header("Authorization", format!("Bearer {}", token))
             .json(&request)
             .send()
             .await
@@ -346,6 +372,7 @@ async fn test_version_retention_enforced() {
             "/api/v1/documents/{}/versions?limit=100",
             document.id
         ))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("List versions request failed");

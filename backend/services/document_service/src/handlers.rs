@@ -5,6 +5,7 @@ use crate::repository::DocumentRepository;
 use crate::export::{ExportService, ExportFormat};
 use shared_errors::AppError;
 use validator::Validate;
+use jsonwebtoken;
 
 // Helper for access check with proper error handling
 // Returns Ok(true) if access granted, Ok(false) if denied, Err for DB errors
@@ -72,13 +73,71 @@ fn version_row_to_response(row: &crate::repository::DocumentVersionRow) -> Versi
     }
 }
 
-// Placeholder for user extraction - in real implementation, this would come from JWT
+// User extraction - supports both JWT Authorization header and X-User-Id header for backward compatibility
 fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
+    // Get JWT secret from environment variable (fallback approach since JwtConfig is not in app_data)
+    let jwt_secret = std::env::var("JWT_SECRET")
+        .map_err(|_| AppError::AuthenticationError("JWT_SECRET not configured".to_string()))?;
+
+    // First try JWT Authorization header (preferred method)
+    if let Some(auth_header) = req.headers().get("authorization") {
+        if let Ok(token_str) = auth_header.to_str() {
+            if token_str.starts_with("Bearer ") {
+                let token = &token_str[7..];
+                let decoding_key = jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes());
+                // Explicitly enforce HS256 algorithm for security
+                let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+
+                match jsonwebtoken::decode::<serde_json::Value>(token, &decoding_key, &validation) {
+                    Ok(token_data) => {
+                        // Try to extract "sub" claim with validation
+                        if let Some(sub) = token_data.claims.get("sub") {
+                            if let Some(user_id_str) = sub.as_str().and_then(|s| {
+                                if !s.is_empty() {
+                                    Some(s.to_string())
+                                } else {
+                                    None
+                                }
+                            }) {
+                                return Ok(user_id_str);
+                            }
+                        }
+
+                        // Try to extract "user_id" claim with validation
+                        if let Some(user_id) = token_data.claims.get("user_id") {
+                            if let Some(user_id_str) = user_id.as_str().and_then(|s| {
+                                if !s.is_empty() {
+                                    Some(s.to_string())
+                                } else {
+                                    None
+                                }
+                            }) {
+                                return Ok(user_id_str);
+                            }
+                        }
+
+                        // JWT decoded but no valid user ID found
+                        return Err(AppError::AuthenticationError(
+                            "JWT token missing or contains empty user ID claim".to_string()
+                        ));
+                    }
+                    Err(e) => {
+                        // JWT decode failed, return error instead of falling back
+                        return Err(AppError::AuthenticationError(
+                            format!("Invalid JWT token: {}", e)
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // Fall back to X-User-Id header for backward compatibility
     req.headers()
         .get("X-User-Id")
         .and_then(|h| h.to_str().ok())
         .map(|s| s.to_string())
-        .ok_or_else(|| AppError::AuthenticationError("Missing X-User-Id header".to_string()))
+        .ok_or_else(|| AppError::AuthenticationError("Missing or invalid authentication".to_string()))
 }
 
 // Create document
@@ -108,6 +167,23 @@ pub async fn create_document(
         Ok(false) => {
             return HttpResponse::Forbidden()
                 .json(ApiResponse::<()>::error("ACCESS_DENIED", "You don't have access to this space"));
+        }
+        Err(_) => {
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "A database error occurred. Please try again later."));
+        }
+    }
+
+    // Check if user has permission to create documents (owner or editor)
+    match repo.get_user_space_role(&space_id, &user_id).await {
+        Ok(Some(role)) if role == "owner" || role == "editor" => {}
+        Ok(Some(_)) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("PERMISSION_DENIED", "You don't have permission to create documents in this space"));
+        }
+        Ok(None) => {
+            return HttpResponse::Forbidden()
+                .json(ApiResponse::<()>::error("ACCESS_DENIED", "You are not a member of this space"));
         }
         Err(_) => {
             return HttpResponse::InternalServerError()

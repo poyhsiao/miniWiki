@@ -1,3 +1,4 @@
+pub mod config;
 pub mod export;
 pub mod comments;
 pub mod handlers;
@@ -11,14 +12,7 @@ use crate::handlers::*;
 use crate::comments::*;
 use crate::sharing::*;
 
-pub fn config(cfg: &mut web::ServiceConfig) {
-    // Space-scoped document endpoints
-    cfg.service(
-        web::scope("/spaces/{spaceId}")
-            .route("/documents", web::post().to(create_document))
-            .route("/documents", web::get().to(list_documents))
-    );
-
+pub fn configure(cfg: &mut web::ServiceConfig) {
     // Document-scoped endpoints
     cfg.service(
         web::scope("/documents")

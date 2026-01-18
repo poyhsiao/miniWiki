@@ -227,6 +227,41 @@ impl TestApp {
             .await
             .expect("Cleanup failed");
     }
+
+    pub async fn cleanup_test_user(&self, user_id: &Uuid) {
+        sqlx::query("DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE created_by = $1)")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .expect("Cleanup failed");
+        sqlx::query("DELETE FROM documents WHERE created_by = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .expect("Cleanup failed");
+        // Delete memberships for spaces owned by this user (to avoid FK violations)
+        sqlx::query("DELETE FROM space_memberships WHERE space_id IN (SELECT id FROM spaces WHERE owner_id = $1)")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .expect("Cleanup failed");
+        // Delete memberships where this user is a member
+        sqlx::query("DELETE FROM space_memberships WHERE user_id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .expect("Cleanup failed");
+        sqlx::query("DELETE FROM spaces WHERE owner_id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .expect("Cleanup failed");
+        sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+            .expect("Cleanup failed");
+    }
 }
 
 impl Drop for TestApp {

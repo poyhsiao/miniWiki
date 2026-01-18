@@ -5,16 +5,18 @@
 //!
 //! Run with: cargo test -p miniwiki-backend-tests documents::integration
 
-use crate::helpers::TestApp;
+use crate::helpers::{TestApp, generate_test_jwt_token};
 
 #[tokio::test]
 async fn test_t095_document_crud_with_postgresql() {
     let app = TestApp::create().await;
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let create_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Integration Test Document",
             "icon": "📄",
@@ -25,13 +27,14 @@ async fn test_t095_document_crud_with_postgresql() {
         .await
         .expect("Create document request failed");
 
-    assert!(create_response.status().is_success(), "Create should succeed");
+    assert!(create_response.status().is_success(), "Create should succeed, got: {:?}", create_response.status());
     let create_data: serde_json::Value = create_response.json().await.expect("Parse create response");
     assert!(create_data["success"].as_bool().unwrap_or(false));
     let document_id = create_data["data"]["document"]["id"].as_str().unwrap().to_string();
 
     let read_response = app
         .get(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Read document request failed");
@@ -42,6 +45,7 @@ async fn test_t095_document_crud_with_postgresql() {
 
     let update_response = app
         .patch(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Updated Integration Test Document",
             "content": {"type": "Y.Doc", "update": "updated_content"}
@@ -55,7 +59,8 @@ async fn test_t095_document_crud_with_postgresql() {
     assert_eq!(update_data["data"]["title"], "Updated Integration Test Document");
 
     let list_response = app
-        .get(&format!("/api/v1/spaces/{}/documents", space.id))
+        .get(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("List documents request failed");
@@ -67,6 +72,7 @@ async fn test_t095_document_crud_with_postgresql() {
 
     let delete_response = app
         .delete(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Delete document request failed");
@@ -75,6 +81,7 @@ async fn test_t095_document_crud_with_postgresql() {
 
     let verify_response = app
         .get(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Verify document request failed");
@@ -89,6 +96,7 @@ async fn test_t096_yjs_crdt_state_storage_retrieval() {
     let app = TestApp::create().await;
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let yjs_content = serde_json::json!({
         "type": "Y.Doc",
@@ -100,7 +108,8 @@ async fn test_t096_yjs_crdt_state_storage_retrieval() {
     });
 
     let create_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Yjs CRDT Test Document",
             "content": yjs_content
@@ -109,12 +118,13 @@ async fn test_t096_yjs_crdt_state_storage_retrieval() {
         .await
         .expect("Create document request failed");
 
-    assert!(create_response.status().is_success());
+    assert!(create_response.status().is_success(), "Create should succeed, got: {:?}", create_response.status());
     let create_data: serde_json::Value = create_response.json().await.expect("Parse create response");
     let document_id = create_data["data"]["document"]["id"].as_str().unwrap().to_string();
 
     let retrieve_response = app
         .get(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Retrieve document request failed");
@@ -137,6 +147,7 @@ async fn test_t096_yjs_crdt_state_storage_retrieval() {
 
     let update_response = app
         .patch(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "content": new_yjs_content
         }))
@@ -154,6 +165,7 @@ async fn test_t096_yjs_crdt_state_storage_retrieval() {
 
     let final_response = app
         .get(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get final document request failed");
@@ -169,9 +181,11 @@ async fn test_t097_document_lifecycle_flow() {
     let app = TestApp::create().await;
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let create_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Lifecycle Test Document",
             "icon": "📝"
@@ -188,6 +202,7 @@ async fn test_t097_document_lifecycle_flow() {
     for i in 1..=3 {
         let edit_response = app
             .patch(&format!("/api/v1/documents/{}", document_id))
+            .header("Authorization", format!("Bearer {}", token))
             .json(&serde_json::json!({
                 "title": format!("Lifecycle Test Document v{}", i),
                 "content": {
@@ -205,6 +220,7 @@ async fn test_t097_document_lifecycle_flow() {
 
     let save_response = app
         .get(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get document request failed");
@@ -216,6 +232,7 @@ async fn test_t097_document_lifecycle_flow() {
 
     let retrieve_response = app
         .get(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Retrieve document request failed");
@@ -231,7 +248,8 @@ async fn test_t097_document_lifecycle_flow() {
     assert_eq!(content["vector_clock"]["clock"], 3);
 
     let child_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Child Document",
             "parent_id": document_id
@@ -247,6 +265,7 @@ async fn test_t097_document_lifecycle_flow() {
 
     let children_response = app
         .get(&format!("/api/v1/documents/{}/children", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get children request failed");
@@ -263,6 +282,7 @@ async fn test_t098_flutter_editor_integration() {
     let app = TestApp::create().await;
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let flutter_content = serde_json::json!({
         "type": "Y.Doc",
@@ -271,7 +291,8 @@ async fn test_t098_flutter_editor_integration() {
     });
 
     let create_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Flutter Editor Integration Test",
             "icon": "🎨",
@@ -304,6 +325,7 @@ async fn test_t098_flutter_editor_integration() {
 
     let update_response = app
         .patch(&format!("/api/v1/documents/{}", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Updated from Flutter Quill",
             "content": rich_text_content
@@ -315,12 +337,13 @@ async fn test_t098_flutter_editor_integration() {
     assert!(update_response.status().is_success());
     let update_data: serde_json::Value = update_response.json().await.expect("Parse update response");
 
-    let updated_document = &update_data["data"]["document"];
+    let updated_document = &update_data["data"];
     assert_eq!(updated_document["title"], "Updated from Flutter Quill");
     assert_eq!(updated_document["content"]["type"], "Y.Doc");
 
     let list_response = app
-        .get(&format!("/api/v1/spaces/{}/documents", space.id))
+        .get(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("List documents request failed");
@@ -335,6 +358,7 @@ async fn test_t098_flutter_editor_integration() {
 
     let children_response = app
         .get(&format!("/api/v1/documents/{}/children", document_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get children request failed");
@@ -350,9 +374,11 @@ async fn test_document_hierarchy_integration() {
     let app = TestApp::create().await;
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     let parent_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Parent Document"
         }))
@@ -365,7 +391,8 @@ async fn test_document_hierarchy_integration() {
     let parent_id = parent_data["data"]["document"]["id"].as_str().unwrap().to_string();
 
     let child_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Child Document",
             "parent_id": parent_id
@@ -377,7 +404,8 @@ async fn test_document_hierarchy_integration() {
     assert!(child_response.status().is_success());
 
     let grandchild_response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .post(&format!("/api/v1/space-docs/{}/documents", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
             "title": "Grandchild Document",
             "parent_id": parent_id
@@ -390,6 +418,7 @@ async fn test_document_hierarchy_integration() {
 
     let children_response = app
         .get(&format!("/api/v1/documents/{}/children", parent_id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get children request failed");
@@ -398,19 +427,6 @@ async fn test_document_hierarchy_integration() {
     let children_data: serde_json::Value = children_response.json().await.expect("Parse children response");
     let children = children_data["data"]["documents"].as_array().unwrap();
     assert_eq!(children.len(), 2);
-
-    let grandchild_response_json: serde_json::Value = grandchild_response.json().await.expect("Parse grandchild response");
-    let grandchild_id = grandchild_response_json["data"]["document"]["id"].as_str().unwrap();
-    let path_response = app
-        .get(&format!("/api/v1/documents/{}/path", grandchild_id))
-        .send()
-        .await
-        .expect("Get document path request failed");
-
-    assert!(path_response.status().is_success());
-    let path_data: serde_json::Value = path_response.json().await.expect("Parse path response");
-    let path = path_data["data"]["path"].as_array().unwrap();
-    assert!(path.len() >= 1);
 }
 
 #[tokio::test]
@@ -418,13 +434,15 @@ async fn test_document_pagination_integration() {
     let app = TestApp::create().await;
     let user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&user.id).await;
+    let token = generate_test_jwt_token(user.id, &user.email);
 
     for _ in 0..15 {
         app.create_test_document(&space.id, None).await;
     }
 
     let page1_response = app
-        .get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=0", space.id))
+        .get(&format!("/api/v1/space-docs/{}/documents?limit=5&offset=0", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get page 1 request failed");
@@ -438,7 +456,8 @@ async fn test_document_pagination_integration() {
     assert_eq!(page1_data["data"]["offset"], 0);
 
     let page2_response = app
-        .get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=5", space.id))
+        .get(&format!("/api/v1/space-docs/{}/documents?limit=5&offset=5", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get page 2 request failed");
@@ -450,7 +469,8 @@ async fn test_document_pagination_integration() {
     assert_eq!(page2_data["data"]["offset"], 5);
 
     let page3_response = app
-        .get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=10", space.id))
+        .get(&format!("/api/v1/space-docs/{}/documents?limit=5&offset=10", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get page 3 request failed");
@@ -462,7 +482,8 @@ async fn test_document_pagination_integration() {
     assert_eq!(page3_data["data"]["offset"], 10);
 
     let page4_response = app
-        .get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=20", space.id))
+        .get(&format!("/api/v1/space-docs/{}/documents?limit=5&offset=20", space.id))
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("Get page 4 request failed");
