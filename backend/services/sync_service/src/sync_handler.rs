@@ -8,7 +8,7 @@ use uuid::Uuid;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use crate::state_vector::StateVector;
-use chrono::{Utc, TimeZone, NaiveDateTime};
+use chrono::{Utc, TimeZone, DateTime};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SyncDocument {
@@ -16,7 +16,7 @@ pub struct SyncDocument {
     pub title: String,
     pub content: serde_json::Value,
     pub version: i32,
-    pub updated_at: NaiveDateTime,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// Request body for sync update submission
@@ -124,7 +124,7 @@ pub async fn get_sync_state(
                 title: doc.title,
                 state_vector,
                 version: doc.version,
-                last_modified: Utc.from_local_datetime(&doc.updated_at).single().unwrap_or_else(|| Utc::now()),
+                last_modified: doc.updated_at,
                 error: None,
             })
         }
@@ -338,9 +338,7 @@ pub async fn get_sync_status(
 
     match (pending_count, last_sync) {
         (Ok(pending), Ok(last)) => {
-            let last_sync_time = last.last_sync.map(|dt| {
-                Utc.from_local_datetime(&dt).single().unwrap_or_else(|| Utc::now())
-            });
+            let last_sync_time = last.last_sync;
             HttpResponse::Ok().json(SyncStatusResponse {
                 pending_documents: pending.count.unwrap_or(0) as i64,
                 last_sync_time,
@@ -470,7 +468,7 @@ fn calculate_missing_updates(_client_sv: &StateVector, _server_clock: u64) -> Op
 /// Configure sync routes
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
-        web::scope("/api/v1/sync")
+        web::scope("/sync")
             .route(
                 "/documents/{document_id}",
                 web::get().to(get_sync_state),

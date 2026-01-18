@@ -15,6 +15,9 @@ use miniwiki_backend::{
     routes,
     observability::RequestMetrics,
 };
+use auth_service::repository::AuthRepository;
+use tokio::sync::Mutex;
+use sync_service::sync_handler::SyncAppState;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -134,6 +137,11 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .app_data(web::Data::new(pool.clone()))
+            .app_data(web::Data::new(AuthRepository::new(pool.clone())))
+            .app_data(web::Data::new(SyncAppState {
+                pool: pool.clone(),
+                server_clock: Arc::new(Mutex::new(0)),
+            }))
             .app_data(web::Data::new(metrics.clone()))
             .app_data(web::Data::new(csrf_config.clone()))
             .app_data(web::Data::new(csrf_store.clone()))

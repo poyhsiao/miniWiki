@@ -38,6 +38,7 @@ authors = ["miniWiki Team"]
 auth_service = { path = "./services/auth_service" }
 document_service = { path = "./services/document_service" }
 space_service = { path = "./services/space_service" }
+sync_service = { path = "./services/sync_service" }
 websocket_service = { path = "./services/websocket_service" }
 search_service = { path = "./services/search_service" }
 file_service = { path = "./services/file_service" }
