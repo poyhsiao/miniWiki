@@ -66,15 +66,15 @@ test.describe('Authentication E2E Tests', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(1000);
 
-      // Assert either successful login to dashboard or error message visible
+      // Assert successful login - should see dashboard, NOT error
       const dashboardElement = page.locator('[data-testid="dashboard"], text=Welcome, text=Dashboard, .dashboard');
       const errorElement = page.locator('.error, .alert-error, [role="alert"], text=Invalid, text=Error');
 
-      const isDashboard = await dashboardElement.first().isVisible().catch(() => false);
-      const hasError = await errorElement.first().isVisible().catch(() => false);
-
-      // At least one of these should be visible
-      expect(isDashboard || hasError).toBeTruthy();
+      // Verify no error is shown
+      await expect(errorElement.first()).not.toBeVisible({ timeout: 2000 }).catch(() => {});
+      
+      // Verify dashboard is visible
+      await expect(dashboardElement.first()).toBeVisible({ timeout: 10000 });
     }
   });
 

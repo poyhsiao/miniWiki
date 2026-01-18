@@ -191,11 +191,12 @@ test.describe('Space Organization E2E Tests', () => {
 
       if (await roleOption.isVisible()) {
         const selectedRoleText = await roleOption.textContent();
+        expect(selectedRoleText).toBeTruthy(); // Ensure text was retrieved
         await roleOption.click();
         await page.waitForTimeout(500);
 
         // Verify role was changed
-        await expect(roleDropdown).toContainText(selectedRoleText || '', { timeout: 5000 });
+        await expect(roleDropdown).toContainText(selectedRoleText!, { timeout: 5000 });
       }
     }
   });
