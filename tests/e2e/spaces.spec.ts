@@ -154,7 +154,9 @@ test.describe('Space Organization E2E Tests', () => {
     const memberList = page.locator('.member-list, [class*="member"]');
 
     const hasSuccessMessage = await successMessage.isVisible();
-    const memberListText = await memberList.textContent();
+    const memberListText = (await memberList.isVisible())
+      ? await memberList.textContent()
+      : null;
     const inviteSuccess = hasSuccessMessage || (memberListText?.includes('test@example.com') || false);
     expect(inviteSuccess).toBeTruthy();
   });
@@ -422,7 +424,12 @@ test.describe('Space Settings E2E Tests', () => {
         // Verify update persisted
         await page.reload();
         await page.waitForLoadState('networkidle');
-        await expect(nameInput).toHaveValue(/Updated Space/);
+        
+        // Re-open settings panel after reload
+        await settingsButton.click();
+        await page.waitForTimeout(500);
+        
+        await expect(nameInput).toHaveValue(newName);
       }
     }
   });
@@ -440,14 +447,21 @@ test.describe('Space Settings E2E Tests', () => {
       await page.waitForTimeout(500);
       
       // Look for visibility toggle
-      const visibilityToggle = page.locator('input[type="checkbox"][name*="public"], .toggle, [role="switch"]');
+      const checkboxToggle = page.locator('input[type="checkbox"][name*="public"]');
+      const switchToggle = page.locator('.toggle, [role="switch"]');
+
+      const getToggleState = async () => {
+        if (await checkboxToggle.isVisible()) return await checkboxToggle.isChecked();
+        const ariaChecked = await switchToggle.getAttribute('aria-checked');
+        return ariaChecked === 'true';
+      };
       
-      if (await visibilityToggle.isVisible()) {
+      if (await checkboxToggle.isVisible() || await switchToggle.isVisible()) {
         // Get initial state
-        const initialState = await visibilityToggle.isChecked();
+        const initialState = await getToggleState();
         
         // Toggle
-        await visibilityToggle.click();
+        await (await checkboxToggle.isVisible() ? checkboxToggle : switchToggle).click();
         await page.waitForTimeout(500);
         
         // Save changes
@@ -461,11 +475,12 @@ test.describe('Space Settings E2E Tests', () => {
         await page.waitForLoadState('networkidle');
         
         // Re-query the toggle after reload
-        const persistedToggle = page.locator('input[type="checkbox"][name*="public"], .toggle, [role="switch"]');
-        await expect(persistedToggle).toBeVisible({ timeout: 5000 });
+        const persistedCheckbox = page.locator('input[type="checkbox"][name*="public"]');
+        const persistedSwitch = page.locator('.toggle, [role="switch"]');
+        await expect(persistedCheckbox.or(persistedSwitch)).toBeVisible({ timeout: 5000 });
         
         // Verify state is flipped
-        const finalState = await persistedToggle.isChecked();
+        const finalState = await getToggleState();
         expect(finalState).not.toBe(initialState);
       }
     }
