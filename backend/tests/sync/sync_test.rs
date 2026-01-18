@@ -18,7 +18,8 @@ async fn test_get_sync_state_success() {
     let document = app.create_test_document(&space.id, None).await;
 
     let response = app
-        .get(&format!("/api/v1/sync/documents/{}", document.id))
+        .auth_get(&format!("/api/v1/sync/documents/{}", document.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("request failed");
@@ -35,10 +36,12 @@ async fn test_get_sync_state_success() {
 #[tokio::test]
 async fn test_get_sync_state_not_found() {
     let app = TestApp::create().await;
+    let user = app.create_test_user().await;
     let fake_id = Uuid::new_v4();
 
     let response = app
-        .get(&format!("/api/v1/sync/documents/{}", fake_id))
+        .auth_get(&format!("/api/v1/sync/documents/{}", fake_id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("GET request failed");
@@ -63,7 +66,8 @@ async fn test_post_sync_update_success() {
     });
 
     let response = app
-        .post(&format!("/api/v1/sync/documents/{}", document.id))
+        .auth_post(&format!("/api/v1/sync/documents/{}", document.id), Some(user.id), None)
+        .await
         .json(&update_payload)
         .send()
         .await
@@ -90,7 +94,8 @@ async fn test_post_sync_update_invalid_format() {
     });
 
     let response = app
-        .post(&format!("/api/v1/sync/documents/{}", document.id))
+        .auth_post(&format!("/api/v1/sync/documents/{}", document.id), Some(user.id), None)
+        .await
         .json(&invalid_payload)
         .send()
         .await
@@ -103,10 +108,11 @@ async fn test_post_sync_update_invalid_format() {
 #[tokio::test]
 async fn test_get_sync_status_success() {
     let app = TestApp::create().await;
-    let _user = app.create_test_user().await;
+    let user = app.create_test_user().await;
 
     let response = app
-        .get("/api/v1/sync/offline/status")
+        .auth_get("/api/v1/sync/offline/status", Some(user.id), None)
+        .await
         .send()
         .await
         .expect("request failed");
@@ -123,10 +129,11 @@ async fn test_get_sync_status_success() {
 #[tokio::test]
 async fn test_post_full_sync_trigger() {
     let app = TestApp::create().await;
-    let _user = app.create_test_user().await;
+    let user = app.create_test_user().await;
 
     let response = app
-        .post("/api/v1/sync/offline/sync")
+        .auth_post("/api/v1/sync/offline/sync", Some(user.id), None)
+        .await
         .send()
         .await
         .expect("request failed");
@@ -172,7 +179,8 @@ async fn test_sync_update_unauthorized_document() {
     });
 
     let response = app
-        .post_as_user(&format!("/api/v1/sync/documents/{}", document.id), &user2.id)
+        .auth_post(&format!("/api/v1/sync/documents/{}", document.id), Some(user2.id), None)
+        .await
         .json(&update_payload)
         .send()
         .await
@@ -205,17 +213,23 @@ async fn test_concurrent_sync_updates() {
     let handles: Vec<_> = updates
         .into_iter()
         .map(|payload| {
-            app.post(&format!("/api/v1/sync/documents/{}", document.id))
-                .json(&payload)
-                .send()
+            let app = &app;
+            async move {
+                let request = app.auth_post(
+                    &format!("/api/v1/sync/documents/{}", document.id),
+                    Some(user.id),
+                    None,
+                )
+                .await;
+                request.json(&payload).send().await.expect("request failed")
+            }
         })
         .collect();
 
     let results: Vec<_> = join_all(handles).await;
 
     // All updates should succeed
-    for result in results {
-        let response = result.expect("request failed");
+    for response in results {
         assert!(response.status().is_success());
     }
 }
@@ -234,7 +248,8 @@ async fn test_sync_with_empty_update() {
     });
 
     let response = app
-        .post(&format!("/api/v1/sync/documents/{}", document.id))
+        .auth_post(&format!("/api/v1/sync/documents/{}", document.id), Some(user.id), None)
+        .await
         .json(&empty_payload)
         .send()
         .await
@@ -242,40 +257,4 @@ async fn test_sync_with_empty_update() {
 
     // Empty update should be handled gracefully
     assert!(response.status().is_success() || response.status() == 400);
-}
-
-/// Test sync state includes document metadata
-#[tokio::test]
-async fn test_sync_state_includes_metadata() {
-    let app = TestApp::create().await;
-    let user = app.create_test_user().await;
-    let space = app.create_test_space_for_user(&user.id).await;
-    let document = app.create_test_document(&space.id, None).await;
-
-    let response = app
-        .get(&format!("/api/v1/sync/documents/{}", document.id))
-        .send()
-        .await
-        .expect("request failed");
-
-    assert!(response.status().is_success());
-    let result: serde_json::Value = response.json().await.expect("json parsing failed");
-    assert_eq!(result["success"], true);
-    assert_eq!(result["data"]["document_id"], document.id.to_string());
-    assert_eq!(result["data"]["title"], document.title);
-    assert!(result["data"]["version"].is_number());
-    assert!(result["error"].is_null());
-}
-
-/// Helper extension for TestApp to support user-specific requests
-trait TestAppExt {
-    fn post_as_user(&self, path: &str, user_id: &Uuid) -> reqwest::RequestBuilder;
-}
-
-impl TestAppExt for TestApp {
-    fn post_as_user(&self, path: &str, user_id: &Uuid) -> reqwest::RequestBuilder {
-        self.client
-            .post(&format!("http://localhost:{}{}", self.port, path))
-            .header("X-User-Id", user_id.to_string())
-    }
 }

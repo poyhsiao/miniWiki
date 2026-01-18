@@ -55,8 +55,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     // Register sync service routes (under /api/v1/sync)
     cfg.service(
         web::scope("/api/v1")
-            .configure(space_service::config)
             .configure(document_service::config)
+            .configure(space_service::config)
             .configure(file_service::config)
             .configure(sync_service::config)
     );

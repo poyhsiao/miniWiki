@@ -138,6 +138,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .app_data(web::Data::new(AuthRepository::new(pool.clone())))
+            .app_data(web::Data::new(document_service::repository::DocumentRepository::new(pool.clone())))
             .app_data(web::Data::new(SyncAppState {
                 pool: pool.clone(),
                 server_clock: Arc::new(Mutex::new(0)),

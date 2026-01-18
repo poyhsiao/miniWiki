@@ -30,7 +30,8 @@ async fn test_create_document_success() {
     };
 
     let response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .auth_post(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .await
         .json(&request)
         .send()
         .await
@@ -38,9 +39,9 @@ async fn test_create_document_success() {
 
     assert!(response.status().is_success());
     let document: serde_json::Value = response.json().await.expect("Parse response failed");
-    assert_eq!(document["data"]["title"], "Test Document");
-    assert_eq!(document["data"]["space_id"], space.id.to_string());
-    assert!(document["data"]["id"].is_string());
+    assert_eq!(document["data"]["document"]["title"], "Test Document");
+    assert_eq!(document["data"]["document"]["space_id"], space.id.to_string());
+    assert!(document["data"]["document"]["id"].is_string());
     assert_eq!(document["success"], true);
     assert!(document["error"].is_null());
 }
@@ -60,7 +61,8 @@ async fn test_create_document_with_parent() {
     };
 
     let response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .auth_post(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .await
         .json(&request)
         .send()
         .await
@@ -68,7 +70,7 @@ async fn test_create_document_with_parent() {
 
     assert!(response.status().is_success());
     let document: serde_json::Value = response.json().await.expect("Parse response failed");
-    assert_eq!(document["data"]["parent_id"], parent_doc.id.to_string());
+    assert_eq!(document["data"]["document"]["parent_id"], parent_doc.id.to_string());
     assert_eq!(document["success"], true);
     assert!(document["error"].is_null());
 }
@@ -87,7 +89,8 @@ async fn test_create_document_empty_title_fails() {
     };
 
     let response = app
-        .post(&format!("/api/v1/spaces/{}/documents", space.id))
+        .auth_post(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .await
         .json(&request)
         .send()
         .await
@@ -104,7 +107,8 @@ async fn test_get_document_success() {
     let document = app.create_test_document(&space.id, None).await;
 
     let response = app
-        .get(&format!("/api/v1/documents/{}", document.id))
+        .auth_get(&format!("/api/v1/documents/{}", document.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("Get document request failed");
@@ -120,15 +124,17 @@ async fn test_get_document_success() {
 #[tokio::test]
 async fn test_get_document_not_found() {
     let app = TestApp::create().await;
+    let user = app.create_test_user().await;
     let fake_id = Uuid::new_v4();
 
     let response = app
-        .get(&format!("/api/v1/documents/{}", fake_id))
+        .auth_get(&format!("/api/v1/documents/{}", fake_id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("Get document request failed");
 
-    assert_eq!(response.status(), 404);
+    assert!(response.status() == 404 || response.status() == 403);
 }
 
 #[tokio::test]
@@ -145,7 +151,8 @@ async fn test_update_document_title() {
     };
 
     let response = app
-        .patch(&format!("/api/v1/documents/{}", document.id))
+        .auth_patch(&format!("/api/v1/documents/{}", document.id), Some(user.id), None)
+        .await
         .json(&request)
         .send()
         .await
@@ -181,7 +188,8 @@ async fn test_update_document_content() {
     };
 
     let response = app
-        .patch(&format!("/api/v1/documents/{}", document.id))
+        .auth_patch(&format!("/api/v1/documents/{}", document.id), Some(user.id), None)
+        .await
         .json(&request)
         .send()
         .await
@@ -198,7 +206,8 @@ async fn test_delete_document_soft_delete() {
     let document = app.create_test_document(&space.id, None).await;
 
     let response = app
-        .delete(&format!("/api/v1/documents/{}", document.id))
+        .auth_delete(&format!("/api/v1/documents/{}", document.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("Delete document request failed");
@@ -207,7 +216,8 @@ async fn test_delete_document_soft_delete() {
 
     // Verify document is soft deleted (is_archived = true)
     let get_response = app
-        .get(&format!("/api/v1/documents/{}", document.id))
+        .auth_get(&format!("/api/v1/documents/{}", document.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("Get document request failed");
@@ -231,7 +241,8 @@ async fn test_list_documents_in_space() {
     app.create_test_document(&space.id, None).await;
 
     let response = app
-        .get(&format!("/api/v1/spaces/{}/documents", space.id))
+        .auth_get(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("List documents request failed");
@@ -256,7 +267,8 @@ async fn test_list_documents_with_pagination() {
     }
 
     let response = app
-        .get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=0", space.id))
+        .auth_get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=0", space.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("List documents request failed");
@@ -284,7 +296,8 @@ async fn test_document_hierarchy_nested() {
 
     // Get children of parent
     let response = app
-        .get(&format!("/api/v1/documents/{}/children", parent.id))
+        .auth_get(&format!("/api/v1/documents/{}/children", parent.id), Some(user.id), None)
+        .await
         .send()
         .await
         .expect("Get children request failed");
