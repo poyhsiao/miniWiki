@@ -410,13 +410,19 @@ test.describe('Space Settings E2E Tests', () => {
       
       if (await nameInput.isVisible()) {
         // Update name using platform-agnostic fill method
-        await nameInput.fill(`Updated Space ${Date.now()}`);
+        const newName = `Updated Space ${Date.now()}`;
+        await nameInput.fill(newName);
 
         // Save
         const saveButton = page.locator('button:has-text("Save"), button[type="submit"]');
         await saveButton.click();
         
         await page.waitForTimeout(2000);
+        
+        // Verify update persisted
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        await expect(nameInput).toHaveValue(/Updated Space/);
       }
     }
   });
@@ -437,6 +443,10 @@ test.describe('Space Settings E2E Tests', () => {
       const visibilityToggle = page.locator('input[type="checkbox"][name*="public"], .toggle, [role="switch"]');
       
       if (await visibilityToggle.isVisible()) {
+        // Get initial state
+        const initialState = await visibilityToggle.isChecked();
+        
+        // Toggle
         await visibilityToggle.click();
         await page.waitForTimeout(500);
         
@@ -445,6 +455,18 @@ test.describe('Space Settings E2E Tests', () => {
         await saveButton.click();
         
         await page.waitForTimeout(2000);
+        
+        // Verify toggle persisted
+        await page.reload();
+        await page.waitForLoadState('networkidle');
+        
+        // Re-query the toggle after reload
+        const persistedToggle = page.locator('input[type="checkbox"][name*="public"], .toggle, [role="switch"]');
+        await expect(persistedToggle).toBeVisible({ timeout: 5000 });
+        
+        // Verify state is flipped
+        const finalState = await persistedToggle.isChecked();
+        expect(finalState).not.toBe(initialState);
       }
     }
   });

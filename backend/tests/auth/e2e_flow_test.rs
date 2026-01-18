@@ -160,8 +160,10 @@ async fn test_e2e_access_protected_route_with_invalid_signature() {
     let _test_user = app.create_test_user().await;
 
     // Use an invalid/malformed token (invalid signature)
-    // This tests signature validation rather than token expiry
-    let invalid_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.invalid_signature";
+    // This tests signature validation rather than token expiry.
+    // Note: This is intentionally an invalid test token (not a real secret).
+    // Base64 payload: {"sub":"1234567890","name":"John Doe","iat":1516239022,"exp":9999999999}
+    let invalid_token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjk5OTk5OTk5OTl9.invalid_signature";
 
     // Try to access protected endpoint with invalid token
     let response = app
