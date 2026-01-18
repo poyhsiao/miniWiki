@@ -473,14 +473,22 @@ test.describe('Space Settings E2E Tests', () => {
         // Verify toggle persisted
         await page.reload();
         await page.waitForLoadState('networkidle');
-        
+
+        // Re-open settings panel after reload
+        await settingsButton.click();
+        await page.waitForTimeout(500);
+
         // Re-query the toggle after reload
         const persistedCheckbox = page.locator('input[type="checkbox"][name*="public"]');
         const persistedSwitch = page.locator('.toggle, [role="switch"]');
         await expect(persistedCheckbox.or(persistedSwitch)).toBeVisible({ timeout: 5000 });
-        
-        // Verify state is flipped
-        const finalState = await getToggleState();
+
+        // Verify state is flipped using re-queried locators
+        const finalState = await (async () => {
+          if (await persistedCheckbox.isVisible()) return await persistedCheckbox.isChecked();
+          const ariaChecked = await persistedSwitch.getAttribute('aria-checked');
+          return ariaChecked === 'true';
+        })();
         expect(finalState).not.toBe(initialState);
       }
     }
