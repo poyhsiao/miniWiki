@@ -85,25 +85,45 @@ pub async fn get_space(
     req: HttpRequest,
     space_id: web::Path<Uuid>,
 ) -> Result<HttpResponse> {
+    eprintln!("DEBUG get_space: handler called");
     let user_id = match extract_user_id_from_request(&req) {
-        Some(id) => id,
-        None => return Err(actix_web::error::ErrorUnauthorized("Missing or invalid token")),
+        Some(id) => {
+            eprintln!("DEBUG get_space: user_id extracted = {}", id);
+            id
+        },
+        None => {
+            eprintln!("DEBUG get_space: user_id extraction failed");
+            return Err(actix_web::error::ErrorUnauthorized("Missing or invalid token"));
+        }
     };
     
     let space_id = *space_id;
+    eprintln!("DEBUG get_space: looking for space_id = {}", space_id);
+    
     let space = SpaceRepository::find_by_id(&pool, space_id)
         .await
         .map_err(|e| {
             eprintln!("find_by_id error: {:?}", e);
             actix_web::error::ErrorInternalServerError(e)
-        })?
-        .ok_or_else(|| actix_web::error::ErrorNotFound("Space not found"))?;
+        })?;
+    
+    eprintln!("DEBUG get_space: find_by_id returned = {:?}", space.is_some());
+    
+    let space = match space {
+        Some(s) => s,
+        None => {
+            eprintln!("DEBUG get_space: space not found, returning 404");
+            return Err(actix_web::error::ErrorNotFound("Space not found"));
+        }
+    };
     
     let has_access = SpaceRepository::check_membership(&pool, space_id, user_id).await
         .map_err(|e| {
             eprintln!("check_membership error: {:?}", e);
             actix_web::error::ErrorInternalServerError(e)
         })?;
+    
+    eprintln!("DEBUG get_space: has_access = {}", has_access);
     
     if !has_access && !space.is_public {
         return Err(actix_web::error::ErrorForbidden("Access denied"));

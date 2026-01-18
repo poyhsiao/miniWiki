@@ -24,6 +24,8 @@ pub struct Claims {
     pub role: String,
     pub exp: usize,
     pub iat: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jti: Option<String>, // JWT ID for token uniqueness
 }
 
 #[derive(Debug, Clone)]
@@ -60,7 +62,7 @@ impl JwtService {
     ) -> Result<String, JwtError> {
         let now = Utc::now();
         let expiry = now + Duration::seconds(self.config.access_expiry);
-        
+
         let claims = Claims {
             sub: user_id.to_string(),
             user_id: user_id.to_string(),
@@ -68,6 +70,7 @@ impl JwtService {
             role: role.to_string(),
             exp: expiry.timestamp() as usize,
             iat: now.timestamp() as usize,
+            jti: None, // Access tokens don't need JTI
         };
 
         encode(
@@ -80,7 +83,8 @@ impl JwtService {
     pub fn generate_refresh_token(&self, user_id: &str) -> Result<String, JwtError> {
         let now = Utc::now();
         let expiry = now + Duration::seconds(self.config.refresh_expiry);
-        
+        let jti = Uuid::new_v4().to_string(); // Generate unique ID for each token
+
         let claims = Claims {
             sub: user_id.to_string(),
             user_id: user_id.to_string(),
@@ -88,6 +92,7 @@ impl JwtService {
             role: String::new(),
             exp: expiry.timestamp() as usize,
             iat: now.timestamp() as usize,
+            jti: Some(jti),
         };
 
         encode(

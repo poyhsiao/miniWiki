@@ -55,8 +55,17 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     // Register sync service routes (under /api/v1/sync)
     cfg.service(
         web::scope("/api/v1")
-            .configure(document_service::config)
+            // Document endpoints first
+            .configure(document_service::configure)
+            // Space endpoints
             .configure(space_service::config)
+            // Space-scoped document endpoints as a separate scope with a different prefix
+            // Using /space-docs instead of /spaces to avoid conflict with space_service's /spaces/{id}
+            .service(
+                web::scope("/space-docs")
+                    .route("/{spaceId}/documents", web::post().to(document_service::handlers::create_document))
+                    .route("/{spaceId}/documents", web::get().to(document_service::handlers::list_documents))
+            )
             .configure(file_service::config)
             .configure(sync_service::config)
     );

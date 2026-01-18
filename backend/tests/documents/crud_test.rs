@@ -30,7 +30,7 @@ async fn test_create_document_success() {
     };
 
     let response = app
-        .auth_post(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .auth_post(&format!("/api/v1/space-docs/{}/documents", space.id), Some(user.id), None)
         .await
         .json(&request)
         .send()
@@ -61,7 +61,7 @@ async fn test_create_document_with_parent() {
     };
 
     let response = app
-        .auth_post(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .auth_post(&format!("/api/v1/space-docs/{}/documents", space.id), Some(user.id), None)
         .await
         .json(&request)
         .send()
@@ -89,7 +89,7 @@ async fn test_create_document_empty_title_fails() {
     };
 
     let response = app
-        .auth_post(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .auth_post(&format!("/api/v1/space-docs/{}/documents", space.id), Some(user.id), None)
         .await
         .json(&request)
         .send()
@@ -241,7 +241,7 @@ async fn test_list_documents_in_space() {
     app.create_test_document(&space.id, None).await;
 
     let response = app
-        .auth_get(&format!("/api/v1/spaces/{}/documents", space.id), Some(user.id), None)
+        .auth_get(&format!("/api/v1/space-docs/{}/documents", space.id), Some(user.id), None)
         .await
         .send()
         .await
@@ -267,7 +267,7 @@ async fn test_list_documents_with_pagination() {
     }
 
     let response = app
-        .auth_get(&format!("/api/v1/spaces/{}/documents?limit=5&offset=0", space.id), Some(user.id), None)
+        .auth_get(&format!("/api/v1/space-docs/{}/documents?limit=5&offset=0", space.id), Some(user.id), None)
         .await
         .send()
         .await

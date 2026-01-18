@@ -98,7 +98,7 @@ async fn test_space_crud_with_postgres() {
     assert_eq!(resp.status(), 404, "Deleted space should return 404");
 
     // Cleanup
-    app.cleanup().await;
+    app.cleanup_test_user(&user.id).await;
 }
 
 /// T127: Verify hierarchical document queries work correctly
@@ -121,7 +121,7 @@ async fn test_hierarchical_document_queries() {
         "content": {"type": "Y.Doc", "update": "dGVzdCB1cGRhdGU=", "vector_clock": {"client_id": "parent", "clock": 1}}
     });
 
-    let resp = app.post(&format!("/api/v1/spaces/{}/documents", space.id))
+    let resp = app.post(&format!("/api/v1/space-docs/{}/documents", space.id))
         .header("Authorization", format!("Bearer {}", token))
         .json(&parent_doc_req)
         .send()
@@ -130,7 +130,7 @@ async fn test_hierarchical_document_queries() {
 
     assert_eq!(resp.status(), 201, "Parent document creation should return 201");
     let parent: serde_json::Value = resp.json().await.expect("Parse parent response");
-    let parent_id = parent["id"].as_str().expect("Parent ID should be string");
+    let parent_id = parent["data"]["document"]["id"].as_str().expect("Parent ID should be string");
 
     // Create child document under parent
     let child_doc_req = serde_json::json!({
@@ -140,7 +140,7 @@ async fn test_hierarchical_document_queries() {
         "content": {"type": "Y.Doc", "update": "dGVzdCB1cGRhdGU=", "vector_clock": {"client_id": "child", "clock": 1}}
     });
 
-    let resp = app.post(&format!("/api/v1/spaces/{}/documents", space.id))
+    let resp = app.post(&format!("/api/v1/space-docs/{}/documents", space.id))
         .header("Authorization", format!("Bearer {}", token))
         .json(&child_doc_req)
         .send()
@@ -149,7 +149,7 @@ async fn test_hierarchical_document_queries() {
 
     assert_eq!(resp.status(), 201, "Child document creation should return 201");
     let child: serde_json::Value = resp.json().await.expect("Parse child response");
-    let child_id = child["id"].as_str().expect("Child ID should be string");
+    let child_id = child["data"]["document"]["id"].as_str().expect("Child ID should be string");
 
     // Verify parent-child relationship
     let resp = app.get(&format!("/api/v1/documents/{}", child_id))
@@ -160,7 +160,7 @@ async fn test_hierarchical_document_queries() {
 
     assert_eq!(resp.status(), 200, "Get child should return 200");
     let child_retrieved: serde_json::Value = resp.json().await.expect("Parse child response");
-    assert_eq!(child_retrieved["parent_id"], parent_id, "Child should have correct parent_id");
+    assert_eq!(child_retrieved["data"]["parent_id"], parent_id, "Child should have correct parent_id");
 
     // Create grandchild document
     let grandchild_doc_req = serde_json::json!({
@@ -170,7 +170,7 @@ async fn test_hierarchical_document_queries() {
         "content": {"type": "Y.Doc", "update": "dGVzdCB1cGRhdGU=", "vector_clock": {"client_id": "grandchild", "clock": 1}}
     });
 
-    let resp = app.post(&format!("/api/v1/spaces/{}/documents", space.id))
+    let resp = app.post(&format!("/api/v1/space-docs/{}/documents", space.id))
         .header("Authorization", format!("Bearer {}", token))
         .json(&grandchild_doc_req)
         .send()
@@ -180,18 +180,19 @@ async fn test_hierarchical_document_queries() {
     assert_eq!(resp.status(), 201, "Grandchild document creation should return 201");
 
     // List documents in space (should include all)
-    let resp = app.get(&format!("/api/v1/spaces/{}/documents", space.id))
+    let resp = app.get(&format!("/api/v1/space-docs/{}/documents", space.id))
         .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .expect("List documents failed");
 
     assert_eq!(resp.status(), 200, "List documents should return 200");
-    let documents: Vec<serde_json::Value> = resp.json().await.expect("Parse documents list");
+    let response: serde_json::Value = resp.json().await.expect("Parse documents list");
+    let documents = response["data"]["documents"].as_array().expect("Parse documents list");
     assert_eq!(documents.len(), 3, "Should have 3 documents (parent, child, grandchild)");
 
     // Cleanup
-    app.cleanup().await;
+    app.cleanup_test_user(&user.id).await;
 }
 
 /// T128: Test space creation → member invitation → document organization flow
@@ -266,7 +267,7 @@ async fn test_complete_space_member_document_flow() {
         "content": {"type": "Y.Doc", "update": "dGVzdCB1cGRhdGU=", "vector_clock": {"client_id": "member", "clock": 1}}
     });
 
-    let resp = app.post(&format!("/api/v1/spaces/{}/documents", space_id))
+    let resp = app.post(&format!("/api/v1/space-docs/{}/documents", space_id))
         .header("Authorization", format!("Bearer {}", member_token))
         .json(&doc_req)
         .send()
@@ -275,7 +276,7 @@ async fn test_complete_space_member_document_flow() {
 
     assert_eq!(resp.status(), 201, "Editor should be able to create documents");
     let document: serde_json::Value = resp.json().await.expect("Parse document response");
-    let _doc_id = document["id"].as_str().expect("Document ID should be string");
+    let _doc_id = document["data"]["document"]["id"].as_str().expect("Document ID should be string");
 
     // Owner updates member role to viewer
     let update_role_req = serde_json::json!({
@@ -297,7 +298,7 @@ async fn test_complete_space_member_document_flow() {
         "content": {"type": "Y.Doc"}
     });
 
-    let resp = app.post(&format!("/api/v1/spaces/{}/documents", space_id))
+    let resp = app.post(&format!("/api/v1/space-docs/{}/documents", space_id))
         .header("Authorization", format!("Bearer {}", member_token))
         .json(&doc_req)
         .send()
@@ -312,7 +313,7 @@ async fn test_complete_space_member_document_flow() {
         "content": {"type": "Y.Doc", "update": "dGVzdCB1cGRhdGU=", "vector_clock": {"client_id": "owner", "clock": 1}}
     });
 
-    let resp = app.post(&format!("/api/v1/spaces/{}/documents", space_id))
+    let resp = app.post(&format!("/api/v1/space-docs/{}/documents", space_id))
         .header("Authorization", format!("Bearer {}", owner_token))
         .json(&doc_req)
         .send()
@@ -322,5 +323,6 @@ async fn test_complete_space_member_document_flow() {
     assert_eq!(resp.status(), 201, "Owner should be able to create documents");
 
     // Cleanup
-    app.cleanup().await;
+    app.cleanup_test_user(&member_user.id).await;
+    app.cleanup_test_user(&owner.id).await;
 }

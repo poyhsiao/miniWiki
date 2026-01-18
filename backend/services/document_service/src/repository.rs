@@ -216,40 +216,77 @@ impl DocumentRepository {
         offset: i32,
     ) -> Result<(Vec<DocumentRow>, i64), sqlx::Error> {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
-        let parent_uuid = match parent_id {
-            Some(id) => Some(Uuid::parse_str(id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?),
-            None => None,
+
+        let documents = match parent_id {
+            Some(parent_id_str) => {
+                let parent_uuid = Uuid::parse_str(parent_id_str)
+                    .map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+                sqlx::query_as!(
+                    DocumentRow,
+                    r#"
+                    SELECT * FROM documents
+                    WHERE space_id = $1 AND is_archived = false
+                    AND parent_id = $2
+                    ORDER BY created_at DESC
+                    LIMIT $3 OFFSET $4
+                    "#,
+                    space_uuid,
+                    parent_uuid,
+                    limit as i64,
+                    offset as i64
+                )
+                .fetch_all(&self.pool)
+                .await?
+            }
+            None => {
+                sqlx::query_as!(
+                    DocumentRow,
+                    r#"
+                    SELECT * FROM documents
+                    WHERE space_id = $1 AND is_archived = false
+                    AND parent_id IS NULL
+                    ORDER BY created_at DESC
+                    LIMIT $2 OFFSET $3
+                    "#,
+                    space_uuid,
+                    limit as i64,
+                    offset as i64
+                )
+                .fetch_all(&self.pool)
+                .await?
+            }
         };
 
-        let documents = sqlx::query_as!(
-            DocumentRow,
-            r#"
-            SELECT * FROM documents
-            WHERE space_id = $1 AND is_archived = false
-            AND parent_id IS NOT DISTINCT FROM $2
-            ORDER BY created_at DESC
-            LIMIT $3 OFFSET $4
-            "#,
-            space_uuid,
-            parent_uuid,
-            limit as i64,
-            offset as i64
-        )
-        .fetch_all(&self.pool)
-        .await?;
-
-        let total = sqlx::query!(
-            r#"
-            SELECT COUNT(*) as "count!" FROM documents
-            WHERE space_id = $1 AND is_archived = false
-            AND parent_id IS NOT DISTINCT FROM $2
-            "#,
-            space_uuid,
-            parent_uuid
-        )
-        .fetch_one(&self.pool)
-        .await?
-        .count;
+        let total = match parent_id {
+            Some(parent_id_str) => {
+                let parent_uuid = Uuid::parse_str(parent_id_str)
+                    .map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+                sqlx::query!(
+                    r#"
+                    SELECT COUNT(*) as "count!" FROM documents
+                    WHERE space_id = $1 AND is_archived = false
+                    AND parent_id = $2
+                    "#,
+                    space_uuid,
+                    parent_uuid
+                )
+                .fetch_one(&self.pool)
+                .await?
+                .count
+            }
+            None => {
+                sqlx::query!(
+                    r#"
+                    SELECT COUNT(*) as "count!" FROM documents
+                    WHERE space_id = $1 AND is_archived = false
+                    "#,
+                    space_uuid
+                )
+                .fetch_one(&self.pool)
+                .await?
+                .count
+            }
+        };
 
         Ok((documents, total as i64))
     }
