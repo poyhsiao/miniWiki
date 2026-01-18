@@ -14,56 +14,56 @@ DROP VIEW IF EXISTS documents_with_versions;
 DROP VIEW IF EXISTS recent_document_activity;
 
 -- Users table
-ALTER TABLE users ALTER COLUMN email_verified_at TYPE TIMESTAMPTZ;
-ALTER TABLE users ALTER COLUMN last_login_at TYPE TIMESTAMPTZ;
-ALTER TABLE users ALTER COLUMN created_at TYPE TIMESTAMPTZ;
-ALTER TABLE users ALTER COLUMN updated_at TYPE TIMESTAMPTZ;
+ALTER TABLE users ALTER COLUMN email_verified_at TYPE TIMESTAMPTZ USING email_verified_at AT TIME ZONE 'UTC';
+ALTER TABLE users ALTER COLUMN last_login_at TYPE TIMESTAMPTZ USING last_login_at AT TIME ZONE 'UTC';
+ALTER TABLE users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+ALTER TABLE users ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
 
 -- Spaces table
-ALTER TABLE spaces ALTER COLUMN created_at TYPE TIMESTAMPTZ;
-ALTER TABLE spaces ALTER COLUMN updated_at TYPE TIMESTAMPTZ;
+ALTER TABLE spaces ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+ALTER TABLE spaces ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
 
 -- Space memberships table
-ALTER TABLE space_memberships ALTER COLUMN joined_at TYPE TIMESTAMPTZ;
+ALTER TABLE space_memberships ALTER COLUMN joined_at TYPE TIMESTAMPTZ USING joined_at AT TIME ZONE 'UTC';
 
 -- Documents table
-ALTER TABLE documents ALTER COLUMN archived_at TYPE TIMESTAMPTZ;
-ALTER TABLE documents ALTER COLUMN created_at TYPE TIMESTAMPTZ;
-ALTER TABLE documents ALTER COLUMN updated_at TYPE TIMESTAMPTZ;
+ALTER TABLE documents ALTER COLUMN archived_at TYPE TIMESTAMPTZ USING archived_at AT TIME ZONE 'UTC';
+ALTER TABLE documents ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+ALTER TABLE documents ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
 
 -- Document versions table
-ALTER TABLE document_versions ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE document_versions ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Files table
-ALTER TABLE files ALTER COLUMN deleted_at TYPE TIMESTAMPTZ;
-ALTER TABLE files ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE files ALTER COLUMN deleted_at TYPE TIMESTAMPTZ USING deleted_at AT TIME ZONE 'UTC';
+ALTER TABLE files ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Comments table
-ALTER TABLE comments ALTER COLUMN resolved_at TYPE TIMESTAMPTZ;
-ALTER TABLE comments ALTER COLUMN created_at TYPE TIMESTAMPTZ;
-ALTER TABLE comments ALTER COLUMN updated_at TYPE TIMESTAMPTZ;
+ALTER TABLE comments ALTER COLUMN resolved_at TYPE TIMESTAMPTZ USING resolved_at AT TIME ZONE 'UTC';
+ALTER TABLE comments ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
+ALTER TABLE comments ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'UTC';
 
 -- Audit logs table
-ALTER TABLE audit_logs ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE audit_logs ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Sync sessions table
-ALTER TABLE sync_sessions ALTER COLUMN last_sync_at TYPE TIMESTAMPTZ;
-ALTER TABLE sync_sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ;
-ALTER TABLE sync_sessions ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE sync_sessions ALTER COLUMN last_sync_at TYPE TIMESTAMPTZ USING last_sync_at AT TIME ZONE 'UTC';
+ALTER TABLE sync_sessions ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+ALTER TABLE sync_sessions ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Share links table
-ALTER TABLE share_links ALTER COLUMN expires_at TYPE TIMESTAMPTZ;
-ALTER TABLE share_links ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE share_links ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+ALTER TABLE share_links ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Password resets table
-ALTER TABLE password_resets ALTER COLUMN expires_at TYPE TIMESTAMPTZ;
-ALTER TABLE password_resets ALTER COLUMN used_at TYPE TIMESTAMPTZ;
-ALTER TABLE password_resets ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE password_resets ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+ALTER TABLE password_resets ALTER COLUMN used_at TYPE TIMESTAMPTZ USING used_at AT TIME ZONE 'UTC';
+ALTER TABLE password_resets ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Refresh tokens table
-ALTER TABLE refresh_tokens ALTER COLUMN expires_at TYPE TIMESTAMPTZ;
-ALTER TABLE refresh_tokens ALTER COLUMN revoked_at TYPE TIMESTAMPTZ;
-ALTER TABLE refresh_tokens ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE refresh_tokens ALTER COLUMN expires_at TYPE TIMESTAMPTZ USING expires_at AT TIME ZONE 'UTC';
+ALTER TABLE refresh_tokens ALTER COLUMN revoked_at TYPE TIMESTAMPTZ USING revoked_at AT TIME ZONE 'UTC';
+ALTER TABLE refresh_tokens ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'UTC';
 
 -- Email verifications table (if exists)
 DO $$
