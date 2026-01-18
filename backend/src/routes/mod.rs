@@ -1,8 +1,29 @@
 use actix_web::web;
-use std::sync::Arc;
 use document_service::sharing::{get_share_link_by_token, verify_share_link_access_code};
+use auth_service::jwt::JwtService;
 
 const DEFAULT_JWT_SECRET: &str = "test-secret-key-for-testing-only-do-not-use-in-production";
+
+/// Get JWT secret from environment variable or fall back to test secret in dev/test mode
+fn get_jwt_secret() -> String {
+    // Try to get from environment first
+    if let Ok(secret) = std::env::var("JWT_SECRET") {
+        return secret;
+    }
+
+    // Only allow fallback to test secret in development/test mode
+    #[cfg(any(debug_assertions, test))]
+    {
+        eprintln!("WARNING: Using default JWT secret. Set JWT_SECRET environment variable in production!");
+        return DEFAULT_JWT_SECRET.to_string();
+    }
+
+    // In release mode without JWT_SECRET, panic to prevent insecure startup
+    #[cfg(not(any(debug_assertions, test)))]
+    {
+        panic!("JWT_SECRET environment variable must be set in production mode!");
+    }
+}
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("/health", web::get().to(|| async {
@@ -20,15 +41,24 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{token}/verify", web::post().to(verify_share_link_access_code))
     );
 
-    cfg.app_data(web::Data::new(Arc::new(DEFAULT_JWT_SECRET.to_string())));
+    // Configure auth service with required data
+    // The pool is already registered in main.rs, but we need to create JwtService and register it
+    cfg.app_data(web::Data::new(JwtService::new(auth_service::jwt::JwtConfig {
+        secret: get_jwt_secret(),
+        access_expiry: 3600,
+        refresh_expiry: 86400,
+    })));
 
-    // file_service::config will use pool and storage from app_data (registered in main.rs)
-    // Handlers will extract them directly via web::Data<T>
+    // Register auth service routes (under /auth)
+    cfg.configure(auth_service::config);
+
+    // Register sync service routes (under /api/v1/sync)
     cfg.service(
         web::scope("/api/v1")
             .configure(space_service::config)
             .configure(document_service::config)
             .configure(file_service::config)
+            .configure(sync_service::config)
     );
 
     cfg.configure(websocket_service::config);

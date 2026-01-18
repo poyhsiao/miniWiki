@@ -3215,6 +3215,7 @@ dependencies = [
  "shared_models",
  "space_service",
  "sqlx",
+ "sync_service",
  "thiserror 2.0.17",
  "tokio",
  "tokio-test",
