@@ -1,4 +1,4 @@
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 
 fn main() {
     let password = std::env::var("CHECK_PASSWORD").ok();
@@ -20,8 +20,8 @@ fn main() {
             let stdin = io::stdin();
 
             println!("Please enter password:");
-            let mut password = String::new();
-            stdin.lock().read_line(&mut password).expect("Failed to read password from stdin");
+            io::stdout().flush().ok();
+            let password = rpassword::read_password().expect("Failed to read password from stdin");
             let password = password.trim().to_string();
 
             println!("Please enter hash:");

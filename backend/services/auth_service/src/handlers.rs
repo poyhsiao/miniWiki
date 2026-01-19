@@ -127,20 +127,7 @@ pub async fn login(
                 }
             };
 
-            let masked_email = {
-                let parts: Vec<&str> = user.email.split('@').collect();
-                if parts.len() == 2 {
-                    let name = parts[0];
-                    let domain = parts[1];
-                    let name_len = name.chars().count();
-                    let visible_len = std::cmp::min(2, name_len);
-                    let visible_part: String = name.chars().take(visible_len).collect();
-                    format!("{}***@{}", visible_part, domain)
-                } else {
-                    "***@***.***".to_string()
-                }
-            };
-
+            let masked_email = mask_email(&user.email);
             tracing::error!(
                 "Password verification failed for user {} ({}): verify_password error: {}",
                 masked_id,
@@ -176,7 +163,7 @@ pub async fn login(
     };
 
     // Store refresh token in database
-    let expires_at = chrono::Utc::now() + chrono::Duration::seconds(jwt_service.config.refresh_expiry);
+    let expires_at = (chrono::Utc::now() + chrono::Duration::seconds(jwt_service.config.refresh_expiry)).naive_utc();
     let refresh_token_record = RefreshToken {
         id: uuid::Uuid::new_v4(),
         user_id: user.id,
@@ -186,7 +173,7 @@ pub async fn login(
         user_agent,
         is_revoked: false,
         revoked_at: None,
-        created_at: chrono::Utc::now(),
+        created_at: chrono::Utc::now().naive_utc(),
     };
 
     if let Err(e) = repo.create_refresh_token(&refresh_token_record).await {

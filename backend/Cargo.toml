@@ -122,6 +122,9 @@ governor = "0.6"
 # Encryption
 aes-gcm = "0.10"
 
+# Password input (no-echo)
+rpassword = "7.3"
+
 # MinIO / S3
 # AWS dependencies are defined in workspace.dependencies
 
@@ -150,7 +153,7 @@ bytes = { version = "1.5" }
 [features]
 default = []
 integration = []
-
+test-utils = []
 
 [profile.release]
 opt-level = 3
