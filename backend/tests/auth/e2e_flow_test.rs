@@ -22,7 +22,7 @@ async fn test_e2e_login_flow() {
     // Note: Using the pre-created user's email and a known password hash
     let login_response = app
         .client
-        .post(&format!("http://localhost:{}/v1/auth/login", app.port))
+        .post(&format!("http://localhost:{}/api/v1/auth/login", app.port))
         .json(&json!({
             "email": test_user.email,
             "password": "TestPass123!"  // This should match the password hash used in create_test_user
@@ -57,7 +57,7 @@ async fn test_e2e_document_list_after_login() {
     // Access document list endpoint
     let response = app
         .client
-        .get(&format!("http://localhost:{}/v1/space-docs/{}/documents", app.port, space.id))
+        .get(&format!("http://localhost:{}/api/v1/space-docs/{}/documents", app.port, space.id))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", test_user.id.to_string())
         .send()
@@ -88,14 +88,36 @@ async fn test_e2e_logout_flow() {
     // Create test user
     let test_user = app.create_test_user().await;
 
-    // Get auth token
-    let (token, _user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+    // Login to get tokens
+    let login_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/login", app.port))
+        .json(&serde_json::json!({
+            "email": test_user.email,
+            "password": "TestPass123!"
+        }))
+        .send()
+        .await
+        .expect("Login request failed");
 
-    // Perform logout
+    assert!(
+        login_response.status() == 200,
+        "Login should succeed, got: {}",
+        login_response.status()
+    );
+
+    let login_body: serde_json::Value = login_response.json().await.expect("Parse login response");
+    let access_token = login_body.get("access_token").unwrap().as_str().unwrap().to_string();
+    let refresh_token = login_body.get("refresh_token").unwrap().as_str().unwrap().to_string();
+
+    // Perform logout with refresh token
     let logout_response = app
         .client
-        .post(&format!("http://localhost:{}/v1/auth/logout", app.port))
-        .header("Authorization", format!("Bearer {}", token))
+        .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
+        .json(&serde_json::json!({
+            "refresh_token": refresh_token
+        }))
+        .header("Authorization", format!("Bearer {}", access_token))
         .header("X-User-Id", test_user.id.to_string())
         .send()
         .await
@@ -130,7 +152,7 @@ async fn test_e2e_access_protected_route_without_token() {
     // Try to access protected endpoint WITHOUT authentication
     let response = app
         .client
-        .get(&format!("http://localhost:{}/v1/space-docs/{}/documents", app.port, space.id))
+        .get(&format!("http://localhost:{}/api/v1/space-docs/{}/documents", app.port, space.id))
         .send()
         .await
         .expect("Protected route request failed");
@@ -168,7 +190,7 @@ async fn test_e2e_access_protected_route_with_invalid_signature() {
     // Try to access protected endpoint with invalid token
     let response = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
         .header("Authorization", format!("Bearer {}", invalid_token))
         .send()
         .await
@@ -198,7 +220,7 @@ async fn test_e2e_token_persists_across_requests() {
     for i in 1..=3 {
         let response = app
             .client
-            .get(&format!("http://localhost:{}/v1/auth/me", app.port))
+            .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str.clone())
             .send()
@@ -239,7 +261,7 @@ async fn test_e2e_session_state_management() {
     // First request - get user profile
     let response1 = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", user_id_str.clone())
         .send()
@@ -258,7 +280,7 @@ async fn test_e2e_session_state_management() {
     // Second request - should get same user info
     let response2 = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", user_id_str.clone())
         .send()
@@ -281,8 +303,8 @@ async fn test_e2e_session_state_management() {
     );
 }
 
-/// Test that logout invalidates the token
-/// Verifies that after logout, the same token is no longer valid
+/// Test that logout invalidates the refresh token (access token remains valid until expiry)
+/// Verifies that after logout, the refresh token can no longer be used to get new access tokens
 #[tokio::test]
 async fn test_e2e_logout_invalidates_token() {
     let app = TestApp::create().await;
@@ -290,31 +312,53 @@ async fn test_e2e_logout_invalidates_token() {
     // Create test user
     let test_user = app.create_test_user().await;
 
-    // Get auth token
-    let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+    // First login - get tokens
+    let login_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/login", app.port))
+        .json(&serde_json::json!({
+            "email": test_user.email,
+            "password": "TestPass123!"
+        }))
+        .send()
+        .await
+        .expect("Login request failed");
 
-    // Verify token is valid before logout
+    assert!(
+        login_response.status() == 200,
+        "Login should succeed, got: {}",
+        login_response.status()
+    );
+
+    let login_body: serde_json::Value = login_response.json().await.expect("Parse login response");
+    let access_token = login_body.get("access_token").unwrap().as_str().unwrap().to_string();
+    let refresh_token = login_body.get("refresh_token").unwrap().as_str().unwrap().to_string();
+
+    // Verify access token works before logout
     let pre_logout_response = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("X-User-Id", test_user.id.to_string())
         .send()
         .await
         .expect("Pre-logout auth request failed");
 
     assert!(
         pre_logout_response.status() == 200,
-        "Token should be valid before logout, got: {}",
+        "Access token should be valid before logout, got: {}",
         pre_logout_response.status()
     );
 
     // Perform logout
     let logout_response = app
         .client
-        .post(&format!("http://localhost:{}/v1/auth/logout", app.port))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
+        .json(&serde_json::json!({
+            "refresh_token": refresh_token
+        }))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("X-User-Id", test_user.id.to_string())
         .send()
         .await
         .expect("Logout request failed");
@@ -325,21 +369,39 @@ async fn test_e2e_logout_invalidates_token() {
         logout_response.status()
     );
 
-    // Try to use the same token after logout
+    // Access token should still work (stateless JWT - valid until expiry)
     let post_logout_response = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("X-User-Id", test_user.id.to_string())
         .send()
         .await
         .expect("Post-logout auth request failed");
 
-    // Token should be invalid after logout
+    // Access token is stateless and remains valid until expiry
     assert!(
-        post_logout_response.status() == 401,
-        "Token should be invalid after logout, got: {}",
+        post_logout_response.status() == 200,
+        "Access token should still be valid after logout (stateless JWT), got: {}",
         post_logout_response.status()
+    );
+
+    // Refresh token should be invalidated
+    let refresh_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/refresh", app.port))
+        .json(&serde_json::json!({
+            "refresh_token": refresh_token
+        }))
+        .send()
+        .await
+        .expect("Refresh request failed");
+
+    // Refresh token should be invalid after logout
+    assert!(
+        refresh_response.status() == 401,
+        "Refresh token should be invalid after logout, got: {}",
+        refresh_response.status()
     );
 }
 
@@ -352,15 +414,32 @@ async fn test_e2e_new_login_after_logout() {
     // Create test user
     let test_user = app.create_test_user().await;
 
-    // First login - use actual server login
-    let token1 = app.login_user(&test_user.email, "TestPass123!")
+    // First login - use actual server login to get both tokens
+    let login_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/login", app.port))
+        .json(&serde_json::json!({
+            "email": test_user.email,
+            "password": "TestPass123!"
+        }))
+        .send()
         .await
-        .expect("First login should succeed");
+        .expect("First login request failed");
+
+    assert!(
+        login_response.status() == 200,
+        "First login should succeed, got: {}",
+        login_response.status()
+    );
+
+    let login_body: serde_json::Value = login_response.json().await.expect("Parse login response");
+    let token1 = login_body.get("access_token").unwrap().as_str().unwrap().to_string();
+    let refresh_token1 = login_body.get("refresh_token").unwrap().as_str().unwrap().to_string();
 
     // Verify first token works
     let response1 = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
         .header("Authorization", format!("Bearer {}", token1))
         .header("X-User-Id", test_user.id.to_string())
         .send()
@@ -369,10 +448,13 @@ async fn test_e2e_new_login_after_logout() {
 
     assert!(response1.status() == 200, "First token should work");
 
-    // Logout
+    // Logout with refresh token
     let logout_response = app
         .client
-        .post(&format!("http://localhost:{}/v1/auth/logout", app.port))
+        .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
+        .json(&serde_json::json!({
+            "refresh_token": refresh_token1
+        }))
         .header("Authorization", format!("Bearer {}", token1))
         .header("X-User-Id", test_user.id.to_string())
         .send()
@@ -392,7 +474,7 @@ async fn test_e2e_new_login_after_logout() {
     // Verify new token works
     let response2 = app
         .client
-        .get(&format!("http://localhost:{}/v1/auth/me", app.port))
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
         .header("Authorization", format!("Bearer {}", token2))
         .header("X-User-Id", test_user.id.to_string())
         .send()

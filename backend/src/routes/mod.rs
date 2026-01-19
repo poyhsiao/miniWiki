@@ -49,13 +49,12 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         refresh_expiry: 86400,
     })));
 
-    // Register auth service routes (under /auth)
-    cfg.configure(auth_service::config);
-
-    // Register sync service routes (under /api/v1/sync)
+    // Register auth service routes (under /api/v1/auth)
     cfg.service(
         web::scope("/api/v1")
-            // Document endpoints first
+            // Auth endpoints first to ensure they're available
+            .configure(auth_service::config)
+            // Document endpoints
             .configure(document_service::configure)
             // Space endpoints
             .configure(space_service::config)

@@ -108,10 +108,10 @@ impl TestApp {
             .post(&format!("http://localhost:{}{}", self.port, path))
     }
 
-    /// Perform login via POST /v1/auth/login and return server-issued token
+    /// Perform login via POST /api/v1/auth/login and return server-issued token
     pub async fn login_user(&self, email: &str, password: &str) -> Result<String, String> {
         let response = self.client
-            .post(&format!("http://localhost:{}/v1/auth/login", self.port))
+            .post(&format!("http://localhost:{}/api/v1/auth/login", self.port))
             .json(&serde_json::json!({
                 "email": email,
                 "password": password
@@ -151,7 +151,7 @@ impl TestApp {
         let display_name = format!("Test User {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
 
         // Password hash for "TestPass123!" - known test password
-        let password_hash = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4aYJGYxMnC6C5.Oy";
+        let password_hash = "$2b$12$Ej0WLvZBVa6K51r5/occM.JDmozzkJr4QzzovXNjCzk8hLVjVm3Cy";
 
         sqlx::query(
             "INSERT INTO users (id, email, password_hash, display_name, is_active, is_email_verified, timezone, language) VALUES ($1, $2, $3, $4, true, false, 'UTC', 'en') ON CONFLICT (id) DO NOTHING"
@@ -340,7 +340,7 @@ pub async fn create_test_user(app: &TestApp) -> Result<TestUser, SqlxError> {
     )
     .bind(id)
     .bind(email.clone())
-    .bind("$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4aYJGYxMnC6C5.Oy")
+    .bind("$2b$12$Ej0WLvZBVa6K51r5/occM.JDmozzkJr4QzzovXNjCzk8hLVjVm3Cy")
     .bind(display_name.clone())
     .execute(&app.pool)
     .await?;

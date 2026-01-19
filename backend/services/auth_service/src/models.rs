@@ -57,3 +57,8 @@ pub struct RefreshResponse {
     pub access_token: String,
     pub expires_in: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LogoutRequest {
+    pub refresh_token: Option<String>,
+}

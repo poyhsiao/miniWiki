@@ -6,8 +6,7 @@ use uuid::Uuid;
 use chrono::Utc;
 use async_trait::async_trait;
 use std::sync::Arc;
-use std::rc::Rc;
-use std::cell::RefCell;
+use tokio::sync::Mutex;
 use redis::AsyncCommands;
 
 /// CSRF token structure
@@ -259,7 +258,7 @@ impl CsrfMiddleware {
 
 impl<S, B> Transform<S, ServiceRequest> for CsrfMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
@@ -270,9 +269,10 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(CsrfMiddlewareService {
-            // Wrap the service in Rc<RefCell> to allow internal mutability for poll_ready
-            // which in many Service implementations requires &mut self.
-            service: Rc::new(RefCell::new(service)),
+            // Service is now stored directly in Arc without Mutex.
+            // Cloning the Arc gives us a reference to the same service,
+            // enabling concurrent request processing without lock contention.
+            service: Arc::new(service),
             config: self.config.clone(),
             store: self.store.clone(),
         }))
@@ -280,14 +280,14 @@ where
 }
 
 pub struct CsrfMiddlewareService<S> {
-    service: Rc<RefCell<S>>,
+    service: Arc<S>,
     config: CsrfConfig,
     store: Arc<dyn CsrfStore>,
 }
 
 impl<S, B> Service<ServiceRequest> for CsrfMiddlewareService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
@@ -295,11 +295,16 @@ where
     type Future = Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-        // Now we can mutably borrow the inner service
-        self.service.borrow_mut().poll_ready(cx)
+        // Delegate readiness check to the inner service to properly propagate backpressure.
+        // Clone the service (cheap Arc clone) and check its readiness.
+        // This ensures that if the inner service is not ready (e.g., at capacity),
+        // this middleware correctly signals that it's also not ready.
+        let mut service = (*self.service).clone();
+        service.poll_ready(cx)
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
+        // Clone the Arc to get a reference to the service (cheap, just increments ref count)
         let service = self.service.clone();
         let config = self.config.clone();
         let store = self.store.clone();
@@ -310,7 +315,9 @@ where
 
             // Skip CSRF validation for OPTIONS preflight requests
             if method == Method::OPTIONS {
-                return service.borrow_mut().call(req).await;
+                // Clone the inner service (S: Clone) - no mutex needed
+                let svc = (*service).clone();
+                return svc.call(req).await;
             }
 
             // Check for state-changing methods
@@ -324,7 +331,9 @@ where
                 }
             }
 
-            let mut res = service.borrow_mut().call(req).await;
+            // Clone the inner service and call it - no mutex, enabling concurrent processing
+            let svc = (*service).clone();
+            let mut res = svc.call(req).await;
 
             // Generate new token and set cookie for successful state-changing requests
             if session_id.is_some() {
