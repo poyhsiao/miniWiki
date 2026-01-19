@@ -25,7 +25,7 @@ async fn test_e2e_document_creation_flow() {
     let create_response = app
         .client
         .post(&format!(
-            "http://localhost:{}/v1/spaces/{}/documents",
+            "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -76,7 +76,7 @@ async fn test_e2e_document_retrieval_flow() {
     let get_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -116,7 +116,7 @@ async fn test_e2e_document_update_flow() {
     let update_response = app
         .client
         .patch(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -168,7 +168,7 @@ async fn test_e2e_document_deletion_flow() {
     let delete_response = app
         .client
         .delete(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -187,7 +187,7 @@ async fn test_e2e_document_deletion_flow() {
     let get_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -224,7 +224,7 @@ async fn test_e2e_document_list_flow() {
     let list_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/space-docs/{}/documents",
+            "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -268,7 +268,7 @@ async fn test_e2e_document_version_flow() {
     let create_version_response = app
         .client
         .post(&format!(
-            "http://localhost:{}/v1/documents/{}/versions",
+            "http://localhost:{}/api/v1/documents/{}/versions",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -292,7 +292,7 @@ async fn test_e2e_document_version_flow() {
     let list_versions_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}/versions",
+            "http://localhost:{}/api/v1/documents/{}/versions",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -325,7 +325,7 @@ async fn test_e2e_document_export_flow() {
     let export_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}/export?format=markdown",
+            "http://localhost:{}/api/v1/documents/{}/export?format=markdown",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -364,7 +364,7 @@ async fn test_e2e_document_search_flow() {
     let space = app.create_test_space_for_user(&test_user.id).await;
 
     // Create documents with specific content matching search query
-    let doc = app.create_test_document(&space.id, Some("Test Document".to_string())).await;
+    let doc = app.create_test_document(&space.id, None).await;
 
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
@@ -373,7 +373,7 @@ async fn test_e2e_document_search_flow() {
     let search_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/search?q=Test%20Document",
+            "http://localhost:{}/api/v1/search?q=Test%20Document",
             app.port
         ))
         .header("Authorization", format!("Bearer {}", token))

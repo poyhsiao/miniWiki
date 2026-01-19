@@ -31,6 +31,10 @@ edition = "2021"
 description = "miniWiki Knowledge Management Platform - Rust Backend Services"
 authors = ["miniWiki Team"]
 
+[[bin]]
+name = "check_hash"
+path = "check_hash.rs"
+
 # Workspace-wide dependencies
 [dependencies]
 

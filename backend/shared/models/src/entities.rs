@@ -1,6 +1,6 @@
 use sqlx::FromRow;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -14,10 +14,10 @@ pub struct User {
     pub language: String,
     pub is_active: bool,
     pub is_email_verified: bool,
-    pub email_verified_at: Option<DateTime<Utc>>,
-    pub last_login_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub email_verified_at: Option<NaiveDateTime>,
+    pub last_login_at: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -28,8 +28,8 @@ pub struct Space {
     pub icon: Option<String>,
     pub description: Option<String>,
     pub is_public: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -38,7 +38,7 @@ pub struct SpaceMembership {
     pub space_id: Uuid,
     pub user_id: Uuid,
     pub role: String,
-    pub joined_at: DateTime<Utc>,
+    pub joined_at: NaiveDateTime,
     pub invited_by: Uuid,
 }
 
@@ -52,11 +52,11 @@ pub struct Document {
     pub content: serde_json::Value,
     pub content_size: i32,
     pub is_archived: bool,
-    pub archived_at: Option<DateTime<Utc>>,
+    pub archived_at: Option<NaiveDateTime>,
     pub created_by: Uuid,
     pub last_edited_by: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -67,7 +67,7 @@ pub struct DocumentVersion {
     pub content: serde_json::Value,
     pub title: String,
     pub created_by: Uuid,
-    pub created_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
     pub change_summary: Option<String>,
 }
 
@@ -76,12 +76,12 @@ pub struct RefreshToken {
     pub id: Uuid,
     pub user_id: Uuid,
     pub token: String,
-    pub expires_at: DateTime<Utc>,
+    pub expires_at: NaiveDateTime,
     pub ip_address: Option<String>,
     pub user_agent: Option<String>,
     pub is_revoked: bool,
-    pub revoked_at: Option<DateTime<Utc>>,
-    pub created_at: DateTime<Utc>,
+    pub revoked_at: Option<NaiveDateTime>,
+    pub created_at: NaiveDateTime,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -95,11 +95,11 @@ pub struct ShareLink {
     /// Access code hash - sensitive, should not be serialized
     #[serde(skip_serializing)]
     pub access_code: Option<String>,
-    pub expires_at: Option<DateTime<Utc>>,
+    pub expires_at: Option<NaiveDateTime>,
     pub permission: String,
     pub is_active: bool,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
     pub click_count: i32,
     pub max_access_count: Option<i32>,
 }
