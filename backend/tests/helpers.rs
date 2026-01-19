@@ -5,6 +5,7 @@ use reqwest;
 use auth_service::jwt::{JwtService, JwtConfig};
 
 const TEST_JWT_SECRET: &str = "test-secret-key-for-testing-only-do-not-use-in-production";
+const TEST_PASSWORD_HASH: &str = "$2b$12$Ej0WLvZBVa6K51r5/occM.JDmozzkJr4QzzovXNjCzk8hLVjVm3Cy";
 
 // JWT token helper function
 pub fn generate_test_jwt_token(user_id: Uuid, email: &str) -> String {
@@ -150,15 +151,12 @@ impl TestApp {
         let email = format!("test_{}@example.com", id.to_string().replace('-', ""));
         let display_name = format!("Test User {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
 
-        // Password hash for "TestPass123!" - known test password
-        let password_hash = "$2b$12$Ej0WLvZBVa6K51r5/occM.JDmozzkJr4QzzovXNjCzk8hLVjVm3Cy";
-
         sqlx::query(
             "INSERT INTO users (id, email, password_hash, display_name, is_active, is_email_verified, timezone, language) VALUES ($1, $2, $3, $4, true, false, 'UTC', 'en') ON CONFLICT (id) DO NOTHING"
         )
         .bind(id)
         .bind(email.clone())
-        .bind(password_hash)
+        .bind(TEST_PASSWORD_HASH)
         .bind(display_name.clone())
         .execute(&self.pool)
         .await
@@ -340,7 +338,7 @@ pub async fn create_test_user(app: &TestApp) -> Result<TestUser, SqlxError> {
     )
     .bind(id)
     .bind(email.clone())
-    .bind("$2b$12$Ej0WLvZBVa6K51r5/occM.JDmozzkJr4QzzovXNjCzk8hLVjVm3Cy")
+    .bind(TEST_PASSWORD_HASH)
     .bind(display_name.clone())
     .execute(&app.pool)
     .await?;

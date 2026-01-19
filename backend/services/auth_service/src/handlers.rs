@@ -65,9 +65,21 @@ pub async fn register(
 
 pub async fn login(
     req: web::Json<LoginRequest>,
+    http_req: actix_web::HttpRequest,
     repo: web::Data<AuthRepository>,
     jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
+    let ip_address = http_req
+        .connection_info()
+        .realip_remote_addr()
+        .map(|s| s.to_string());
+
+    let user_agent = http_req
+        .headers()
+        .get("User-Agent")
+        .and_then(|h| h.to_str().ok())
+        .map(|s| s.to_string());
+
     // Find user by email
     let user = match repo.find_by_email(&req.email).await {
         Ok(Some(user)) => user,
@@ -76,24 +88,21 @@ pub async fn login(
                 .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid email or password" }));
         }
         Err(e) => {
+            tracing::error!("Database error while finding user: {}", e);
             return HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": "Internal server error" }));
         }
     };
 
     // Verify password
     match verify_password(&req.password, &user.password_hash) {
-        Ok(true) => {
-            // Password is correct, continue to token generation
-        }
+        Ok(true) => {}
         Ok(false) => {
-            // Password is incorrect
+            tracing::warn!("Failed login attempt for email: {}", req.email);
             return HttpResponse::Unauthorized()
                 .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid email or password" }));
         }
         Err(e) => {
-            // Internal error during password verification (e.g., corrupted hash)
-            // Mask PII before logging
             let masked_id = {
                 let id_str = user.id.to_string();
                 if id_str.chars().count() > 8 {
@@ -136,16 +145,18 @@ pub async fn login(
     ) {
         Ok(token) => token,
         Err(e) => {
+            tracing::error!("Failed to generate access token: {}", e);
             return HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": "Internal server error" }));
         }
     };
 
     let refresh_token = match jwt_service.generate_refresh_token(&user.id.to_string()) {
         Ok(token) => token,
         Err(e) => {
+            tracing::error!("Failed to generate refresh token: {}", e);
             return HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": "Internal server error" }));
         }
     };
 
@@ -155,17 +166,18 @@ pub async fn login(
         id: uuid::Uuid::new_v4(),
         user_id: user.id,
         token: refresh_token.clone(),
-        expires_at: expires_at.naive_utc(),
-        ip_address: None,
-        user_agent: None,
+        expires_at,
+        ip_address,
+        user_agent,
         is_revoked: false,
         revoked_at: None,
-        created_at: chrono::Utc::now().naive_utc(),
+        created_at: chrono::Utc::now(),
     };
 
     if let Err(e) = repo.create_refresh_token(&refresh_token_record).await {
+        tracing::error!("Failed to store refresh token: {}", e);
         return HttpResponse::InternalServerError()
-            .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+            .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": "Internal server error" }));
     }
 
     // Update last login
@@ -192,8 +204,9 @@ pub async fn logout(
 ) -> impl Responder {
     if let Some(refresh_token) = &req.refresh_token {
         if let Err(e) = repo.revoke_refresh_token(refresh_token).await {
+            tracing::error!("Failed to revoke refresh token: {}", e);
             return HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": "Internal server error" }));
         }
     }
 
@@ -209,35 +222,59 @@ pub async fn refresh(
     let claims = match jwt_service.validate_token(&req.refresh_token) {
         Ok(claims) => claims,
         Err(e) => {
+            tracing::warn!("Invalid refresh token: {}", e);
             return HttpResponse::Unauthorized()
-                .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid or expired refresh token" }));
         }
     };
 
-    // Check if refresh token exists and is not revoked
     match repo.find_refresh_token(&req.refresh_token).await {
-        Ok(Some(_)) => {
-            // Token is valid and not revoked
-        }
+        Ok(Some(_)) => {}
         Ok(None) => {
+            tracing::warn!("Refresh token not found or revoked for user_id: {}", claims.user_id);
             return HttpResponse::Unauthorized()
                 .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Refresh token is invalid or has been revoked" }));
         }
         Err(e) => {
+            tracing::error!("Database error while finding refresh token: {}", e);
             return HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": "Internal server error" }));
         }
     }
 
+    let user_id = match uuid::Uuid::parse_str(&claims.user_id) {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::error!("Invalid user ID in token claims: {} - error: {}", claims.user_id, e);
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid token" }));
+        }
+    };
+
+    let user = match repo.find_by_id(&user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => {
+            tracing::error!("User not found for user_id: {}", claims.user_id);
+            return HttpResponse::Unauthorized()
+                .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "User not found" }));
+        }
+        Err(e) => {
+            tracing::error!("Database error while finding user: {}", e);
+            return HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": "Internal server error" }));
+        }
+    };
+
     let new_access_token = match jwt_service.generate_access_token(
-        &claims.user_id,
-        &claims.email,
-        &claims.role,
+        &user.id.to_string(),
+        &user.email,
+        "user",
     ) {
         Ok(token) => token,
         Err(e) => {
+            tracing::error!("Failed to generate access token: {}", e);
             return HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+                .json(serde_json::json!({ "error": "INTERNAL_ERROR", "message": "Failed to generate access token" }));
         }
     };
 

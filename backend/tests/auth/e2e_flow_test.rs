@@ -386,8 +386,8 @@ async fn test_e2e_logout_invalidates_token() {
         post_logout_response.status()
     );
 
-    // Refresh token should be invalidated
-    let refresh_response = app
+    // Verify refresh token works BEFORE logout
+    let pre_logout_refresh_response = app
         .client
         .post(&format!("http://localhost:{}/api/v1/auth/refresh", app.port))
         .json(&serde_json::json!({
@@ -395,13 +395,60 @@ async fn test_e2e_logout_invalidates_token() {
         }))
         .send()
         .await
-        .expect("Refresh request failed");
+        .expect("Pre-logout refresh request failed");
+
+    assert!(
+        pre_logout_refresh_response.status() == 200,
+        "Refresh token should be valid before logout, got: {}",
+        pre_logout_refresh_response.status()
+    );
+
+    let pre_logout_refresh_body: serde_json::Value = pre_logout_refresh_response
+        .json()
+        .await
+        .expect("Failed to parse pre-logout refresh response JSON");
+
+    assert!(
+        pre_logout_refresh_body.get("access_token").is_some(),
+        "Pre-logout refresh response should contain a new access_token, got: {}",
+        pre_logout_refresh_body
+    );
+
+    // Perform logout
+    let logout_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
+        .json(&serde_json::json!({
+            "refresh_token": refresh_token
+        }))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("X-User-Id", test_user.id.to_string())
+        .send()
+        .await
+        .expect("Logout request failed");
+
+    assert!(
+        logout_response.status() == 200,
+        "Logout should succeed, got: {}",
+        logout_response.status()
+    );
+
+    // Refresh token should be invalidated after logout
+    let post_logout_refresh_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/refresh", app.port))
+        .json(&serde_json::json!({
+            "refresh_token": refresh_token
+        }))
+        .send()
+        .await
+        .expect("Post-logout refresh request failed");
 
     // Refresh token should be invalid after logout
     assert!(
-        refresh_response.status() == 401,
+        post_logout_refresh_response.status() == 401,
         "Refresh token should be invalid after logout, got: {}",
-        refresh_response.status()
+        post_logout_refresh_response.status()
     );
 }
 
@@ -485,5 +532,54 @@ async fn test_e2e_new_login_after_logout() {
         response2.status() == 200,
         "New token should work after logout and re-login, got: {}",
         response2.status()
+    );
+}
+
+/// Test logout without refresh_token succeeds
+/// Verifies that logout works even when no refresh_token is provided
+#[tokio::test]
+async fn test_e2e_logout_without_refresh_token_succeeds() {
+    let app = TestApp::create().await;
+
+    // Create test user
+    let test_user = app.create_test_user().await;
+
+    // Login to get access token
+    let login_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/login", app.port))
+        .json(&serde_json::json!({
+            "email": test_user.email,
+            "password": "TestPass123!"
+        }))
+        .send()
+        .await
+        .expect("Login request failed");
+
+    assert!(
+        login_response.status() == 200,
+        "Login should succeed, got: {}",
+        login_response.status()
+    );
+
+    let login_body: serde_json::Value = login_response.json().await.expect("Parse login response");
+    let access_token = login_body.get("access_token").unwrap().as_str().unwrap().to_string();
+
+    // Perform logout WITHOUT refresh_token
+    let logout_response = app
+        .client
+        .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
+        .json(&serde_json::json!({}))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("X-User-Id", test_user.id.to_string())
+        .send()
+        .await
+        .expect("Logout request failed");
+
+    // Logout without refresh_token should still succeed
+    assert!(
+        logout_response.status() == 200,
+        "Logout without refresh_token should succeed, got: {}",
+        logout_response.status()
     );
 }

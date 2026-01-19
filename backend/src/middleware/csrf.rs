@@ -258,7 +258,7 @@ impl CsrfMiddleware {
 
 impl<S, B> Transform<S, ServiceRequest> for CsrfMiddleware
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
@@ -269,10 +269,7 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(CsrfMiddlewareService {
-            // Service is now stored directly in Arc without Mutex.
-            // Cloning the Arc gives us a reference to the same service,
-            // enabling concurrent request processing without lock contention.
-            service: Arc::new(service),
+            service: Arc::new(Mutex::new(service)),
             config: self.config.clone(),
             store: self.store.clone(),
         }))
@@ -280,14 +277,14 @@ where
 }
 
 pub struct CsrfMiddlewareService<S> {
-    service: Arc<S>,
+    service: Arc<Mutex<S>>,
     config: CsrfConfig,
     store: Arc<dyn CsrfStore>,
 }
 
 impl<S, B> Service<ServiceRequest> for CsrfMiddlewareService<S>
 where
-    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + Clone + 'static,
+    S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
     B: 'static,
 {
     type Response = ServiceResponse<B>;
@@ -295,16 +292,14 @@ where
     type Future = Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-        // Delegate readiness check to the inner service to properly propagate backpressure.
-        // Clone the service (cheap Arc clone) and check its readiness.
-        // This ensures that if the inner service is not ready (e.g., at capacity),
-        // this middleware correctly signals that it's also not ready.
-        let mut service = (*self.service).clone();
-        service.poll_ready(cx)
+        if let Ok(mut svc) = self.service.try_lock() {
+            svc.poll_ready(cx)
+        } else {
+            std::task::Poll::Pending
+        }
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        // Clone the Arc to get a reference to the service (cheap, just increments ref count)
         let service = self.service.clone();
         let config = self.config.clone();
         let store = self.store.clone();
@@ -313,16 +308,12 @@ where
             let method = req.method().clone();
             let session_id = get_session_id_from_request(req.request());
 
-            // Skip CSRF validation for OPTIONS preflight requests
             if method == Method::OPTIONS {
-                // Clone the inner service (S: Clone) - no mutex needed
-                let svc = (*service).clone();
+                let mut svc = service.lock().await;
                 return svc.call(req).await;
             }
 
-            // Check for state-changing methods
             if method == Method::POST || method == Method::PUT || method == Method::PATCH || method == Method::DELETE {
-                // Only validate CSRF if a session exists
                 if let Some(ref sid) = session_id {
                     let token = get_csrf_token_from_request(req.request(), &config)?;
                     if !store.validate_and_consume(sid, &token).await {
@@ -331,26 +322,28 @@ where
                 }
             }
 
-            // Clone the inner service and call it - no mutex, enabling concurrent processing
-            let svc = (*service).clone();
+            let mut svc = service.lock().await;
             let mut res = svc.call(req).await;
 
-            // Generate new token and set cookie for successful state-changing requests
-            if session_id.is_some() {
-                if let Ok(ref mut response) = res {
-                    let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
-                    if let Ok(token) = store.generate(session_id.as_ref().unwrap(), ttl_i64).await {
-                        let display_ttl = config.cookie_max_age.min(i64::MAX as u64);
-                        let mut cookie = format!("{}={}; SameSite=Strict; Path=/; Max-Age={}", config.cookie_name, token, display_ttl);
-                        if config.secure_cookie {
-                            cookie.push_str("; Secure");
+            if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE) {
+                if session_id.is_some() {
+                    if let Ok(ref mut response) = res {
+                        if response.status().is_success() {
+                            let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
+                            if let Ok(token) = store.generate(session_id.as_ref().unwrap(), ttl_i64).await {
+                                let display_ttl = config.cookie_max_age.min(i64::MAX as u64);
+                                let mut cookie = format!("{}={}; SameSite=Strict; Path=/; Max-Age={}", config.cookie_name, token, display_ttl);
+                                if config.secure_cookie {
+                                    cookie.push_str("; Secure");
+                                }
+                                response.headers_mut().append(
+                                    header::SET_COOKIE,
+                                    header::HeaderValue::from_str(&cookie).map_err(actix_web::error::ErrorInternalServerError)?
+                                );
+                            } else {
+                                tracing::error!("Failed to generate CSRF token");
+                            }
                         }
-                        response.headers_mut().append(
-                            header::SET_COOKIE,
-                            header::HeaderValue::from_str(&cookie).map_err(actix_web::error::ErrorInternalServerError)?
-                        );
-                    } else {
-                        tracing::error!("Failed to generate CSRF token");
                     }
                 }
             }
