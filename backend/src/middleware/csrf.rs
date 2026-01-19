@@ -324,6 +324,7 @@ where
 
             let mut svc = service.lock().await;
             let mut res = svc.call(req).await;
+            drop(svc); // Release lock before token generation
 
             if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE) {
                 if session_id.is_some() {

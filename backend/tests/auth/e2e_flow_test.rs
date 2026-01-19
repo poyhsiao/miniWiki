@@ -355,7 +355,7 @@ async fn test_e2e_logout_invalidates_token() {
         .client
         .post(&format!("http://localhost:{}/api/v1/auth/refresh", app.port))
         .json(&serde_json::json!({
-            "refresh_token": refresh_token
+            "refresh_token": &refresh_token
         }))
         .send()
         .await
@@ -383,7 +383,7 @@ async fn test_e2e_logout_invalidates_token() {
         .client
         .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
         .json(&serde_json::json!({
-            "refresh_token": refresh_token
+            "refresh_token": &refresh_token
         }))
         .header("Authorization", format!("Bearer {}", access_token))
         .header("X-User-Id", test_user.id.to_string())
@@ -419,7 +419,7 @@ async fn test_e2e_logout_invalidates_token() {
         .client
         .post(&format!("http://localhost:{}/api/v1/auth/refresh", app.port))
         .json(&serde_json::json!({
-            "refresh_token": refresh_token
+            "refresh_token": &refresh_token
         }))
         .send()
         .await
@@ -481,7 +481,7 @@ async fn test_e2e_new_login_after_logout() {
         .client
         .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
         .json(&serde_json::json!({
-            "refresh_token": refresh_token1
+            "refresh_token": &refresh_token1
         }))
         .header("Authorization", format!("Bearer {}", token1))
         .header("X-User-Id", test_user.id.to_string())

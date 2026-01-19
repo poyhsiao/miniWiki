@@ -1,9 +1,23 @@
-use actix_web::{web, Responder, HttpResponse};
+use actix_web::{web, Responder, HttpResponse, http::header};
 use crate::models::{RegisterRequest, LoginRequest, RegisterResponse, LoginResponse, RefreshRequest, RefreshResponse, LogoutRequest};
 use crate::jwt::JwtService;
 use crate::password::{hash_password, verify_password, validate_password_strength};
 use crate::repository::AuthRepository;
 use shared_models::entities::RefreshToken;
+
+fn mask_email(email: &str) -> String {
+    let parts: Vec<&str> = email.split('@').collect();
+    if parts.len() == 2 {
+        let name = parts[0];
+        let domain = parts[1];
+        let name_len = name.chars().count();
+        let visible_len = std::cmp::min(2, name_len);
+        let visible_part: String = name.chars().take(visible_len).collect();
+        format!("{}***@{}", visible_part, domain)
+    } else {
+        "***@***.***".to_string()
+    }
+}
 
 pub async fn register(
     req: web::Json<RegisterRequest>,
@@ -98,7 +112,8 @@ pub async fn login(
     match verify_password(&req.password, &user.password_hash) {
         Ok(true) => {}
         Ok(false) => {
-            tracing::warn!("Failed login attempt for email: {}", req.email);
+            let masked_email = mask_email(&req.email);
+            tracing::warn!("Failed login attempt for email: {}", masked_email);
             return HttpResponse::Unauthorized()
                 .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid email or password" }));
         }
@@ -333,7 +348,7 @@ pub async fn me(
     req: actix_web::HttpRequest,
     jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
-    let auth_header = match req.headers().get("authorization") {
+    let auth_header = match req.headers().get(header::AUTHORIZATION) {
         Some(h) if h.to_str().ok().map(|s| s.starts_with("Bearer ")).unwrap_or(false) => {
             &h.to_str().unwrap()[7..]
         }
