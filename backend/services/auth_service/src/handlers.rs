@@ -200,9 +200,53 @@ pub async fn login(
 
 pub async fn logout(
     req: web::Json<LogoutRequest>,
+    _http_req: actix_web::HttpRequest,
     repo: web::Data<AuthRepository>,
+    jwt_service: web::Data<JwtService>,
 ) -> impl Responder {
     if let Some(refresh_token) = &req.refresh_token {
+        let claims = match jwt_service.validate_token(refresh_token) {
+            Ok(claims) => claims,
+            Err(e) => {
+                tracing::warn!("Invalid refresh token in logout request: {}", e);
+                return HttpResponse::Unauthorized()
+                    .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid refresh token" }));
+            }
+        };
+
+        let user_id = match uuid::Uuid::parse_str(&claims.user_id) {
+            Ok(id) => id,
+            Err(e) => {
+                tracing::error!("Invalid user ID in refresh token claims: {} - error: {}", claims.user_id, e);
+                return HttpResponse::Unauthorized()
+                    .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Invalid token" }));
+            }
+        };
+
+        let token_user_id = match repo.find_refresh_token_owner(refresh_token).await {
+            Ok(Some(owner_id)) => owner_id,
+            Ok(None) => {
+                tracing::warn!("Refresh token not found for user_id: {}", claims.user_id);
+                return HttpResponse::Unauthorized()
+                    .json(serde_json::json!({ "error": "AUTHENTICATION_ERROR", "message": "Refresh token is invalid or has been revoked" }));
+            }
+            Err(e) => {
+                tracing::error!("Database error while finding refresh token owner: {}", e);
+                return HttpResponse::InternalServerError()
+                    .json(serde_json::json!({ "error": "DATABASE_ERROR", "message": "Internal server error" }));
+            }
+        };
+
+        if token_user_id != user_id {
+            tracing::warn!(
+                "User {} attempted to revoke refresh token belonging to user {}",
+                user_id,
+                token_user_id
+            );
+            return HttpResponse::Forbidden()
+                .json(serde_json::json!({ "error": "FORBIDDEN", "message": "Cannot revoke refresh token belonging to another user" }));
+        }
+
         if let Err(e) = repo.revoke_refresh_token(refresh_token).await {
             tracing::error!("Failed to revoke refresh token: {}", e);
             return HttpResponse::InternalServerError()

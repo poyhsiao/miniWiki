@@ -350,42 +350,6 @@ async fn test_e2e_logout_invalidates_token() {
         pre_logout_response.status()
     );
 
-    // Perform logout
-    let logout_response = app
-        .client
-        .post(&format!("http://localhost:{}/api/v1/auth/logout", app.port))
-        .json(&serde_json::json!({
-            "refresh_token": refresh_token
-        }))
-        .header("Authorization", format!("Bearer {}", access_token))
-        .header("X-User-Id", test_user.id.to_string())
-        .send()
-        .await
-        .expect("Logout request failed");
-
-    assert!(
-        logout_response.status() == 200,
-        "Logout should succeed, got: {}",
-        logout_response.status()
-    );
-
-    // Access token should still work (stateless JWT - valid until expiry)
-    let post_logout_response = app
-        .client
-        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
-        .header("Authorization", format!("Bearer {}", access_token))
-        .header("X-User-Id", test_user.id.to_string())
-        .send()
-        .await
-        .expect("Post-logout auth request failed");
-
-    // Access token is stateless and remains valid until expiry
-    assert!(
-        post_logout_response.status() == 200,
-        "Access token should still be valid after logout (stateless JWT), got: {}",
-        post_logout_response.status()
-    );
-
     // Verify refresh token works BEFORE logout
     let pre_logout_refresh_response = app
         .client
@@ -431,6 +395,23 @@ async fn test_e2e_logout_invalidates_token() {
         logout_response.status() == 200,
         "Logout should succeed, got: {}",
         logout_response.status()
+    );
+
+    // Access token should still work (stateless JWT - valid until expiry)
+    let post_logout_response = app
+        .client
+        .get(&format!("http://localhost:{}/api/v1/auth/me", app.port))
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("X-User-Id", test_user.id.to_string())
+        .send()
+        .await
+        .expect("Post-logout auth request failed");
+
+    // Access token is stateless and remains valid until expiry
+    assert!(
+        post_logout_response.status() == 200,
+        "Access token should still be valid after logout (stateless JWT), got: {}",
+        post_logout_response.status()
     );
 
     // Refresh token should be invalidated after logout

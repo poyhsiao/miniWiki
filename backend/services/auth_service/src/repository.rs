@@ -104,4 +104,13 @@ impl AuthRepository {
         .fetch_optional(&self.pool)
         .await
     }
+
+    pub async fn find_refresh_token_owner(&self, token: &str) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar(
+            "SELECT user_id FROM refresh_tokens WHERE token = $1"
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await
+    }
 }
