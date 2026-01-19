@@ -79,11 +79,11 @@ fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
     let jwt_secret = match std::env::var("JWT_SECRET") {
         Ok(secret) => secret,
         Err(_) => {
-            #[cfg(any(debug_assertions, feature = "test-utils"))]
+            #[cfg(any(test, feature = "test-utils"))]
             {
                 "test-secret-key-for-testing-only-do-not-use-in-production".to_string()
             }
-            #[cfg(not(any(debug_assertions, feature = "test-utils")))]
+            #[cfg(not(any(test, feature = "test-utils")))]
             {
                 return Err(AppError::AuthenticationError("JWT_SECRET not configured".to_string()));
             }
