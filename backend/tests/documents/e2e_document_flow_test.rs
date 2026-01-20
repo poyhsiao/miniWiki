@@ -5,8 +5,8 @@
 //!
 //! Run with: cargo test --test lib documents::e2e_document_flow_test
 
-use crate::helpers::TestApp;
 use crate::helpers::ResponseValidator;
+use crate::helpers::TestApp;
 use reqwest::StatusCode;
 use serde_json::json;
 use uuid::Uuid;
@@ -53,7 +53,8 @@ async fn test_e2e_document_creation_flow() {
         .assert_field_exists("success");
 
     // Verify document was created
-    let doc_id = validator.get_field("data")
+    let doc_id = validator
+        .get_field("data")
         .and_then(|d| d.get("id"))
         .and_then(|id| id.as_str())
         .expect("Document ID should be present");
@@ -89,12 +90,11 @@ async fn test_e2e_document_retrieval_flow() {
 
     // Use ResponseValidator for comprehensive validation
     let validator = ResponseValidator::new(get_response).await;
-    validator
-        .assert_status(200)
-        .assert_success();
+    validator.assert_status(200).assert_success();
 
     // Verify response structure
-    let document_data = validator.get_field("data")
+    let document_data = validator
+        .get_field("data")
         .or_else(|| validator.get_field("document"))
         .expect("Response should contain document data");
 
@@ -139,13 +139,15 @@ async fn test_e2e_document_update_flow() {
     let validator = ResponseValidator::new(update_response).await;
     validator.assert_status(200);
 
-    let updated_title = validator.get_field("data")
+    let updated_title = validator
+        .get_field("data")
         .and_then(|d| d.get("title"))
         .or_else(|| validator.get_field("title"))
         .and_then(|t| t.as_str());
 
     assert_eq!(
-        updated_title, Some("Updated E2E Test Document"),
+        updated_title,
+        Some("Updated E2E Test Document"),
         "Document title should be updated"
     );
 }
@@ -230,11 +232,25 @@ async fn test_e2e_document_list_flow() {
         .expect("Document list request failed");
 
     let validator = ResponseValidator::new(list_response).await;
-    validator
-        .assert_status(200)
-        .assert_success();
+    validator.assert_status(200).assert_success();
 
     // Verify response contains documents
+    let documents = validator
+        .body()
+        .get("data")
+        .or(validator.body().get("documents"))
+        .or(validator.body().get("items"))
+        .expect("Response should contain documents array or data field");
+
+    assert!(
+        documents.is_array(),
+        "Documents field should be an array, got: {}",
+        documents
+    );
+
+    let doc_count = documents.as_array().map(|arr| arr.len()).unwrap_or(0);
+
+    assert!(doc_count >= 5, "Should have at least 5 documents, got: {}", doc_count);
 }
 
 /// E2E document version history flow test
@@ -266,9 +282,7 @@ async fn test_e2e_document_version_flow() {
         .await
         .expect("Version list request failed");
 
-    ResponseValidator::new(list_versions_response)
-        .await
-        .assert_status(200);
+    ResponseValidator::new(list_versions_response).await.assert_status(200);
 }
 
 /// E2E document export flow test
@@ -285,7 +299,7 @@ async fn test_e2e_document_export_flow() {
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
     // Export document as Markdown
-    let export_response = app
+    let mut export_response = app
         .client
         .get(&format!(
             "http://localhost:{}/api/v1/documents/{}/export?format=markdown",
@@ -297,15 +311,11 @@ async fn test_e2e_document_export_flow() {
         .await
         .expect("Export request failed");
 
-    let validator = ResponseValidator::new(export_response).await;
-    validator.assert_status(200);
-
-    // Verify content type
-    let content_type = validator.body()
-        .get("content_type")
-        .or(validator.body().get("headers"))
-        .and_then(|h| h.get("content-type"))
-        .and_then(|h| h.as_str())
+    // Check Content-Type header directly (before JSON parsing)
+    let content_type = export_response
+        .headers()
+        .get("content-type")
+        .and_then(|h| h.to_str().ok())
         .unwrap_or("");
 
     assert!(
@@ -313,6 +323,10 @@ async fn test_e2e_document_export_flow() {
         "Content-Type should be markdown, got: {}",
         content_type
     );
+
+    // Now verify the response is successful
+    let validator = ResponseValidator::new(export_response).await;
+    validator.assert_status(200);
 }
 
 /// E2E document search flow test with result validation
@@ -344,12 +358,11 @@ async fn test_e2e_document_search_flow() {
         .expect("Search request failed");
 
     let validator = ResponseValidator::new(search_response).await;
-    validator
-        .assert_status(200)
-        .assert_success();
+    validator.assert_status(200).assert_success();
 
     // Verify response contains results
-    let results = validator.get_field("data")
+    let results = validator
+        .get_field("data")
         .and_then(|d| d.get("results"))
         .or_else(|| validator.get_field("results"))
         .or_else(|| validator.get_field("data"));
@@ -357,25 +370,17 @@ async fn test_e2e_document_search_flow() {
     assert!(results.is_some(), "Response should contain search results");
 
     // Verify results are non-empty and contain the created document
-    let results_array = results.and_then(|r| r.as_array())
-        .expect("Results should be an array");
-    assert!(
-        !results_array.is_empty(),
-        "Search results should not be empty"
-    );
+    let results_array = results.and_then(|r| r.as_array()).expect("Results should be an array");
+    assert!(!results_array.is_empty(), "Search results should not be empty");
 
     // Verify the created document is in the results
     let found_doc = results_array.iter().any(|item| {
         let item_id = item.get("id").and_then(|id| id.as_str());
         let item_title = item.get("title").and_then(|t| t.as_str());
-        item_id == Some(doc.id.to_string().as_str()) ||
-        item_title.map_or(false, |t| t.contains("Test Document"))
+        item_id == Some(doc.id.to_string().as_str()) || item_title.map_or(false, |t| t.contains("Test Document"))
     });
 
-    assert!(
-        found_doc,
-        "Created document should be found in search results"
-    );
+    assert!(found_doc, "Created document should be found in search results");
 }
 
 // ============================================================================
@@ -423,10 +428,7 @@ async fn test_e2e_get_nonexistent_document() {
 
     let response = app
         .client
-        .get(&format!(
-            "http://localhost:{}/api/v1/documents/{}",
-            app.port, fake_id
-        ))
+        .get(&format!("http://localhost:{}/api/v1/documents/{}", app.port, fake_id))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", user_id_str)
         .send()
@@ -503,9 +505,7 @@ async fn test_e2e_create_document_without_auth() {
         .await
         .expect("Request failed");
 
-    ResponseValidator::new(response)
-        .await
-        .assert_status(401);
+    ResponseValidator::new(response).await.assert_status(401);
 }
 
 // ============================================================================
@@ -564,11 +564,7 @@ async fn test_e2e_concurrent_document_creation() {
     let results = futures_util::future::join_all(documents).await;
 
     // All should succeed
-    assert_eq!(
-        results.len(),
-        5,
-        "All 5 concurrent requests should complete"
-    );
+    assert_eq!(results.len(), 5, "All 5 concurrent requests should complete");
 
     // Verify all concurrent creations succeeded
     assert!(
@@ -602,10 +598,7 @@ async fn test_e2e_concurrent_document_updates() {
 
             async move {
                 let response = client
-                    .patch(&format!(
-                        "http://localhost:{}/api/v1/documents/{}",
-                        port, doc_id
-                    ))
+                    .patch(&format!("http://localhost:{}/api/v1/documents/{}", port, doc_id))
                     .header("Authorization", format!("Bearer {}", token))
                     .header("X-User-Id", user_id_str)
                     .json(&json!({
@@ -680,10 +673,6 @@ async fn test_e2e_rapid_concurrent_requests() {
 
     // All should succeed (no rate limiting at 10 requests)
     for (i, status) in statuses {
-        assert!(
-            status.is_success(),
-            "Request {} should succeed, got: {}",
-            i, status
-        );
+        assert!(status.is_success(), "Request {} should succeed, got: {}", i, status);
     }
 }
