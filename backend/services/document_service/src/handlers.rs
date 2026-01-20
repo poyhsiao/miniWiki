@@ -75,9 +75,20 @@ fn version_row_to_response(row: &crate::repository::DocumentVersionRow) -> Versi
 
 // User extraction - supports both JWT Authorization header and X-User-Id header for backward compatibility
 fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
-    // Get JWT secret from environment variable (fallback approach since JwtConfig is not in app_data)
-    let jwt_secret = std::env::var("JWT_SECRET")
-        .map_err(|_| AppError::AuthenticationError("JWT_SECRET not configured".to_string()))?;
+    // Get JWT secret from environment variable, with fallback to default for test mode only
+    let jwt_secret = match std::env::var("JWT_SECRET") {
+        Ok(secret) => secret,
+        Err(_) => {
+            #[cfg(any(test, feature = "test-utils"))]
+            {
+                "test-secret-key-for-testing-only-do-not-use-in-production".to_string()
+            }
+            #[cfg(not(any(test, feature = "test-utils")))]
+            {
+                return Err(AppError::AuthenticationError("JWT_SECRET not configured".to_string()));
+            }
+        }
+    };
 
     // First try JWT Authorization header (preferred method)
     if let Some(auth_header) = req.headers().get("authorization") {
@@ -86,7 +97,7 @@ fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
                 let token = &token_str[7..];
                 let decoding_key = jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes());
                 // Explicitly enforce HS256 algorithm for security
-                let mut validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
+                let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
 
                 match jsonwebtoken::decode::<serde_json::Value>(token, &decoding_key, &validation) {
                     Ok(token_data) => {

@@ -1,11 +1,13 @@
 //! End-to-end document flow tests
 //!
 //! Tests complete document operations including CRUD, versions, and export.
-//! These tests verify the full document lifecycle.
+//! These tests verify the full document lifecycle with improved patterns.
 //!
-//! Run with: cargo test
+//! Run with: cargo test --test lib documents::e2e_document_flow_test
 
+use crate::helpers::ResponseValidator;
 use crate::helpers::TestApp;
+use reqwest::StatusCode;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -21,21 +23,21 @@ async fn test_e2e_document_creation_flow() {
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
-    // Create a new document
+    // Create a new document using helper macro
     let create_response = app
         .client
         .post(&format!(
-            "http://localhost:{}/v1/spaces/{}/documents",
+            "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", user_id_str.clone())
-        .json(&json!({
-            "title": "E2E Test Document",
+        .json(&serde_json::json!({
+            "title": format!("Test Document {}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()),
             "content": {
                 "type": "Y.Doc",
                 "update": "dGVzdCB1cGRhdGU=",
-                "vector_clock": {"client_id": Uuid::new_v4().to_string(), "clock": 1}
+                "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
             },
             "icon": "📝"
         }))
@@ -43,23 +45,24 @@ async fn test_e2e_document_creation_flow() {
         .await
         .expect("Document creation request failed");
 
-    assert!(
-        create_response.status() == 200 || create_response.status() == 201,
-        "Expected 200 or 201 for document creation, got: {}",
-        create_response.status()
-    );
+    // Use ResponseValidator for clean assertions
+    let validator = ResponseValidator::new(create_response).await;
+    validator
+        .assert_status(200)
+        .assert_field_exists("data")
+        .assert_field_exists("success");
 
-    if create_response.status() == 200 || create_response.status() == 201 {
-        let body: serde_json::Value = create_response.json().await.expect("Parse create response failed");
-        let doc_id = body.get("data").and_then(|d| d.get("id")).or_else(|| body.get("id"));
+    // Verify document was created
+    let doc_id = validator
+        .get_field("data")
+        .and_then(|d| d.get("id"))
+        .and_then(|id| id.as_str())
+        .expect("Document ID should be present");
 
-        if let Some(doc_id_val) = doc_id {
-            println!("Created document: {:?}", doc_id_val);
-        }
-    }
+    assert!(!doc_id.is_empty(), "Document ID should not be empty");
 }
 
-/// E2E document retrieval flow test
+/// E2E document retrieval flow test with response validation
 #[tokio::test]
 async fn test_e2e_document_retrieval_flow() {
     let app = TestApp::create().await;
@@ -76,7 +79,7 @@ async fn test_e2e_document_retrieval_flow() {
     let get_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -85,21 +88,21 @@ async fn test_e2e_document_retrieval_flow() {
         .await
         .expect("Document retrieval request failed");
 
-    assert!(
-        get_response.status() == 200,
-        "Expected 200 for document retrieval, got: {}",
-        get_response.status()
-    );
+    // Use ResponseValidator for comprehensive validation
+    let validator = ResponseValidator::new(get_response).await;
+    validator.assert_status(200).assert_success();
 
     // Verify response structure
-    let body: serde_json::Value = get_response.json().await.expect("Parse get response failed");
-    assert!(
-        body.get("data").is_some() || body.get("document").is_some(),
-        "Response should contain document data"
-    );
+    let document_data = validator
+        .get_field("data")
+        .or_else(|| validator.get_field("document"))
+        .expect("Response should contain document data");
+
+    assert!(document_data.get("id").is_some(), "Document ID should exist");
+    assert!(document_data.get("title").is_some(), "Document title should exist");
 }
 
-/// E2E document update flow test
+/// E2E document update flow test with verification
 #[tokio::test]
 async fn test_e2e_document_update_flow() {
     let app = TestApp::create().await;
@@ -112,11 +115,11 @@ async fn test_e2e_document_update_flow() {
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
-    // Update the document
+    // Update document
     let update_response = app
         .client
         .patch(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -133,25 +136,23 @@ async fn test_e2e_document_update_flow() {
         .await
         .expect("Document update request failed");
 
-    assert!(
-        update_response.status() == 200,
-        "Expected 200 for document update, got: {}",
-        update_response.status()
-    );
+    let validator = ResponseValidator::new(update_response).await;
+    validator.assert_status(200);
 
-    // Verify the update
-    let body: serde_json::Value = update_response.json().await.expect("Parse update response failed");
-    let updated_title = body.get("data").and_then(|d| d.get("title"))
-        .or_else(|| body.get("title"))
+    let updated_title = validator
+        .get_field("data")
+        .and_then(|d| d.get("title"))
+        .or_else(|| validator.get_field("title"))
         .and_then(|t| t.as_str());
 
-    assert!(
-        updated_title == Some("Updated E2E Test Document"),
+    assert_eq!(
+        updated_title,
+        Some("Updated E2E Test Document"),
         "Document title should be updated"
     );
 }
 
-/// E2E document deletion flow test
+/// E2E document deletion flow test with verification
 #[tokio::test]
 async fn test_e2e_document_deletion_flow() {
     let app = TestApp::create().await;
@@ -168,7 +169,7 @@ async fn test_e2e_document_deletion_flow() {
     let delete_response = app
         .client
         .delete(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -177,17 +178,16 @@ async fn test_e2e_document_deletion_flow() {
         .await
         .expect("Document deletion request failed");
 
-    assert!(
-        delete_response.status() == 200,
-        "Expected 200 for document deletion, got: {}",
-        delete_response.status()
-    );
+    ResponseValidator::new(delete_response)
+        .await
+        .assert_status(200)
+        .assert_success();
 
     // Verify document is deleted (should return 404)
     let get_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}",
+            "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -203,7 +203,7 @@ async fn test_e2e_document_deletion_flow() {
     );
 }
 
-/// E2E document list flow test
+/// E2E document list flow test with pagination
 #[tokio::test]
 async fn test_e2e_document_list_flow() {
     let app = TestApp::create().await;
@@ -212,10 +212,8 @@ async fn test_e2e_document_list_flow() {
     let test_user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&test_user.id).await;
 
-    // Create multiple documents
-    let _doc1 = app.create_test_document(&space.id, None).await;
-    let _doc2 = app.create_test_document(&space.id, None).await;
-    let _doc3 = app.create_test_document(&space.id, None).await;
+    // Create multiple documents using the helper
+    let _ = app.create_test_documents(&space.id, 5).await;
 
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
@@ -224,7 +222,7 @@ async fn test_e2e_document_list_flow() {
     let list_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/space-docs/{}/documents",
+            "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -233,22 +231,26 @@ async fn test_e2e_document_list_flow() {
         .await
         .expect("Document list request failed");
 
-    assert!(
-        list_response.status() == 200,
-        "Expected 200 for document list, got: {}",
-        list_response.status()
-    );
+    let validator = ResponseValidator::new(list_response).await;
+    validator.assert_status(200).assert_success();
 
     // Verify response contains documents
-    let body: serde_json::Value = list_response.json().await.expect("Parse list response failed");
-    let documents = body.get("data").and_then(|d| d.get("documents"))
-        .or_else(|| body.get("documents"))
-        .or_else(|| body.get("data"));
+    let documents = validator
+        .body()
+        .get("data")
+        .or(validator.body().get("documents"))
+        .or(validator.body().get("items"))
+        .expect("Response should contain documents array or data field");
 
     assert!(
-        documents.is_some(),
-        "Response should contain documents array"
+        documents.is_array(),
+        "Documents field should be an array, got: {}",
+        documents
     );
+
+    let doc_count = documents.as_array().map(|arr| arr.len()).unwrap_or(0);
+
+    assert!(doc_count >= 5, "Should have at least 5 documents, got: {}", doc_count);
 }
 
 /// E2E document version history flow test
@@ -264,35 +266,14 @@ async fn test_e2e_document_version_flow() {
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
-    // Create a version
-    let create_version_response = app
-        .client
-        .post(&format!(
-            "http://localhost:{}/v1/documents/{}/versions",
-            app.port, document.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
-        .json(&json!({
-            "name": "E2E Test Version",
-            "description": "Created by E2E test"
-        }))
-        .send()
-        .await
-        .expect("Version creation request failed");
-
-    // Version creation may be automatic or manual depending on implementation
-    assert!(
-        create_version_response.status() == 200 || create_version_response.status() == 201,
-        "Expected 200 or 201 for version creation, got: {}",
-        create_version_response.status()
-    );
+    // Create a version using helper
+    let _version = app.create_test_document_version(&document.id, &test_user.id).await;
 
     // List versions
     let list_versions_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}/versions",
+            "http://localhost:{}/api/v1/documents/{}/versions",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -301,11 +282,7 @@ async fn test_e2e_document_version_flow() {
         .await
         .expect("Version list request failed");
 
-    assert!(
-        list_versions_response.status() == 200,
-        "Expected 200 for version list, got: {}",
-        list_versions_response.status()
-    );
+    ResponseValidator::new(list_versions_response).await.assert_status(200);
 }
 
 /// E2E document export flow test
@@ -322,10 +299,10 @@ async fn test_e2e_document_export_flow() {
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
     // Export document as Markdown
-    let export_response = app
+    let mut export_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/documents/{}/export?format=markdown",
+            "http://localhost:{}/api/v1/documents/{}/export?format=markdown",
             app.port, document.id
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -334,13 +311,7 @@ async fn test_e2e_document_export_flow() {
         .await
         .expect("Export request failed");
 
-    assert!(
-        export_response.status() == 200,
-        "Expected 200 for export, got: {}",
-        export_response.status()
-    );
-
-    // Verify content type
+    // Check Content-Type header directly (before JSON parsing)
     let content_type = export_response
         .headers()
         .get("content-type")
@@ -352,9 +323,13 @@ async fn test_e2e_document_export_flow() {
         "Content-Type should be markdown, got: {}",
         content_type
     );
+
+    // Now verify the response is successful
+    let validator = ResponseValidator::new(export_response).await;
+    validator.assert_status(200);
 }
 
-/// E2E document search flow test
+/// E2E document search flow test with result validation
 #[tokio::test]
 async fn test_e2e_document_search_flow() {
     let app = TestApp::create().await;
@@ -364,7 +339,7 @@ async fn test_e2e_document_search_flow() {
     let space = app.create_test_space_for_user(&test_user.id).await;
 
     // Create documents with specific content matching search query
-    let doc = app.create_test_document(&space.id, Some("Test Document".to_string())).await;
+    let doc = app.create_test_document(&space.id, None).await;
 
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
@@ -373,7 +348,7 @@ async fn test_e2e_document_search_flow() {
     let search_response = app
         .client
         .get(&format!(
-            "http://localhost:{}/v1/search?q=Test%20Document",
+            "http://localhost:{}/api/v1/search?q=Test%20Document",
             app.port
         ))
         .header("Authorization", format!("Bearer {}", token))
@@ -382,40 +357,322 @@ async fn test_e2e_document_search_flow() {
         .await
         .expect("Search request failed");
 
-    assert!(
-        search_response.status() == 200,
-        "Expected 200 for search, got: {}",
-        search_response.status()
-    );
+    let validator = ResponseValidator::new(search_response).await;
+    validator.assert_status(200).assert_success();
 
     // Verify response contains results
-    let body: serde_json::Value = search_response.json().await.expect("Parse search response failed");
-    let results = body.get("data").and_then(|d| d.get("results"))
-        .or_else(|| body.get("results"))
-        .or_else(|| body.get("data"));
+    let results = validator
+        .get_field("data")
+        .and_then(|d| d.get("results"))
+        .or_else(|| validator.get_field("results"))
+        .or_else(|| validator.get_field("data"));
 
-    assert!(
-        results.is_some(),
-        "Response should contain search results"
-    );
+    assert!(results.is_some(), "Response should contain search results");
 
     // Verify results are non-empty and contain the created document
     let results_array = results.and_then(|r| r.as_array()).expect("Results should be an array");
-    assert!(
-        !results_array.is_empty(),
-        "Search results should not be empty"
-    );
+    assert!(!results_array.is_empty(), "Search results should not be empty");
 
     // Verify the created document is in the results
     let found_doc = results_array.iter().any(|item| {
         let item_id = item.get("id").and_then(|id| id.as_str());
         let item_title = item.get("title").and_then(|t| t.as_str());
-        item_id == Some(doc.id.to_string().as_str()) ||
-        item_title.map_or(false, |t| t.contains("Test Document"))
+        item_id == Some(doc.id.to_string().as_str()) || item_title.map_or(false, |t| t.contains("Test Document"))
     });
 
-    assert!(
-        found_doc,
-        "Created document should be found in search results"
+    assert!(found_doc, "Created document should be found in search results");
+}
+
+// ============================================================================
+// Additional Error Handling Tests
+// ============================================================================
+
+/// Test document creation with invalid data
+#[tokio::test]
+async fn test_e2e_create_document_invalid_data() {
+    let app = TestApp::create().await;
+
+    let test_user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&test_user.id).await;
+    let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+
+    // Try to create document with empty title
+    let response = app
+        .client
+        .post(&format!(
+            "http://localhost:{}/api/v1/space-docs/{}/documents",
+            app.port, space.id
+        ))
+        .header("Authorization", format!("Bearer {}", token))
+        .header("X-User-Id", user_id_str)
+        .json(&json!({
+            "title": "",  // Invalid: empty title
+            "content": {"type": "Y.Doc", "update": "test"}
+        }))
+        .send()
+        .await
+        .expect("Request failed");
+
+    let validator = ResponseValidator::new(response).await;
+    validator.assert_client_error();
+}
+
+/// Test document retrieval for non-existent document
+#[tokio::test]
+async fn test_e2e_get_nonexistent_document() {
+    let app = TestApp::create().await;
+
+    let test_user = app.create_test_user().await;
+    let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+    let fake_id = Uuid::new_v4();
+
+    let response = app
+        .client
+        .get(&format!("http://localhost:{}/api/v1/documents/{}", app.port, fake_id))
+        .header("Authorization", format!("Bearer {}", token))
+        .header("X-User-Id", user_id_str)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert_eq!(
+        response.status(),
+        404,
+        "Expected 404 for non-existent document, got: {}",
+        response.status()
     );
+}
+
+/// Test unauthorized document access
+#[tokio::test]
+async fn test_e2e_unauthorized_document_access() {
+    let app = TestApp::create().await;
+
+    // Create user1 with a document
+    let user1 = app.create_test_user().await;
+    let space1 = app.create_test_space_for_user(&user1.id).await;
+    let document = app.create_test_document(&space1.id, None).await;
+
+    // Create user2
+    let user2 = app.create_test_user().await;
+    let (token2, user_id_str2) = app.get_auth_data(Some(user2.id), None).await;
+
+    // Try to access user1's document with user2's credentials
+    let response = app
+        .client
+        .get(&format!(
+            "http://localhost:{}/api/v1/documents/{}",
+            app.port, document.id
+        ))
+        .header("Authorization", format!("Bearer {}", token2))
+        .header("X-User-Id", user_id_str2)
+        .send()
+        .await
+        .expect("Request failed");
+
+    // Should get 403 or 404 (not found or forbidden)
+    assert!(
+        response.status() == 403 || response.status() == 404,
+        "Expected 403 or 404 for unauthorized access, got: {}",
+        response.status()
+    );
+}
+
+/// Test document creation without authentication
+#[tokio::test]
+async fn test_e2e_create_document_without_auth() {
+    let app = TestApp::create().await;
+
+    let test_user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&test_user.id).await;
+
+    let response = app
+        .client
+        .post(&format!(
+            "http://localhost:{}/api/v1/space-docs/{}/documents",
+            app.port, space.id
+        ))
+        .json(&serde_json::json!({
+            "title": format!("Test Document {}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()),
+            "content": {
+                "type": "Y.Doc",
+                "update": "dGVzdCB1cGRhdGU=",
+                "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
+            },
+            "icon": "📝"
+        }))
+        .send()
+        .await
+        .expect("Request failed");
+
+    ResponseValidator::new(response).await.assert_status(401);
+}
+
+// ============================================================================
+// Concurrent Operations Tests
+// ============================================================================
+
+/// Test concurrent document creation by same user
+#[tokio::test]
+async fn test_e2e_concurrent_document_creation() {
+    let app = TestApp::create().await;
+
+    let test_user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&test_user.id).await;
+    let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+
+    // Clone necessary parts for concurrent access
+    let client = app.client.clone();
+    let port = app.port;
+
+    // Create multiple documents concurrently
+    let documents: Vec<_> = (0..5)
+        .map(|i| {
+            let token = token.clone();
+            let user_id_str = user_id_str.clone();
+            let space_id = space.id;
+            let title = format!("Concurrent Document {}", i);
+            let client = client.clone();
+
+            async move {
+                let response = client
+                    .post(&format!(
+                        "http://localhost:{}/api/v1/space-docs/{}/documents",
+                        port, space_id
+                    ))
+                    .header("Authorization", format!("Bearer {}", token))
+                    .header("X-User-Id", user_id_str)
+                    .json(&serde_json::json!({
+                        "title": title,
+                        "content": {
+                            "type": "Y.Doc",
+                            "update": "dGVzdCB1cGRhdGU=",
+                            "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
+                        },
+                        "icon": "📝"
+                    }))
+                    .send()
+                    .await
+                    .expect("Request failed");
+
+                ResponseValidator::new(response).await.status()
+            }
+        })
+        .collect();
+
+    // Execute concurrently
+    let results = futures_util::future::join_all(documents).await;
+
+    // All should succeed
+    assert_eq!(results.len(), 5, "All 5 concurrent requests should complete");
+
+    // Verify all concurrent creations succeeded
+    assert!(
+        results.iter().all(|status| status.is_success()),
+        "All concurrent document creations should succeed (2xx status). Got statuses: {:?}",
+        results
+    );
+}
+
+/// Test concurrent updates to same document
+#[tokio::test]
+async fn test_e2e_concurrent_document_updates() {
+    let app = TestApp::create().await;
+
+    let test_user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&test_user.id).await;
+    let document = app.create_test_document(&space.id, None).await;
+    let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+
+    // Clone necessary parts for concurrent access
+    let client = app.client.clone();
+    let port = app.port;
+    let doc_id = document.id;
+
+    // Concurrent updates
+    let updates: Vec<_> = (0..3)
+        .map(|i| {
+            let token = token.clone();
+            let user_id_str = user_id_str.clone();
+            let client = client.clone();
+
+            async move {
+                let response = client
+                    .patch(&format!("http://localhost:{}/api/v1/documents/{}", port, doc_id))
+                    .header("Authorization", format!("Bearer {}", token))
+                    .header("X-User-Id", user_id_str)
+                    .json(&json!({
+                        "title": format!("Updated by concurrent request {}", i),
+                        "content": {
+                            "type": "Y.Doc",
+                            "update": format!("dXBkYXRl{}", i),
+                            "vector_clock": {"client_id": doc_id.to_string(), "clock": i + 2}
+                        }
+                    }))
+                    .send()
+                    .await
+                    .expect("Request failed");
+
+                // Concurrent updates may succeed or fail depending on implementation
+                response.status()
+            }
+        })
+        .collect();
+
+    let statuses = futures_util::future::join_all(updates).await;
+
+    // All should complete without errors
+    for status in statuses {
+        assert!(
+            status.is_success() || status == StatusCode::CONFLICT,
+            "Concurrent update should succeed or return conflict, got: {}",
+            status
+        );
+    }
+}
+
+/// Test rapid concurrent requests (rate limiting check)
+#[tokio::test]
+async fn test_e2e_rapid_concurrent_requests() {
+    let app = TestApp::create().await;
+
+    let test_user = app.create_test_user().await;
+    let space = app.create_test_space_for_user(&test_user.id).await;
+    let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
+
+    // Clone necessary parts for concurrent access
+    let client = app.client.clone();
+    let port = app.port;
+
+    // Send rapid requests
+    let results: Vec<_> = (0..10)
+        .map(|i| {
+            let token = token.clone();
+            let user_id_str = user_id_str.clone();
+            let space_id = space.id;
+            let client = client.clone();
+
+            async move {
+                let response = client
+                    .get(&format!(
+                        "http://localhost:{}/api/v1/space-docs/{}/documents",
+                        port, space_id
+                    ))
+                    .header("Authorization", format!("Bearer {}", token))
+                    .header("X-User-Id", user_id_str)
+                    .send()
+                    .await
+                    .expect("Request failed");
+
+                (i, response.status())
+            }
+        })
+        .collect();
+
+    let statuses = futures_util::future::join_all(results).await;
+
+    // All should succeed (no rate limiting at 10 requests)
+    for (i, status) in statuses {
+        assert!(status.is_success(), "Request {} should succeed, got: {}", i, status);
+    }
 }

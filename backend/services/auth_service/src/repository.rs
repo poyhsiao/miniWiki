@@ -65,8 +65,8 @@ impl AuthRepository {
     
     pub async fn create_refresh_token(&self, token: &RefreshToken) -> Result<(), sqlx::Error> {
         sqlx::query(
-            "INSERT INTO refresh_tokens (id, user_id, token, expires_at, ip_address, user_agent)
-             VALUES ($1, $2, $3, $4, $5, $6)"
+            "INSERT INTO refresh_tokens (id, user_id, token, expires_at, ip_address, user_agent, is_revoked, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
         )
         .bind(&token.id)
         .bind(&token.user_id)
@@ -74,6 +74,8 @@ impl AuthRepository {
         .bind(&token.expires_at)
         .bind(&token.ip_address)
         .bind(&token.user_agent)
+        .bind(&token.is_revoked)
+        .bind(&token.created_at)
         .execute(&self.pool)
         .await?;
         
@@ -97,6 +99,15 @@ impl AuthRepository {
              is_revoked, revoked_at, created_at
              FROM refresh_tokens WHERE token = $1 AND is_revoked = false 
              AND expires_at > NOW()"
+        )
+        .bind(token)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    pub async fn find_refresh_token_owner(&self, token: &str) -> Result<Option<Uuid>, sqlx::Error> {
+        sqlx::query_scalar(
+            "SELECT user_id FROM refresh_tokens WHERE token = $1"
         )
         .bind(token)
         .fetch_optional(&self.pool)

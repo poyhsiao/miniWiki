@@ -6,8 +6,7 @@ use uuid::Uuid;
 use chrono::Utc;
 use async_trait::async_trait;
 use std::sync::Arc;
-use std::rc::Rc;
-use std::cell::RefCell;
+use tokio::sync::Mutex;
 use redis::AsyncCommands;
 
 /// CSRF token structure
@@ -270,9 +269,7 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(CsrfMiddlewareService {
-            // Wrap the service in Rc<RefCell> to allow internal mutability for poll_ready
-            // which in many Service implementations requires &mut self.
-            service: Rc::new(RefCell::new(service)),
+            service: Arc::new(Mutex::new(service)),
             config: self.config.clone(),
             store: self.store.clone(),
         }))
@@ -280,7 +277,7 @@ where
 }
 
 pub struct CsrfMiddlewareService<S> {
-    service: Rc<RefCell<S>>,
+    service: Arc<Mutex<S>>,
     config: CsrfConfig,
     store: Arc<dyn CsrfStore>,
 }
@@ -295,8 +292,11 @@ where
     type Future = Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-        // Now we can mutably borrow the inner service
-        self.service.borrow_mut().poll_ready(cx)
+        if let Ok(mut svc) = self.service.try_lock() {
+            svc.poll_ready(cx)
+        } else {
+            std::task::Poll::Pending
+        }
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
@@ -308,14 +308,12 @@ where
             let method = req.method().clone();
             let session_id = get_session_id_from_request(req.request());
 
-            // Skip CSRF validation for OPTIONS preflight requests
             if method == Method::OPTIONS {
-                return service.borrow_mut().call(req).await;
+                let mut svc = service.lock().await;
+                return svc.call(req).await;
             }
 
-            // Check for state-changing methods
             if method == Method::POST || method == Method::PUT || method == Method::PATCH || method == Method::DELETE {
-                // Only validate CSRF if a session exists
                 if let Some(ref sid) = session_id {
                     let token = get_csrf_token_from_request(req.request(), &config)?;
                     if !store.validate_and_consume(sid, &token).await {
@@ -324,24 +322,29 @@ where
                 }
             }
 
-            let mut res = service.borrow_mut().call(req).await;
+            let mut svc = service.lock().await;
+            let mut res = svc.call(req).await;
+            drop(svc); // Release lock before token generation
 
-            // Generate new token and set cookie for successful state-changing requests
-            if session_id.is_some() {
-                if let Ok(ref mut response) = res {
-                    let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
-                    if let Ok(token) = store.generate(session_id.as_ref().unwrap(), ttl_i64).await {
-                        let display_ttl = config.cookie_max_age.min(i64::MAX as u64);
-                        let mut cookie = format!("{}={}; SameSite=Strict; Path=/; Max-Age={}", config.cookie_name, token, display_ttl);
-                        if config.secure_cookie {
-                            cookie.push_str("; Secure");
+            if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE) {
+                if session_id.is_some() {
+                    if let Ok(ref mut response) = res {
+                        if response.status().is_success() {
+                            let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
+                            if let Ok(token) = store.generate(session_id.as_ref().unwrap(), ttl_i64).await {
+                                let display_ttl = config.cookie_max_age.min(i64::MAX as u64);
+                                let mut cookie = format!("{}={}; SameSite=Strict; Path=/; Max-Age={}", config.cookie_name, token, display_ttl);
+                                if config.secure_cookie {
+                                    cookie.push_str("; Secure");
+                                }
+                                response.headers_mut().append(
+                                    header::SET_COOKIE,
+                                    header::HeaderValue::from_str(&cookie).map_err(actix_web::error::ErrorInternalServerError)?
+                                );
+                            } else {
+                                tracing::error!("Failed to generate CSRF token");
+                            }
                         }
-                        response.headers_mut().append(
-                            header::SET_COOKIE,
-                            header::HeaderValue::from_str(&cookie).map_err(actix_web::error::ErrorInternalServerError)?
-                        );
-                    } else {
-                        tracing::error!("Failed to generate CSRF token");
                     }
                 }
             }
