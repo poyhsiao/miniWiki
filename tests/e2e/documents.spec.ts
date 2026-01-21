@@ -168,7 +168,7 @@ test.describe('Document Management E2E Tests', () => {
     const moreButton = testDocItem.locator('[aria-label*="more"], [aria-label*="options"], .more-button');
 
     if (!(await moreButton.isVisible())) {
-      test.skip('More button not found for test document');
+      test.skip();
       return;
     }
 

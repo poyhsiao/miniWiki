@@ -49,7 +49,7 @@ test.describe('Sync and Offline E2E Tests', () => {
     }
   });
 
-  test.todo('should handle offline state');
+  test.skip(true, 'should handle offline state - TODO: implement when offline mode is ready');
 
   test('should sync when coming back online', async ({ page }) => {
     await page.goto('/spaces');
@@ -148,9 +148,9 @@ test.describe('Real-time Collaboration E2E Tests', () => {
     }
   });
 
-  test.todo('should show other users cursors');
+  test.skip(true, 'should show other users cursors');
 
-  test.todo('should display real-time updates from other users');
+  test.skip(true, 'should display real-time updates from other users');
 });
 
 test.describe('Complete User Flow E2E Tests', () => {

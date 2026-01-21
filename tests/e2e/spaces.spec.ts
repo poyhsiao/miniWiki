@@ -28,7 +28,7 @@ test.describe('Space Organization E2E Tests', () => {
     const createButton = page.locator('button:has-text("Create Space"), button:has-text("New Space"), [aria-label*="Create Space"]');
 
     if (!(await createButton.isVisible())) {
-      test.skip('Create button not available');
+      test.skip();
       return;
     }
 
@@ -171,7 +171,7 @@ test.describe('Space Organization E2E Tests', () => {
 
     const visible = await memberButton.isVisible();
     if (!visible) {
-      test.skip('Members button not present');
+      test.skip();
       return;
     }
 

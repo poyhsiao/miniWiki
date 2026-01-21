@@ -12,7 +12,9 @@
     "postinstall": "npx playwright install"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0"
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^18.19.0",
+    "typescript": "^5.8.3"
   },
   "engines": {
     "node": ">=18.0.0"
