@@ -1,4 +1,4 @@
-import { test as base, Page, BrowserContext } from '@playwright/test';
+import { test as base, Page, BrowserContext, expect } from '@playwright/test';
 
 /**
  * Test Fixtures for miniWiki E2E Tests
@@ -56,6 +56,28 @@ function getRoleCredentials(role: UserRole): RoleCredentials {
 }
 
 /**
+ * Strictly assert that the user is authenticated after a login attempt.
+ * Fails fast with a clear error message if the expected post-login state is not reached.
+ */
+async function assertAuthenticated(page: Page, role: UserRole): Promise<void> {
+  const userMenu = page.locator('[data-testid="user-menu"], [data-test-id="user-menu"], [aria-label*="User menu"], [class*="user-menu"]');
+
+  try {
+    if (await userMenu.count()) {
+      await userMenu.first().waitFor({ state: 'visible', timeout: 10_000 });
+      return;
+    }
+
+    await page.waitForURL(/\/spaces/, { timeout: 10_000 });
+  } catch {
+    const currentUrl = page.url();
+    throw new Error(
+      `Authentication failed for role "${String(role)}": expected a logged-in UI state or navigation to "/spaces", but current URL is "${currentUrl}".`
+    );
+  }
+}
+
+/**
  * Helper function to authenticate as a specific role
  */
 async function authenticateAs(page: Page, role: UserRole): Promise<void> {
@@ -75,16 +97,9 @@ async function authenticateAs(page: Page, role: UserRole): Promise<void> {
       const loginButton = page.locator('button:has-text("Login"), button:has-text("Sign In")');
       await loginButton.click();
 
-      // Wait for login to complete
       await page.waitForTimeout(3000);
 
-      // Verify login succeeded (check for redirect away from login or presence of user indicator)
-      const userIndicatorVisible = await page.locator('[aria-label*="user"], [class*="user-menu"]').isVisible();
-      const isLoggedIn = page.url().includes('/spaces') || userIndicatorVisible;
-
-      if (!isLoggedIn) {
-        console.warn(`Login as ${role} may have failed - no redirect or user indicator found`);
-      }
+      await assertAuthenticated(page, role);
     } else {
       throw new Error(`Login form not found for ${role} authentication`);
     }
@@ -186,16 +201,20 @@ export const test = base.extend<TestFixtures>({
 
   // Fixture for page with clean document state
   cleanDocumentPage: async ({ page }, use) => {
-    // Navigate to a document or create one
     await page.goto('/spaces');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Store created document name for cleanup
     let createdDocName = '';
+    let createdDocLocator: ReturnType<Page['locator']>;
 
-    // Create a test document
     const createButton = page.locator('button:has-text("Create"), button:has-text("New"), [aria-label*="Create"]');
+
+    await expect(
+      createButton,
+      'Expected to find a Create/New button to initialize a clean document for this test run.'
+    ).toBeVisible({ timeout: 5000 });
+
     if (await createButton.isVisible()) {
       await createButton.click();
       await page.waitForTimeout(500);
@@ -210,10 +229,15 @@ export const test = base.extend<TestFixtures>({
 
         await page.waitForTimeout(2000);
 
-        // Navigate to the document
-        const docItem = page.locator('.document-item').filter({ hasText: createdDocName }).first();
-        if (await docItem.isVisible()) {
-          await docItem.click();
+        createdDocLocator = page.locator('.document-item').filter({ hasText: createdDocName }).first();
+
+        await expect(
+          createdDocLocator,
+          'Expected the newly created document to be visible.'
+        ).toBeVisible({ timeout: 10000 });
+
+        if (await createdDocLocator.isVisible()) {
+          await createdDocLocator.click();
           await page.waitForLoadState('networkidle');
           await page.waitForTimeout(2000);
         }
@@ -222,18 +246,21 @@ export const test = base.extend<TestFixtures>({
 
     await use(page);
 
-    // Cleanup: Delete the test document by name
     try {
       if (createdDocName) {
-        // Navigate back to spaces to find the document
         await page.goto('/spaces');
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(1000);
 
-        // Locate the specific document by its unique name
         const createdDoc = page.locator(`.document-item:has-text("${createdDocName}")`);
         if (await createdDoc.isVisible()) {
           const moreButton = createdDoc.locator('[aria-label*="more"], [aria-label*="options"]');
+
+          await expect(
+            moreButton,
+            'Expected the more options button to be visible for cleanup.'
+          ).toBeVisible({ timeout: 5000 });
+
           if (await moreButton.isVisible()) {
             await moreButton.click();
             await page.waitForTimeout(500);
@@ -247,6 +274,8 @@ export const test = base.extend<TestFixtures>({
               if (await confirmButton.isVisible()) {
                 await confirmButton.click();
                 await page.waitForTimeout(1000);
+
+                await expect(createdDoc).not.toBeVisible();
               }
             }
           }
@@ -254,6 +283,7 @@ export const test = base.extend<TestFixtures>({
       }
     } catch (error) {
       console.log('Cleanup failed:', error);
+      throw error;
     }
   },
 
@@ -263,9 +293,16 @@ export const test = base.extend<TestFixtures>({
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Create a test space with unique name
     let createdSpaceName = '';
+    let createdSpaceLocator: ReturnType<Page['locator']>;
+
     const createButton = page.locator('button:has-text("Create Space"), button:has-text("New Space")');
+
+    await expect(
+      createButton,
+      'Expected to find a Create Space/New Space button to initialize a clean space for this test run.'
+    ).toBeVisible({ timeout: 5000 });
+
     if (await createButton.isVisible()) {
       await createButton.click();
       await page.waitForTimeout(500);
@@ -279,23 +316,33 @@ export const test = base.extend<TestFixtures>({
         await submitButton.click();
 
         await page.waitForTimeout(2000);
+
+        createdSpaceLocator = page.locator(`.space-item:has-text("${createdSpaceName}")`);
+
+        await expect(
+          createdSpaceLocator,
+          'Expected the newly created space to be visible.'
+        ).toBeVisible({ timeout: 10000 });
       }
     }
 
     await use(page);
 
-    // Cleanup: Delete the test space by name
     try {
       if (createdSpaceName) {
-        // Navigate back to spaces list
         await page.goto('/spaces');
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(1000);
 
-        // Locate the specific space by its unique name
         const createdSpace = page.locator(`.space-item:has-text("${createdSpaceName}")`);
         if (await createdSpace.isVisible()) {
           const moreButton = createdSpace.locator('[aria-label*="More"], [aria-label*="Options"]');
+
+          await expect(
+            moreButton,
+            'Expected the more options button to be visible for cleanup.'
+          ).toBeVisible({ timeout: 5000 });
+
           if (await moreButton.isVisible()) {
             await moreButton.click();
             await page.waitForTimeout(500);
@@ -309,6 +356,8 @@ export const test = base.extend<TestFixtures>({
               if (await confirmButton.isVisible()) {
                 await confirmButton.click();
                 await page.waitForTimeout(1000);
+
+                await expect(createdSpace).not.toBeVisible();
               }
             }
           }
@@ -316,6 +365,7 @@ export const test = base.extend<TestFixtures>({
       }
     } catch (error) {
       console.log('Cleanup failed:', error);
+      throw error;
     }
   },
 });

@@ -87,7 +87,7 @@ test.describe('Sync and Offline E2E Tests', () => {
       const errorIndicator = page.locator('[role="alert"]:has-text("error"), .error');
       await expect(errorIndicator).not.toBeVisible();
     } else {
-      test.skip();
+      test.skip(true, 'Sync or Retry button not available');
     }
   });
 
@@ -144,7 +144,7 @@ test.describe('Real-time Collaboration E2E Tests', () => {
       const hasPresenceUI = await presenceIndicator.count() > 0 || await collaborators.count() > 0;
       expect(hasPresenceUI).toBeTruthy();
     } else {
-      test.skip();
+      test.skip(true, 'Document item not available');
     }
   });
 

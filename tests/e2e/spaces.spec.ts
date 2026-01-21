@@ -28,7 +28,7 @@ test.describe('Space Organization E2E Tests', () => {
     const createButton = page.locator('button:has-text("Create Space"), button:has-text("New Space"), [aria-label*="Create Space"]');
 
     if (!(await createButton.isVisible())) {
-      test.skip();
+      test.skip(true, 'Create button not available');
       return;
     }
 
@@ -101,7 +101,7 @@ test.describe('Space Organization E2E Tests', () => {
     const spaceItem = page.locator('.space-item').first();
     
     if (!(await spaceItem.isVisible())) {
-      test.skip();
+      test.skip(true, 'Space item not available');
       return;
     }
 
@@ -116,7 +116,7 @@ test.describe('Space Organization E2E Tests', () => {
       await settingsButton.click();
       await page.waitForTimeout(500);
     } else {
-      test.skip();
+      test.skip(true, 'Member or Settings button not available');
       return;
     }
     
@@ -171,7 +171,7 @@ test.describe('Space Organization E2E Tests', () => {
 
     const visible = await memberButton.isVisible();
     if (!visible) {
-      test.skip();
+      test.skip(true, 'Member button not available');
       return;
     }
 
@@ -305,33 +305,33 @@ test.describe('Space Organization E2E Tests', () => {
     const spaceItem = page.locator('.space-item').first();
     
     if (!(await spaceItem.isVisible())) {
-      test.skip();
+      test.skip(true, 'Space item not available');
       return;
     }
 
     await spaceItem.click();
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
-    
+
     // Look for nested document structure
     const nestedItem = page.locator('.nested, [class*="nested"]');
     const treeView = page.locator('.tree-view, [role="tree"]');
-    
+
     // Assert tree view or nested structure exists
     const hasTreeView = await treeView.isVisible();
     const hasNestedItems = await nestedItem.isVisible();
-    
+
     if (hasTreeView) {
       await expect(treeView).toBeVisible();
     }
-    
+
     if (hasNestedItems) {
       await expect(nestedItem.first()).toBeVisible();
     }
-    
+
     // Try creating a nested document
     const createButton = page.locator('button:has-text("Create"), [aria-label*="Create"]');
-    
+
     if (!(await createButton.isVisible())) {
       // If no create button, verify hierarchy structure exists and skip creation part
       expect(hasTreeView || hasNestedItems).toBeTruthy();
@@ -368,28 +368,28 @@ test.describe('Space Settings E2E Tests', () => {
     
     // Find settings
     const spaceItem = page.locator('.space-item').first();
-    
+
     if (!(await spaceItem.isVisible())) {
-      test.skip();
+      test.skip(true, 'Space item not available');
       return;
     }
 
     const settingsButton = page.locator('[aria-label*="Settings"], button:has-text("Settings")');
-    
+
     if (!(await settingsButton.isVisible())) {
-      test.skip();
+      test.skip(true, 'Settings button not available');
       return;
     }
 
     await settingsButton.click();
     await page.waitForTimeout(500);
-    
+
     // Should show settings panel or dialog
     const settingsPanel = page.locator('.settings-panel, [role="dialog"]');
-    
+
     // Assert settings panel is visible
     await expect(settingsPanel).toBeVisible({ timeout: 5000 });
-    
+
     // Verify expected content inside the panel
     const settingsHeading = settingsPanel.locator('text=/Settings|Configure|Options/i');
     await expect(settingsHeading).toBeVisible({ timeout: 5000 });
