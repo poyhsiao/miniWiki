@@ -76,36 +76,40 @@ test.describe('Document Export E2E Tests', () => {
 
     // Open export dialog
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Look for Markdown export option
     const markdownOption = page.getByText('Markdown').or(page.getByText('.md')).or(page.getByText(/md/i)).first();
-
-    if (await markdownOption.isVisible()) {
-      await markdownOption.click();
-      await page.waitForTimeout(300);
+    if (!(await markdownOption.isVisible())) {
+      test.skip(true, 'Markdown export option not available');
+      return;
     }
+    await markdownOption.click();
+    await page.waitForTimeout(300);
 
     // Look for download button
     const downloadButton = page.locator('button:has-text("Download"), button:has-text("Export")');
-
-    if (await downloadButton.isVisible()) {
-      // Set up download handling
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        downloadButton.click()
-      ]);
-
-      // Verify download started
-      expect(download).toBeDefined();
-      const filename = download.suggestedFilename();
-      expect(filename).toBeTruthy();
-      // Markdown file should have .md extension
-      expect(filename).toMatch(/\.md$/i);
+    if (!(await downloadButton.isVisible())) {
+      test.skip(true, 'Download button not available');
+      return;
     }
+    // Set up download handling
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadButton.click()
+    ]);
+
+    // Verify download started
+    expect(download).toBeDefined();
+    const filename = download.suggestedFilename();
+    expect(filename).toBeTruthy();
+    // Markdown file should have .md extension
+    expect(filename).toMatch(/\.md$/i);
   });
 
   test('should export to HTML format', async ({ page }) => {
@@ -125,32 +129,36 @@ test.describe('Document Export E2E Tests', () => {
 
     // Open export dialog
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Look for HTML export option
     const htmlOption = page.getByText(/\.?html?/i);
-
-    if (await htmlOption.isVisible()) {
-      await htmlOption.click();
-      await page.waitForTimeout(300);
+    if (!(await htmlOption.isVisible())) {
+      test.skip(true, 'HTML export option not available');
+      return;
     }
+    await htmlOption.click();
+    await page.waitForTimeout(300);
 
     // Look for download button
     const downloadButton = page.locator('button:has-text("Download"), button:has-text("Export")');
-
-    if (await downloadButton.isVisible()) {
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        downloadButton.click()
-      ]);
-
-      expect(download).toBeDefined();
-      const filename = download.suggestedFilename();
-      expect(filename).toMatch(/\.html?$/i);
+    if (!(await downloadButton.isVisible())) {
+      test.skip(true, 'Download button not available');
+      return;
     }
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadButton.click()
+    ]);
+
+    expect(download).toBeDefined();
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/\.html?$/i);
   });
 
   test('should export to PDF format', async ({ page }) => {
@@ -170,32 +178,36 @@ test.describe('Document Export E2E Tests', () => {
 
     // Open export dialog
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Look for PDF export option
     const pdfOption = page.getByText(/\.?pdf/i);
-
-    if (await pdfOption.isVisible()) {
-      await pdfOption.click();
-      await page.waitForTimeout(300);
+    if (!(await pdfOption.isVisible())) {
+      test.skip(true, 'PDF export option not available');
+      return;
     }
+    await pdfOption.click();
+    await page.waitForTimeout(300);
 
     // Look for download button
     const downloadButton = page.locator('button:has-text("Download"), button:has-text("Export")');
-
-    if (await downloadButton.isVisible()) {
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        downloadButton.click()
-      ]);
-
-      expect(download).toBeDefined();
-      const filename = download.suggestedFilename();
-      expect(filename).toMatch(/\.pdf$/i);
+    if (!(await downloadButton.isVisible())) {
+      test.skip(true, 'Download button not available');
+      return;
     }
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadButton.click()
+    ]);
+
+    expect(download).toBeDefined();
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/\.pdf$/i);
   });
 
   test('should preserve formatting in export', async ({ page }) => {

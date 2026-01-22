@@ -115,8 +115,25 @@ test.describe('Comments E2E Tests', () => {
     await page.waitForTimeout(2000);
 
     // Look for reply button on a comment
-    const commentItem = page.locator('.comment-item, [class*="comment-item"]').first();
+    let commentItem = page.locator('.comment-item, [class*="comment-item"]').first();
     const replyButton = commentItem.locator('button:has-text("Reply"), [aria-label*="Reply"]');
+
+    // Ensure a comment exists (create one if needed)
+    if (!(await commentItem.isVisible())) {
+      const commentInput = page.locator('textarea[placeholder*="Comment"], input[placeholder*="Comment"], .comment-input');
+      const addCommentButton = page.locator('button:has-text("Add Comment"), button:has-text("Comment")');
+      if (!(await commentInput.isVisible()) || !(await addCommentButton.isVisible())) {
+        test.skip(true, 'Comment input not available');
+        return;
+      }
+      await commentInput.click();
+      await page.keyboard.type(`Seed comment ${Date.now()}`);
+      await addCommentButton.click();
+      await page.waitForTimeout(2000);
+
+      // Refresh comment item locator
+      commentItem = page.locator('.comment-item, [class*="comment-item"]').first();
+    }
 
     // Assert comment item and reply button are visible
     await expect(commentItem).toBeVisible({ timeout: 5000 });
@@ -161,13 +178,29 @@ test.describe('Comments E2E Tests', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
-    // Look for resolve button
+    // Ensure a comment exists (create one if needed)
+    let commentItem = page.locator('.comment-item').first();
     const resolveButton = page.locator('button:has-text("Resolve"), [aria-label*="Resolve"]');
-    const commentItem = page.locator('.comment-item').first();
+
+    if (!(await commentItem.isVisible())) {
+      const commentInput = page.locator('textarea[placeholder*="Comment"], input[placeholder*="Comment"], .comment-input');
+      const addCommentButton = page.locator('button:has-text("Add Comment"), button:has-text("Comment")');
+      if (!(await commentInput.isVisible()) || !(await addCommentButton.isVisible())) {
+        test.skip(true, 'Comment input not available');
+        return;
+      }
+      await commentInput.click();
+      await page.keyboard.type(`Seed comment for resolve ${Date.now()}`);
+      await addCommentButton.click();
+      await page.waitForTimeout(2000);
+
+      // Refresh comment item locator
+      commentItem = page.locator('.comment-item').first();
+    }
 
     // Skip if resolve button is not visible
     if (!(await resolveButton.isVisible())) {
-      test.skip();
+      test.skip(true, 'Resolve button not available');
       return;
     }
 

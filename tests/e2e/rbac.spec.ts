@@ -177,6 +177,8 @@ test.describe('RBAC (Role-Based Access Control) E2E Tests', () => {
           if (clickedFound) {
             const newRole = await roleDropdown.inputValue();
             expect(newRole).not.toEqual(initialRole);
+            // Restore original role to avoid polluting shared test data
+            await roleDropdown.selectOption(initialRole);
           } else {
             console.log('No different role option available for selection');
           }
@@ -201,6 +203,14 @@ test.describe('RBAC (Role-Based Access Control) E2E Tests', () => {
           const newRole = await roleDropdown.textContent();
           expect(newRole).not.toEqual(initialRole);
           expect(newRole).toContain('Editor');
+
+          // Restore original role to avoid polluting shared test data
+          await roleDropdown.click();
+          await page.waitForTimeout(300);
+          const originalOption = page.locator(`[role="option"]:has-text("${initialRole?.trim()}")`);
+          if (await originalOption.isVisible()) {
+            await originalOption.click();
+          }
         } else {
           console.log('Editor option not available');
         }
@@ -416,6 +426,9 @@ test.describe('RBAC Permission Levels E2E Tests', () => {
           // Verify role was updated
           const newRole = await roleDropdown.inputValue();
           expect(newRole).not.toEqual(initialRole);
+
+          // Restore original role to avoid polluting shared test data
+          await roleDropdown.selectOption(initialRole);
         } else {
           console.log('No different role option available for selection');
         }
@@ -437,6 +450,14 @@ test.describe('RBAC Permission Levels E2E Tests', () => {
           // Verify the selection by checking visible text
           const newRole = await roleDropdown.textContent();
           expect(newRole).not.toEqual(initialRole);
+
+          // Restore original role to avoid polluting shared test data
+          await roleDropdown.click();
+          await page.waitForTimeout(300);
+          const originalOption = page.locator(`[role="option"]:has-text("${initialRole?.trim()}")`);
+          if (await originalOption.isVisible()) {
+            await originalOption.click();
+          }
         }
       }
     }

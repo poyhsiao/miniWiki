@@ -219,7 +219,8 @@ test.describe('Version History E2E Tests', () => {
 
     // Look for compare button or multi-select
     const compareButton = page.locator('button:has-text("Compare"), [aria-label*="Compare"]');
-    const hasVisibleCheckbox = await page.isVisible('input[type="checkbox"]');
+    const versionPanel = page.locator('.version-panel, [role="dialog"], .history-panel');
+    const hasVisibleCheckbox = await versionPanel.locator('input[type="checkbox"]').isVisible();
     const hasCompareUI = await compareButton.isVisible() || hasVisibleCheckbox;
 
     if (hasCompareUI) {

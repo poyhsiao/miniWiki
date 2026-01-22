@@ -343,9 +343,10 @@ test.describe('Share Link Access E2E Tests', () => {
   // Configure to run serially to avoid race conditions with shared shareToken
   test.describe.configure({ mode: 'serial' });
 
-  let shareToken: string;
+  let shareToken: string | undefined;
 
   test.beforeEach(async ({ page }) => {
+    shareToken = undefined;
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 

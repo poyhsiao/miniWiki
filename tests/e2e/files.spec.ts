@@ -352,41 +352,25 @@ test.describe('File Upload Error Handling E2E Tests', () => {
     const fs = require('fs');
     const os = require('os');
     const path = require('path');
+    const { once } = require('events');
     const oversizedFilePath = path.join(os.tmpdir(), 'oversized-test-file.bin');
 
-    // Use streaming approach to avoid OOM in CI
+    // Use streaming approach with proper backpressure handling
     const writeStream = fs.createWriteStream(oversizedFilePath);
     const chunkSize = 1024 * 1024; // 1MB chunks
     const totalSize = 10 * 1024 * 1024; // 10MB total
     const chunk = Buffer.alloc(chunkSize, 'x');
 
     for (let written = 0; written < totalSize; written += chunkSize) {
-      writeStream.write(chunk);
+      if (!writeStream.write(chunk)) {
+        await once(writeStream, 'drain');
+      }
     }
-    writeStream.end();
 
-    // Wait for file write to complete
     await new Promise<void>((resolve, reject) => {
-      const maxWaitMs = 10000; // 10 second timeout
-      const startTime = Date.now();
-      const checkInterval = setInterval(() => {
-        try {
-          // Check if timeout exceeded
-          if (Date.now() - startTime > maxWaitMs) {
-            clearInterval(checkInterval);
-            reject(new Error('Timeout waiting for oversized file to be written'));
-            return;
-          }
-
-          const stats = fs.statSync(oversizedFilePath);
-          if (stats.size >= totalSize) {
-            clearInterval(checkInterval);
-            resolve();
-          }
-        } catch (e) {
-          // File not ready yet, continue polling
-        }
-      }, 100);
+      writeStream.on('error', reject);
+      writeStream.on('finish', resolve);
+      writeStream.end();
     });
 
     try {
