@@ -116,7 +116,6 @@ test.describe('Comments E2E Tests', () => {
 
     // Look for reply button on a comment
     let commentItem = page.locator('.comment-item, [class*="comment-item"]').first();
-    const replyButton = commentItem.locator('button:has-text("Reply"), [aria-label*="Reply"]');
 
     // Ensure a comment exists (create one if needed)
     if (!(await commentItem.isVisible())) {
@@ -134,6 +133,9 @@ test.describe('Comments E2E Tests', () => {
       // Refresh comment item locator
       commentItem = page.locator('.comment-item, [class*="comment-item"]').first();
     }
+
+    // Define replyButton after commentItem is finalized
+    const replyButton = commentItem.locator('button:has-text("Reply"), [aria-label*="Reply"]');
 
     // Assert comment item and reply button are visible
     await expect(commentItem).toBeVisible({ timeout: 5000 });
@@ -296,15 +298,18 @@ test.describe('Comments E2E Tests', () => {
     // Look for comment with author info
     const commentItem = page.locator('.comment-item, [class*="comment-item"]').first();
 
-    if (await commentItem.isVisible()) {
-      // Check for author name, avatar, timestamp
-      const authorName = page.locator('[class*="author"], [class*="user"]');
-      const timestamp = page.locator('text=/\\d{4}|ago/i');
-
-      // Author info should be visible
-      const hasAuthorInfo = await authorName.isVisible() || await timestamp.isVisible();
-      expect(hasAuthorInfo).toBeTruthy();
+    if (!(await commentItem.isVisible())) {
+      test.skip(true, 'No comments available to verify author info');
+      return;
     }
+
+    // Check for author name, avatar, timestamp
+    const authorName = page.locator('[class*="author"], [class*="user"]');
+    const timestamp = page.locator('text=/\\d{4}|ago/i');
+
+    // Author info should be visible
+    const hasAuthorInfo = await authorName.isVisible() || await timestamp.isVisible();
+    expect(hasAuthorInfo).toBeTruthy();
   });
 });
 

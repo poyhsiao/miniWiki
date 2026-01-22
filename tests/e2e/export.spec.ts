@@ -49,14 +49,16 @@ test.describe('Document Export E2E Tests', () => {
     // Click export button
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
 
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
-
-      // Should show export dialog
-      const exportDialog = page.locator('[role="dialog"], .modal, .export-dialog');
-      await expect(exportDialog).toBeVisible({ timeout: 5000 });
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
+
+    // Should show export dialog
+    const exportDialog = page.locator('[role="dialog"], .modal, .export-dialog');
+    await expect(exportDialog).toBeVisible({ timeout: 5000 });
   });
 
   test('should export to Markdown format', async ({ page }) => {
@@ -227,44 +229,50 @@ test.describe('Document Export E2E Tests', () => {
 
     // Open export dialog
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Export to Markdown
     const markdownOption = page.locator('text=Markdown');
-    if (await markdownOption.isVisible()) {
-      await markdownOption.click();
-      await page.waitForTimeout(300);
+    if (!(await markdownOption.isVisible())) {
+      test.skip(true, 'Markdown option not available');
+      return;
     }
+    await markdownOption.click();
+    await page.waitForTimeout(300);
 
     // Download and verify
     const downloadButton = page.locator('button:has-text("Download")');
-    if (await downloadButton.isVisible()) {
-      const [download] = await Promise.all([
-        page.waitForEvent('download'),
-        downloadButton.click()
-      ]);
+    if (!(await downloadButton.isVisible())) {
+      test.skip(true, 'Download button not available');
+      return;
+    }
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      downloadButton.click()
+    ]);
 
-      // Verify download
-      expect(download).toBeDefined();
-      const filename = download.suggestedFilename();
-      expect(filename).toMatch(/\.md$/i);
+    // Verify download
+    expect(download).toBeDefined();
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/\.md$/i);
 
-      // Read and verify Markdown formatting
-      const path = await download.path();
-      if (path) {
-        const content = await readFile(path, 'utf-8');
+    // Read and verify Markdown formatting
+    const path = await download.path();
+    if (path) {
+      const content = await readFile(path, 'utf-8');
 
-        // Assert that expected Markdown formatting tokens are present
-        const hasHeadings = /^#{1,6}\s+/m.test(content);
-        const hasBold = /\*\*.*\*\*|__.*__/.test(content);
-        const hasCodeBlocks = /```[\s\S]*```|`[^`]+`/.test(content);
+      // Assert that expected Markdown formatting tokens are present
+      const hasHeadings = /^#{1,6}\s+/m.test(content);
+      const hasBold = /\*\*.*\*\*|__.*__/.test(content);
+      const hasCodeBlocks = /```[\s\S]*```|`[^`]+`/.test(content);
 
-        // At least some formatting should be preserved
-        expect(hasHeadings || hasBold || hasCodeBlocks).toBeTruthy();
-      }
+      // At least some formatting should be preserved
+      expect(hasHeadings || hasBold || hasCodeBlocks).toBeTruthy();
     }
   });
 
@@ -285,10 +293,12 @@ test.describe('Document Export E2E Tests', () => {
 
     // Click export button to open menu
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Check for all export format options
     const markdownOption = page.getByText(/markdown|\.?md/i);
@@ -331,17 +341,21 @@ test.describe('Export Error Handling E2E Tests', () => {
 
     // Open export dialog
     const exportButton = page.locator('button:has-text("Export")');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Try to export
     const downloadButton = page.locator('button:has-text("Download")');
-    if (await downloadButton.isVisible()) {
-      await downloadButton.click();
-      await page.waitForTimeout(2000);
+    if (!(await downloadButton.isVisible())) {
+      test.skip(true, 'Download button not available');
+      return;
     }
+    await downloadButton.click();
+    await page.waitForTimeout(2000);
 
     // Should show error message
     const errorMessage = page.locator('.error, [role="alert"], text=/export.*failed|error/i');
@@ -365,10 +379,12 @@ test.describe('Export Error Handling E2E Tests', () => {
 
     // Open export dialog
     const exportButton = page.locator('button:has-text("Export"), [aria-label*="Export"]');
-    if (await exportButton.isVisible()) {
-      await exportButton.click();
-      await page.waitForTimeout(500);
+    if (!(await exportButton.isVisible())) {
+      test.skip(true, 'Export button not available');
+      return;
     }
+    await exportButton.click();
+    await page.waitForTimeout(500);
 
     // Intercept export requests to add delay for progress UI
     await page.route('**/export**', async route => {
@@ -378,31 +394,33 @@ test.describe('Export Error Handling E2E Tests', () => {
 
     // Trigger export to see progress
     const downloadButton = page.locator('button:has-text("Download"), button:has-text("Export")');
-    if (await downloadButton.isVisible()) {
-      // Start the export
-      await downloadButton.click();
+    if (!(await downloadButton.isVisible())) {
+      test.skip(true, 'Download button not available');
+      return;
+    }
+    // Start the export
+    await downloadButton.click();
 
-      // Look for progress indicator during export
-      const progressIndicator = page.locator('.progress, [role="progressbar"], .export-progress');
+    // Look for progress indicator during export
+    const progressIndicator = page.locator('.progress, [role="progressbar"], .export-progress');
 
-      // Wait for progress UI and annotate the result
-      let isVisible = false;
-      try {
-        await expect(progressIndicator).toBeVisible({ timeout: 3000 });
-        isVisible = true;
-      } catch (error) {
-        isVisible = false;
-      }
+    // Wait for progress UI and annotate the result
+    let isVisible = false;
+    try {
+      await expect(progressIndicator).toBeVisible({ timeout: 3000 });
+      isVisible = true;
+    } catch (error) {
+      isVisible = false;
+    }
 
-      test.info().annotations.push({
-        type: 'progress-visible',
-        description: String(isVisible)
-      });
+    test.info().annotations.push({
+      type: 'progress-visible',
+      description: String(isVisible)
+    });
 
-      // Assert progress UI appeared
-      if (!isVisible) {
-        throw new Error('Progress UI did not appear during export');
-      }
+    // Assert progress UI appeared
+    if (!isVisible) {
+      throw new Error('Progress UI did not appear during export');
     }
   });
 });

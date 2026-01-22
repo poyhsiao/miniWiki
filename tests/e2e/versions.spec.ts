@@ -112,10 +112,12 @@ test.describe('Version History E2E Tests', () => {
 
     // Open version history
     const versionButton = page.locator('button:has-text("Version"), [aria-label*="Version"]');
-    if (await versionButton.isVisible()) {
-      await versionButton.click();
-      await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
+    if (!(await versionButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await versionButton.click();
+    await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
 
     // Click on a version to see details
     const versionItem = page.locator('.version-item, [class*="version-item"]').first();
@@ -159,10 +161,12 @@ test.describe('Version History E2E Tests', () => {
 
     // Open version history
     const versionButton = page.locator('button:has-text("Version"), [aria-label*="Version"]');
-    if (await versionButton.isVisible()) {
-      await versionButton.click();
-      await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
+    if (!(await versionButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await versionButton.click();
+    await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
 
     // Look for restore button
     const restoreButton = page.locator('button:has-text("Restore"), [aria-label*="Restore"]');
@@ -212,10 +216,12 @@ test.describe('Version History E2E Tests', () => {
 
     // Open version history
     const versionButton = page.locator('button:has-text("Version"), [aria-label*="Version"]');
-    if (await versionButton.isVisible()) {
-      await versionButton.click();
-      await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
+    if (!(await versionButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await versionButton.click();
+    await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
 
     // Look for compare button or multi-select
     const compareButton = page.locator('button:has-text("Compare"), [aria-label*="Compare"]');
@@ -251,10 +257,12 @@ test.describe('Version History E2E Tests', () => {
 
     // Open version history
     const versionButton = page.locator('button:has-text("Version"), [aria-label*="Version"]');
-    if (await versionButton.isVisible()) {
-      await versionButton.click();
-      await page.waitForTimeout(500);
+    if (!(await versionButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await versionButton.click();
+    await page.waitForTimeout(500);
 
     // Click on a version to preview
     const versionItem = page.locator('.version-item, [class*="version-item"]').first();
@@ -304,10 +312,12 @@ test.describe('Version History Auto-Creation E2E Tests', () => {
 
     // Open version history to get initial count
     const versionButton = page.locator('button:has-text("Version"), [aria-label*="Version"]');
-    if (await versionButton.isVisible()) {
-      await versionButton.click();
-      await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
+    if (!(await versionButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await versionButton.click();
+    await expect(page.locator('.version-panel, [role="dialog"], .history-panel')).toBeVisible({ timeout: 5000 });
 
     // Wait for version panel to be visible
     const versionPanel = page.locator('.version-panel, [role="dialog"], .history-panel');
@@ -369,10 +379,12 @@ test.describe('Version History Auto-Creation E2E Tests', () => {
 
     // Open version history
     const versionButton = page.locator('button:has-text("Version"), [aria-label*="Version"]');
-    if (await versionButton.isVisible()) {
-      await versionButton.click();
-      await page.waitForTimeout(500);
+    if (!(await versionButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await versionButton.click();
+    await page.waitForTimeout(500);
 
     // Check for version limit setting or indicator
     const limitIndicator = page.locator('text=/\\d+ versions|maximum.*version|version.*limit/i');

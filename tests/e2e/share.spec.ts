@@ -184,10 +184,12 @@ test.describe('Share Links E2E Tests', () => {
 
     // Open share dialog
     const shareButton = page.locator('button:has-text("Share"), [aria-label*="Share"]');
-    if (await shareButton.isVisible()) {
-      await shareButton.click();
-      await page.waitForTimeout(500);
+    if (!(await shareButton.isVisible())) {
+      test.skip();
+      return;
     }
+    await shareButton.click();
+    await page.waitForTimeout(500);
 
     // Look for copy button
     const copyButton = page.locator('button:has-text("Copy"), [aria-label*="Copy"]');
@@ -375,7 +377,11 @@ test.describe('Share Link Access E2E Tests', () => {
           // Extract the share token from the created link
           const shareLink = page.locator('.share-link, [class*="share-link"], text=/http|localhost/i').first();
           if (await shareLink.isVisible()) {
-            const linkText = await shareLink.textContent();
+            const linkText = await shareLink.evaluate((el) => {
+              if (el instanceof HTMLAnchorElement) return el.href;
+              if (el instanceof HTMLInputElement) return el.value;
+              return el.textContent;
+            });
             const match = linkText?.match(/\/share\/([^\/\s]+)/);
             if (match) {
               shareToken = match[1];
