@@ -38,7 +38,7 @@ class VersionListState {
         total: total ?? this.total,
         isLoading: isLoading ?? this.isLoading,
         isLoadingMore: isLoadingMore ?? this.isLoadingMore,
-        error: clearError == true ? null : (error ?? this.error),
+        error: clearError ?? false ? null : (error ?? this.error),
         documentId: documentId ?? this.documentId,
         limit: limit ?? this.limit,
       );
@@ -74,7 +74,7 @@ class VersionComparisonState {
         toVersion: toVersion ?? this.toVersion,
         diff: diff ?? this.diff,
         isComparing: isComparing ?? this.isComparing,
-        error: (isComparing == true) ? null : (error ?? this.error),
+        error: (isComparing ?? false) ? null : (error ?? this.error),
       );
 
   bool get canCompare => fromVersion != null && toVersion != null;

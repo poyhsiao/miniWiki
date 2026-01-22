@@ -327,7 +327,7 @@ class ExportService {
 
     final fileName = await _getFilename(documentId, format);
     final filePath = '${exportDir.path}/$fileName';
-    return await File(filePath).exists();
+    return File(filePath).exists();
   }
 
   /// Delete local export file

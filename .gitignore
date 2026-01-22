@@ -261,7 +261,7 @@ rust-project.json
 !.env.template
 *.env
 !.env.example
-!.env.test
+!.env.test.example
 !.env.development
 !.env.production
 
@@ -476,3 +476,4 @@ build/
 
 # AI Agent cache
 .sisyphus/
+.generated-credentials.txt

@@ -79,22 +79,22 @@ test.describe('Document Management E2E Tests', () => {
     const documentItem = page.locator('.document-item, .space-item, [class*="item"]').first();
     
     if (!(await documentItem.isVisible())) {
-      test.skip();
+      test.skip(true, 'Document item not available');
       return;
     }
 
     await documentItem.click();
     await page.waitForLoadState('networkidle');
-    
+
     // Should navigate to document editor or detail view
     await page.waitForTimeout(2000);
-    
+
     // Check for editor or content area
     const editor = page.locator('.editor, [contenteditable], quill-editor, .rich-text-editor');
     const contentArea = page.locator('.content, .document-content');
-    
+
     const hasEditor = await editor.isVisible() || await contentArea.isVisible();
-    
+
     // Assert that editor or content area is visible
     expect(hasEditor).toBeTruthy();
   });
@@ -132,7 +132,7 @@ test.describe('Document Management E2E Tests', () => {
     const createButton = page.locator('button:has-text("Create"), button:has-text("New"), [aria-label*="Create"]');
 
     if (!(await createButton.isVisible())) {
-      test.skip();
+      test.skip(true, 'Create button not available');
       return;
     }
 
@@ -144,7 +144,7 @@ test.describe('Document Management E2E Tests', () => {
     const titleInput = page.locator('input[name="title"], input[id*="title"], input[placeholder*="title"]');
 
     if (!(await titleInput.isVisible())) {
-      test.skip();
+      test.skip(true, 'Title input not visible');
       return;
     }
 
@@ -168,7 +168,7 @@ test.describe('Document Management E2E Tests', () => {
     const moreButton = testDocItem.locator('[aria-label*="more"], [aria-label*="options"], .more-button');
 
     if (!(await moreButton.isVisible())) {
-      test.skip('More button not found for test document');
+      test.skip(true, 'More button not visible');
       return;
     }
 
@@ -227,9 +227,9 @@ test.describe('Document Management E2E Tests', () => {
     // Assert that hierarchy navigation elements exist
     const hasBreadcrumb = await breadcrumb.isVisible();
     const hasNestedItem = await nestedItem.isVisible();
-    
+
     if (!hasBreadcrumb && !hasNestedItem) {
-      test.skip();
+      test.skip(true, 'Breadcrumb or nested items not available');
       return;
     }
 
@@ -284,7 +284,7 @@ test.describe('Document Editor E2E Tests', () => {
       await expect(editor).toBeVisible({ timeout: 10000 });
       await expect(toolbar).toBeVisible({ timeout: 10000 });
     } else {
-      test.skip();
+      test.skip(true, 'Document item not available');
     }
   });
 
@@ -297,7 +297,7 @@ test.describe('Document Editor E2E Tests', () => {
     const documentItem = page.locator('.document-item, .space-item, [class*="item"]').first();
 
     if (!(await documentItem.isVisible({ timeout: 5000 }))) {
-      test.skip();
+      test.skip(true, 'Document item not available');
       return;
     }
 
@@ -347,7 +347,7 @@ test.describe('Document Editor E2E Tests', () => {
     const documentItem = page.locator('.document-item, .space-item, [class*="item"]').first();
 
     if (!(await documentItem.isVisible({ timeout: 5000 }))) {
-      test.skip();
+      test.skip(true, 'Document item not available');
       return;
     }
 
@@ -366,7 +366,7 @@ test.describe('Document Editor E2E Tests', () => {
       const imageDialog = page.locator('[role="dialog"], .modal, .image-upload');
       await expect(imageDialog).toBeVisible({ timeout: 5000 });
     } else {
-      test.skip();
+      test.skip(true, 'Image button not available');
     }
   });
 });

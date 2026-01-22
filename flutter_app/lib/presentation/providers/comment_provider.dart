@@ -91,7 +91,6 @@ class CommentListNotifier extends StateNotifier<CommentListState> {
       parentId: parentId,
       comments: state.comments,
       total: state.total,
-      error: null,
     );
 
     try {
