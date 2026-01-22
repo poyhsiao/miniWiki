@@ -180,7 +180,7 @@ class FileService {
     // Use RandomAccessFile for memory-efficient chunked reading
     RandomAccessFile? raf;
     try {
-      raf = await file.open(mode: FileMode.read);
+      raf = await file.open();
       final chunkSize = config.defaultChunkSize;
 
       while (true) {

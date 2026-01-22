@@ -416,7 +416,6 @@ class _DocumentTreeItem extends StatelessWidget {
     required this.title,
     required this.onTap,
     this.icon,
-    this.isSelected = false,
   });
 
   @override

@@ -84,7 +84,7 @@ class AuthRepositoryImpl implements AuthRepository {
     );
   }
 
-  String _requireString(dynamic value, String fieldName) {
+  String _requireString(value, String fieldName) {
     if (value == null || (value is String && value.isEmpty)) {
       throw StateError('Missing required field: $fieldName');
     }

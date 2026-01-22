@@ -98,6 +98,16 @@ class SearchAppBar extends StatefulWidget implements PreferredSizeWidget {
 
   @override
   State<SearchAppBar> createState() => _SearchAppBarState();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(DiagnosticsProperty<TextEditingController?>('controller', controller));
+    properties.add(StringProperty('hintText', hintText));
+    properties.add(ObjectFlagProperty<ValueChanged<String>?>.has('onChanged', onChanged));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onClear', onClear));
+    properties.add(ObjectFlagProperty<VoidCallback?>.has('onSubmit', onSubmit));
+  }
 }
 
 class _SearchAppBarState extends State<SearchAppBar> {

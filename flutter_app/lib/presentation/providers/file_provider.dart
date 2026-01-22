@@ -39,7 +39,7 @@ class FileListState {
         files: files ?? this.files,
         total: total ?? this.total,
         isLoading: isLoading ?? this.isLoading,
-        error: clearError == true ? null : (error ?? this.error),
+        error: clearError ?? false ? null : (error ?? this.error),
         documentId: documentId ?? this.documentId,
         hasMore: hasMore ?? this.hasMore,
       );
