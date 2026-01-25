@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
-use validator::Validate;
 use uuid::Uuid;
+use validator::Validate;
+use chrono::Utc;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Space {
@@ -69,4 +70,122 @@ pub enum SpaceError {
     Validation(String),
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_space_creation() {
+        let space = Space {
+            id: Uuid::new_v4(),
+            owner_id: Uuid::new_v4(),
+            name: "Test Space".to_string(),
+            icon: Some("🚀".to_string()),
+            description: Some("A test space".to_string()),
+            is_public: false,
+            created_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+            updated_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+        };
+
+        assert_eq!(space.name, "Test Space");
+        assert!(!space.is_public);
+        assert!(space.icon.is_some());
+    }
+
+    #[test]
+    fn test_create_space_request_valid() {
+        let request = CreateSpaceRequest {
+            name: "My Space".to_string(),
+            icon: Some("📁".to_string()),
+            description: Some("Description".to_string()),
+            is_public: true,
+        };
+
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn test_create_space_request_empty_name() {
+        let request = CreateSpaceRequest {
+            name: "".to_string(),
+            icon: None,
+            description: None,
+            is_public: false,
+        };
+
+        assert!(request.validate().is_err());
+    }
+
+    #[test]
+    fn test_create_space_request_name_too_long() {
+        let request = CreateSpaceRequest {
+            name: "a".repeat(201), // Max is 200
+            icon: None,
+            description: None,
+            is_public: false,
+        };
+
+        assert!(request.validate().is_err());
+    }
+
+    #[test]
+    fn test_update_space_request_partial() {
+        let request = UpdateSpaceRequest {
+            name: Some("Updated Name".to_string()),
+            icon: None,
+            description: None,
+            is_public: Some(true),
+        };
+
+        assert!(request.name.is_some());
+        assert!(request.icon.is_none());
+        assert!(request.is_public.is_some());
+    }
+
+    #[test]
+    fn test_space_membership() {
+        let membership = SpaceMembership {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            user_id: Uuid::new_v4(),
+            role: "editor".to_string(),
+            joined_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+            invited_by: Uuid::new_v4(),
+        };
+
+        assert_eq!(membership.role, "editor");
+    }
+
+    #[test]
+    fn test_add_member_request() {
+        let request = AddMemberRequest {
+            user_id: Uuid::new_v4().to_string(),
+            role: "viewer".to_string(),
+        };
+
+        assert!(request.validate().is_ok());
+    }
+
+    #[test]
+    fn test_update_member_request() {
+        let request = UpdateMemberRequest {
+            role: "admin".to_string(),
+        };
+
+        assert_eq!(request.role, "admin");
+    }
+
+    #[test]
+    fn test_space_error_display() {
+        let error = SpaceError::NotFound;
+        assert_eq!(error.to_string(), "Space not found");
+
+        let error = SpaceError::Forbidden;
+        assert_eq!(error.to_string(), "Access denied");
+
+        let error = SpaceError::Validation("Invalid name".to_string());
+        assert_eq!(error.to_string(), "Validation error: Invalid name");
+    }
 }

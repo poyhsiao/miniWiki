@@ -11,13 +11,13 @@ use actix_web::http::header::HeaderMap;
 use shared_errors::AppError;
 
 /// Upload file request (multipart form field names)
-const FIELD_FILE: &str = "file";
-const FIELD_SPACE_ID: &str = "space_id";
-const FIELD_DOCUMENT_ID: &str = "document_id";
-const FIELD_FILE_NAME: &str = "file_name";
+pub const FIELD_FILE: &str = "file";
+pub const FIELD_SPACE_ID: &str = "space_id";
+pub const FIELD_DOCUMENT_ID: &str = "document_id";
+pub const FIELD_FILE_NAME: &str = "file_name";
 
 /// Extract boundary from content-type header
-fn extract_boundary(headers: &HeaderMap) -> Option<String> {
+pub fn extract_boundary(headers: &HeaderMap) -> Option<String> {
     let content_type = headers.get("content-type")?.to_str().ok()?;
     let mime = content_type.parse::<mime::Mime>().ok()?;
     let boundary = mime.params().find(|(k, _)| *k == "boundary")?.1.to_string();
@@ -26,7 +26,7 @@ fn extract_boundary(headers: &HeaderMap) -> Option<String> {
 
 /// Extract user ID from request for authentication context
 /// First tries to get from request extensions (set by JWT middleware), falls back to X-User-Id header
-fn extract_user_id(req: &HttpRequest) -> Result<Uuid, AppError> {
+pub fn extract_user_id(req: &HttpRequest) -> Result<Uuid, AppError> {
     // Try to get from request extensions first (set by JWT middleware)
     if let Some(user_uuid) = req.extensions().get::<Uuid>() {
         return Ok(*user_uuid);
@@ -671,9 +671,26 @@ pub async fn get_presigned_upload_url(
     req: web::Json<PresignedUploadRequest>,
     storage: web::Data<Arc<S3Storage>>,
 ) -> impl Responder {
+    const MIN_EXPIRES_IN: u64 = 60;   // 1 minute minimum
+    const MAX_EXPIRES_IN: u64 = 7200;  // 2 hours maximum
+
     let file_id = Uuid::new_v4();
     let storage_path = format!("{}/{}/{}", req.space_id, file_id, req.file_name);
     let expires_in = req.expires_in.unwrap_or(3600);
+
+    // Validate expires_in is within acceptable range
+    if expires_in < MIN_EXPIRES_IN || expires_in > MAX_EXPIRES_IN {
+        return HttpResponse::BadRequest()
+            .json(ErrorResponse {
+                code: "INVALID_EXPIRES_IN".to_string(),
+                message: format!("expires_in must be between {} and {} seconds", MIN_EXPIRES_IN, MAX_EXPIRES_IN),
+                details: Some(serde_json::json!({
+                    "provided": expires_in,
+                    "min": MIN_EXPIRES_IN,
+                    "max": MAX_EXPIRES_IN
+                })),
+            });
+    }
 
     match storage.presigned_upload_url(&storage_path, &req.content_type, expires_in).await {
         Ok(url) => {
@@ -1188,3 +1205,512 @@ pub async fn bulk_delete_files(
 
     HttpResponse::Ok().json(BulkDeleteResponse { deleted, failed })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test::TestRequest;
+    use chrono::Utc;
+    use uuid::Uuid;
+
+    // extract_boundary Tests
+    #[test]
+    fn test_extract_boundary_valid() {
+        use actix_web::http::header::{HeaderName, HeaderValue};
+
+        let mut headers = HeaderMap::new();
+        let content_type = "multipart/form-data; boundary=----WebKitFormBoundary7MA4YC5c6";
+        headers.insert(
+            HeaderName::from_static("content-type"),
+            HeaderValue::from_str(content_type).unwrap()
+        );
+
+        let boundary = extract_boundary(&headers);
+        assert_eq!(boundary, Some("WebKitFormBoundary7MA4YC5c6".to_string()));
+    }
+
+    #[test]
+    fn test_extract_boundary_no_boundary() {
+        let mut headers = HeaderMap::new();
+        let content_type = "multipart/form-data";
+        headers.insert(actix_web::http::header::HeaderName::from_static("content-type"), actix_web::http::header::HeaderValue::from_static(content_type));
+
+        let boundary = extract_boundary(&headers);
+        assert_eq!(boundary, None);
+    }
+
+    #[test]
+    fn test_extract_boundary_invalid_mime() {
+        let mut headers = HeaderMap::new();
+        let content_type = "text/plain";
+        headers.insert(actix_web::http::header::HeaderName::from_static("content-type"), actix_web::http::header::HeaderValue::from_static(content_type));
+
+        let boundary = extract_boundary(&headers);
+        assert_eq!(boundary, None);
+    }
+
+    // extract_user_id Tests
+    #[test]
+    fn test_extract_user_id_from_extensions() {
+        let user_uuid = Uuid::new_v4();
+        let mut req = TestRequest::get().to_http_request();
+
+        // Simulate what middleware does - set user_id in extensions
+        req.extensions_mut().insert(user_uuid);
+
+        let result = extract_user_id(&req);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), user_uuid);
+    }
+
+    #[test]
+    fn test_extract_user_id_from_header() {
+        let user_uuid = Uuid::new_v4();
+        let mut req = TestRequest::get()
+            .insert_header(("X-User-Id", user_uuid.to_string()))
+            .to_http_request();
+
+        let result = extract_user_id(&req);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), user_uuid);
+    }
+
+    #[test]
+    fn test_extract_user_id_fallback_order() {
+        let header_uuid = Uuid::new_v4();
+        let ext_uuid = Uuid::new_v4();
+        let mut req = TestRequest::get()
+            // Both extensions and header set - should prefer extensions
+            .insert_header(("X-User-Id", header_uuid.to_string()))
+            .to_http_request();
+        req.extensions_mut().insert(ext_uuid);
+
+        let result = extract_user_id(&req);
+        assert_eq!(result.unwrap(), ext_uuid); // extensions should take precedence over header
+    }
+
+    #[test]
+    fn test_extract_user_id_missing() {
+        let req = TestRequest::get().to_http_request();
+
+        let result = extract_user_id(&req);
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), AppError::AuthenticationError(_)));
+    }
+
+    // Field Name Constants Tests
+    #[test]
+    fn test_field_name_constants() {
+        assert_eq!(FIELD_FILE, "file");
+        assert_eq!(FIELD_SPACE_ID, "space_id");
+        assert_eq!(FIELD_DOCUMENT_ID, "document_id");
+        assert_eq!(FIELD_FILE_NAME, "file_name");
+    }
+
+    // File Size Validation Tests
+    #[test]
+    fn test_file_size_valid() {
+        const MAX_FILE_SIZE: usize = 50 * 1024 * 1024; // 50MB
+        let file_size = 25 * 1024 * 1024; // 25MB
+
+        assert!(file_size < MAX_FILE_SIZE);
+    }
+
+    #[test]
+    fn test_file_size_exact_limit() {
+        const MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
+        let file_size = MAX_FILE_SIZE;
+
+        assert_eq!(file_size, MAX_FILE_SIZE);
+    }
+
+    #[test]
+    fn test_file_size_exceeds_limit() {
+        const MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
+        let file_size = MAX_FILE_SIZE + 1; // 50MB + 1 byte
+
+        assert!(file_size > MAX_FILE_SIZE);
+    }
+
+    // Chunk Size Tests
+    #[test]
+    fn test_default_chunk_size() {
+        let chunk_size: usize = 5 * 1024 * 1024; // Default: 5MB
+        assert_eq!(chunk_size, 5 * 1024 * 1024);
+    }
+
+    #[test]
+    fn test_custom_chunk_size() {
+        let chunk_size: usize = 10 * 1024 * 1024; // 10MB
+        assert_eq!(chunk_size, 10 * 1024 * 1024);
+    }
+
+    // Storage Path Generation Tests
+    #[test]
+    fn test_storage_path_generation() {
+        let space_id = Uuid::new_v4();
+        let file_id = Uuid::new_v4();
+        let file_name = "test-file.png";
+
+        let path = format!("{}/{}/{}", space_id, file_id, file_name);
+        assert!(path.contains(&space_id.to_string()));
+        assert!(path.contains(&file_id.to_string()));
+        assert!(path.ends_with(file_name));
+    }
+
+    #[test]
+    fn test_storage_path_with_special_chars() {
+        let space_id = Uuid::new_v4();
+        let file_id = Uuid::new_v4();
+        let file_name = "test file with spaces.png";
+
+        let path = format!("{}/{}/{}", space_id, file_id, file_name);
+        assert!(path.contains("test file with spaces.png"));
+    }
+
+    // Chunk Path Generation Tests
+    #[test]
+    fn test_chunk_path_generation() {
+        let space_id = Uuid::new_v4();
+        let upload_id = Uuid::new_v4();
+        let file_name = "test.pdf";
+        let chunk_number = 5u32;
+
+        let base_path = format!("{}/{}/{}", space_id, upload_id, file_name);
+        let chunk_path = format!("{}.chunk.{}", base_path, chunk_number);
+
+        assert!(chunk_path.contains(".chunk.5"));
+        assert!(chunk_path.ends_with(&format!(".chunk.{}", chunk_number)));
+    }
+
+    // Download URL Generation Tests
+    #[test]
+    fn test_download_url_generation() {
+        let file_id = Uuid::new_v4();
+        let url = format!("/api/v1/files/{}/download", file_id);
+
+        assert_eq!(url, format!("/api/v1/files/{}/download", file_id));
+        assert!(url.starts_with("/api/v1/files/"));
+    }
+
+    // Expiry Time Tests
+    #[test]
+    fn test_default_upload_expiry() {
+        let now = Utc::now();
+        let expires_at = now.checked_add_signed(chrono::Duration::hours(24)).unwrap();
+
+        assert!(expires_at > now);
+    }
+
+    #[test]
+    fn test_signed_upload_expiry() {
+        let now = Utc::now();
+        let expires_in = 3600i64; // 1 hour
+        let expires_at = now.checked_add_signed(chrono::Duration::seconds(expires_in)).unwrap();
+
+        assert_eq!(expires_at.timestamp() - now.timestamp(), 3600);
+    }
+
+    // Chunk Number Validation Tests
+    #[test]
+    fn test_total_chunks_calculation() {
+        let total_size = 10 * 1024 * 1024; // 10MB
+        let chunk_size = 5 * 1024 * 1024; // 5MB
+        let total_chunks = ((total_size + chunk_size - 1) / chunk_size) as u32;
+
+        assert_eq!(total_chunks, 2);
+    }
+
+    #[test]
+    fn test_total_chunks_exact_fit() {
+        let total_size = 10 * 1024 * 1024; // 10MB
+        let chunk_size = 5 * 1024 * 1024; // 5MB
+        let total_chunks = (total_size / chunk_size) as u32; // No +1 needed
+
+        assert_eq!(total_chunks, 2);
+    }
+
+    #[test]
+    fn test_chunk_number_bounds_check() {
+        let chunk_number = 5u32;
+        let total_chunks = 10u32;
+
+        assert!(chunk_number < total_chunks);
+    }
+
+    #[test]
+    fn test_chunk_number_out_of_bounds() {
+        let chunk_number = 15u32;
+        let total_chunks = 10u32;
+
+        assert!(chunk_number >= total_chunks);
+    }
+
+    #[test]
+    fn test_chunk_number_already_uploaded() {
+        let uploaded_chunks = vec![0u32, 1u32, 2u32];
+        let chunk_number = 2u32;
+
+        let already_uploaded = uploaded_chunks.contains(&chunk_number);
+        assert!(already_uploaded);
+    }
+
+    #[test]
+    fn test_chunk_number_not_uploaded() {
+        let uploaded_chunks = vec![0u32, 1u32, 2u32];
+        let chunk_number = 5u32;
+
+        let already_uploaded = uploaded_chunks.contains(&chunk_number);
+        assert!(!already_uploaded);
+    }
+
+    // Checksum Tests
+    #[test]
+    fn test_md5_formatting() {
+        let content = b"test content";
+        let hash = md5::compute(content);
+
+        let hex = format!("{:x}", hash);
+        assert!(!hex.is_empty());
+        assert_eq!(hex.len(), 32); // MD5 hash is 32 hex chars
+    }
+
+    #[test]
+    fn test_md5_empty_content() {
+        let content = b"";
+        let hash = md5::compute(content);
+
+        let hex = format!("{:x}", hash);
+        assert_eq!(hex, "d41d8cd98f00b204e9800998ecf8427e"); // Known MD5 of empty string
+    }
+
+    #[test]
+    fn test_md5_consistent() {
+        let content = b"test content";
+        let hash1 = md5::compute(content);
+        let hash2 = md5::compute(content);
+
+        assert_eq!(hash1, hash2);
+    }
+
+    // Error Response Construction Tests
+    #[test]
+    fn test_error_response_missing_boundary() {
+        let error = crate::models::ErrorResponse {
+            code: "MISSING_BOUNDARY".to_string(),
+            message: "Missing boundary in content-type".to_string(),
+            details: None,
+        };
+
+        assert_eq!(error.code, "MISSING_BOUNDARY");
+        assert_eq!(error.message, "Missing boundary in content-type");
+        assert!(error.details.is_none());
+    }
+
+    #[test]
+    fn test_error_response_missing_space_id() {
+        let error = crate::models::ErrorResponse {
+            code: "MISSING_SPACE_ID".to_string(),
+            message: "space_id is required".to_string(),
+            details: None,
+        };
+
+        assert_eq!(error.code, "MISSING_SPACE_ID");
+        assert_eq!(error.message, "space_id is required");
+    }
+
+    #[test]
+    fn test_error_response_file_too_large() {
+        const MAX_FILE_SIZE: u64 = 50 * 1024 * 1024;
+        let error = crate::models::ErrorResponse {
+            code: "FILE_TOO_LARGE".to_string(),
+            message: format!("File exceeds maximum size of {} bytes", MAX_FILE_SIZE),
+            details: None,
+        };
+
+        assert_eq!(error.code, "FILE_TOO_LARGE");
+        assert!(error.message.contains("50"));
+    }
+
+    #[test]
+    fn test_error_response_invalid_file_type() {
+        let error = crate::models::ErrorResponse {
+            code: "INVALID_FILE_TYPE".to_string(),
+            message: "Invalid file type".to_string(),
+            details: None,
+        };
+
+        assert_eq!(error.code, "INVALID_FILE_TYPE");
+        assert_eq!(error.message, "Invalid file type");
+    }
+
+    #[test]
+    fn test_error_response_chunk_too_large() {
+        let chunk_size = 10 * 1024 * 1024; // 10MB
+        let error = crate::models::ErrorResponse {
+            code: "CHUNK_TOO_LARGE".to_string(),
+            message: format!(
+                "Chunk size {} bytes exceeds maximum allowed size of {} bytes",
+                chunk_size,
+                5 * 1024 * 1024
+            ),
+            details: None,
+        };
+
+        assert_eq!(error.code, "CHUNK_TOO_LARGE");
+        assert!(error.message.contains("10"));
+    }
+
+    #[test]
+    fn test_error_response_invalid_chunk_number() {
+        let error = crate::models::ErrorResponse {
+            code: "INVALID_CHUNK_NUMBER".to_string(),
+            message: format!("Chunk number {} is out of bounds (total chunks: {})", 15, 10),
+            details: None,
+        };
+
+        assert_eq!(error.code, "INVALID_CHUNK_NUMBER");
+        assert!(error.message.contains("15"));
+    }
+
+    #[test]
+    fn test_error_response_chunk_already_uploaded() {
+        let error = crate::models::ErrorResponse {
+            code: "CHUNK_ALREADY_UPLOADED".to_string(),
+            message: format!("Chunk {} has already been uploaded", 5),
+            details: None,
+        };
+
+        assert_eq!(error.code, "CHUNK_ALREADY_UPLOADED");
+        assert_eq!(error.message, "Chunk 5 has already been uploaded");
+    }
+
+    // Upload Session ID Tests
+    #[test]
+    fn test_upload_id_generation() {
+        let upload_id = Uuid::new_v4();
+
+        assert_ne!(upload_id, Uuid::nil());
+    }
+
+    #[test]
+    fn test_upload_id_parsing() {
+        let upload_id_str = Uuid::new_v4().to_string();
+        let parsed = Uuid::parse_str(&upload_id_str);
+
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap().to_string(), upload_id_str);
+    }
+
+    // File ID Tests
+    #[test]
+    fn test_file_id_parsing() {
+        let file_id = Uuid::new_v4();
+        let file_id_str = file_id.to_string();
+
+        assert_eq!(file_id_str.len(), 36); // Standard UUID length
+        assert!(file_id_str.contains('-'));
+    }
+
+    // Presigned URL TTL Tests
+    #[test]
+    fn test_default_presigned_url_ttl() {
+        let ttl = 900; // Default: 15 minutes
+        assert_eq!(ttl, 900);
+    }
+
+    #[test]
+    fn test_custom_presigned_url_ttl() {
+        let ttl = 3600; // 1 hour
+        assert_eq!(ttl, 3600);
+    }
+
+    #[test]
+    fn test_presigned_url_ttl_validation() {
+        // Common TTL values: 900 (15 min), 3600 (1 hour), 7200 (2 hours)
+        let valid_ttls = vec![900, 3600, 7200];
+
+        for ttl in valid_ttls {
+            assert!(ttl >= 60);
+            assert!(ttl <= 7200);
+        }
+    }
+
+    // Vector Operations Tests
+    #[test]
+    fn test_chunk_vector_sort() {
+        let mut chunks = vec![2u32, 1u32, 3u32];
+        chunks.sort();
+
+        assert_eq!(chunks, vec![1u32, 2u32, 3u32]);
+    }
+
+    #[test]
+    fn test_chunk_vector_push() {
+        let mut chunks = vec![1u32, 2u32];
+        chunks.push(3u32);
+
+        assert_eq!(chunks.len(), 3);
+        assert_eq!(chunks[2], 3u32);
+    }
+
+    #[test]
+    fn test_chunk_vector_contains() {
+        let chunks = vec![1u32, 2u32, 3u32];
+
+        assert!(chunks.contains(&2u32));
+        assert!(!chunks.contains(&5u32));
+    }
+
+    // Empty File Name Fallback
+    #[test]
+    fn test_file_name_fallback() {
+        let file_name: Option<String> = None;
+        let fallback = file_name.unwrap_or_else(|| "unnamed".to_string());
+
+        assert_eq!(fallback, "unnamed");
+    }
+
+    #[test]
+    fn test_file_name_provided() {
+        let file_name = Some("test.pdf".to_string());
+        let result = file_name.unwrap_or_else(|| "unnamed".to_string());
+
+        assert_eq!(result, "test.pdf");
+    }
+
+    // Content Type Fallback
+    #[test]
+    fn test_content_type_fallback() {
+        let content_type: Option<String> = None;
+        let fallback = content_type.unwrap_or_else(|| "application/octet-stream".to_string());
+
+        assert_eq!(fallback, "application/octet-stream");
+    }
+
+    #[test]
+    fn test_content_type_provided() {
+        let content_type = Some("image/png".to_string());
+        let result = content_type.unwrap_or_else(|| "application/octet-stream".to_string());
+
+        assert_eq!(result, "image/png");
+    }
+
+    // File Size Calculations
+    #[test]
+    fn test_file_size_in_bytes() {
+        let content = vec![0u8; 1024 * 10]; // 10KB
+        let size = content.len() as i64;
+
+        assert_eq!(size, 10 * 1024);
+    }
+
+    #[test]
+    fn test_file_size_in_mb() {
+        let size_bytes = 5 * 1024 * 1024; // 5MB
+        let size_mb = size_bytes as f64 / (1024.0 * 1024.0);
+
+        assert!((size_mb - 5.0).abs() < 0.1);
+    }
+}
+

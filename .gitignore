@@ -477,3 +477,6 @@ build/
 # AI Agent cache
 .sisyphus/
 .generated-credentials.txt
+
+playwright-report/
+test-results/

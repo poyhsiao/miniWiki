@@ -139,7 +139,7 @@ class VersionListNotifier extends StateNotifier<VersionListState> {
   }
 
   Future<void> restoreVersion(int versionNumber) async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
 
     try {
       await _service.restoreVersion(state.documentId, versionNumber);

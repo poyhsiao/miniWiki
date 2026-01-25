@@ -1,8 +1,8 @@
-use sqlx::PgPool;
-use uuid::Uuid;
-use std::sync::Arc;
 use async_trait::async_trait;
+use sqlx::PgPool;
+use std::sync::Arc;
 use tracing;
+use uuid::Uuid;
 
 /// Represents the content extracted from a document for indexing
 #[derive(Debug, Clone)]
@@ -39,6 +39,11 @@ impl PostgresSearchIndexer {
         Self { pool }
     }
 
+    /// Get reference to the pool (for testing)
+    pub fn pool(&self) -> Option<&PgPool> {
+        Some(&self.pool)
+    }
+
     /// Create the full-text search index if it doesn't exist
     pub async fn create_indexes(&self) -> Result<(), sqlx::Error> {
         // Enable pg_trgm extension for trigram similarity search
@@ -52,8 +57,10 @@ impl PostgresSearchIndexer {
             CREATE INDEX IF NOT EXISTS idx_documents_title_search
             ON documents USING gin (title gin_trgm_ops)
             WHERE is_archived = false
-            "#
-        ).execute(&*self.pool).await?;
+            "#,
+        )
+        .execute(&*self.pool)
+        .await?;
 
         // Create an index on content_text for fast text search
         sqlx::query(
@@ -61,8 +68,10 @@ impl PostgresSearchIndexer {
             CREATE INDEX IF NOT EXISTS idx_documents_content_search
             ON documents USING gin (to_tsvector('english', COALESCE(content_text, '')))
             WHERE is_archived = false
-            "#
-        ).execute(&*self.pool).await?;
+            "#,
+        )
+        .execute(&*self.pool)
+        .await?;
 
         // Create updated_at index for sorting recent documents
         sqlx::query(
@@ -70,8 +79,10 @@ impl PostgresSearchIndexer {
             CREATE INDEX IF NOT EXISTS idx_documents_updated_desc
             ON documents (updated_at DESC)
             WHERE is_archived = false
-            "#
-        ).execute(&*self.pool).await?;
+            "#,
+        )
+        .execute(&*self.pool)
+        .await?;
 
         Ok(())
     }
@@ -84,14 +95,19 @@ impl PostgresSearchIndexer {
                 // Handle Delta/Quill JSON format
                 if let Some(ops) = map.get("ops") {
                     if let Some(arr) = ops.as_array() {
-                        return arr.iter()
+                        return arr
+                            .iter()
                             .filter_map(|op| op.get("insert").and_then(|i| i.as_str()).map(|s| s.to_string()))
                             .collect::<Vec<String>>()
+                            .join(" ")
+                            .replace('\n', " ")
+                            .split_whitespace()
+                            .collect::<Vec<&str>>()
                             .join(" ");
                     }
                 }
                 serde_json::to_string(content).unwrap_or_default()
-            }
+            },
             _ => serde_json::to_string(content).unwrap_or_default(),
         }
     }
@@ -109,7 +125,7 @@ impl SearchIndexer for PostgresSearchIndexer {
                 content_text = $1,
                 updated_at = NOW()
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(content_text)
         .bind(doc.document_id)
@@ -125,7 +141,7 @@ impl SearchIndexer for PostgresSearchIndexer {
             UPDATE documents
             SET content_text = NULL
             WHERE id = $1
-            "#
+            "#,
         )
         .bind(document_id)
         .execute(&*self.pool)
@@ -149,7 +165,7 @@ impl SearchIndexer for PostgresSearchIndexer {
                         e
                     );
                     failed_docs.push((doc.document_id, doc.title.clone(), e.to_string()));
-                }
+                },
             }
         }
 
@@ -169,7 +185,7 @@ impl SearchIndexer for PostgresSearchIndexer {
         let documents: Vec<(Uuid, serde_json::Value)> = sqlx::query_as(
             r#"
             SELECT id, content FROM documents WHERE is_archived = false
-            "#
+            "#,
         )
         .fetch_all(&*self.pool)
         .await?;
@@ -184,7 +200,7 @@ impl SearchIndexer for PostgresSearchIndexer {
                 UPDATE documents
                 SET content_text = $1, updated_at = NOW()
                 WHERE id = $2
-                "#
+                "#,
             )
             .bind(content_text)
             .bind(id)
@@ -229,5 +245,92 @@ impl SearchIndexManager {
     /// Remove a document from index
     pub async fn remove(&self, document_id: &Uuid) -> Result<(), sqlx::Error> {
         self.indexer.remove_document(document_id).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_text_content_string() {
+        let content = serde_json::json!("Hello World");
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, "Hello World");
+    }
+
+    #[test]
+    fn test_extract_text_content_quill_delta() {
+        let content = serde_json::json!({
+            "ops": [
+                {"insert": "Hello "},
+                {"insert": "World", "attributes": {"bold": true}},
+                {"insert": "\n"}
+            ]
+        });
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, "Hello World");
+    }
+
+    #[test]
+    fn test_extract_text_content_quill_with_headers() {
+        let content = serde_json::json!({
+            "ops": [
+                {"insert": "Title" },
+                {"insert": "\n", "attributes": {"header": 1}},
+                {"insert": "Body text here"}
+            ]
+        });
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, "Title Body text here");
+    }
+
+    #[test]
+    fn test_extract_text_content_empty_object() {
+        let content = serde_json::json!({});
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, "{}");
+    }
+
+    #[test]
+    fn test_extract_text_content_array() {
+        let content = serde_json::json!(["item1", "item2", "item3"]);
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, r#"["item1","item2","item3"]"#);
+    }
+
+    #[test]
+    fn test_extract_text_content_number() {
+        let content = serde_json::json!(42);
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, "42");
+    }
+
+    #[test]
+    fn test_extract_text_content_null() {
+        let content = serde_json::json!(null);
+        let result = PostgresSearchIndexer::extract_text_content(&content);
+        assert_eq!(result, "null");
+    }
+
+    #[test]
+    fn test_document_content_creation() {
+        let doc_id = Uuid::new_v4();
+        let space_id = Uuid::new_v4();
+        let content = DocumentContent {
+            document_id: doc_id,
+            title: "Test Document".to_string(),
+            content: serde_json::json!({"text": "test content"}),
+            space_id,
+        };
+        assert_eq!(doc_id, content.document_id);
+        assert_eq!("Test Document", content.title);
+        assert_eq!(space_id, content.space_id);
+    }
+
+    #[test]
+    fn test_search_index_manager_creation() {
+        let manager = SearchIndexManager::new(Arc::new(PgPool::connect_lazy("postgres://test").unwrap()));
+        assert!(manager.indexer.pool().is_some());
     }
 }

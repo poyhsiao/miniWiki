@@ -189,10 +189,7 @@ class FileUploadWidget extends ConsumerWidget {
       final uploadKey = '$spaceId:$documentId';
       final uploader = ref.read(fileUploadNotifierProvider(uploadKey).notifier);
 
-      final files = await service.pickFiles(
-        allowMultiple: true,
-        type: FileTypeFilter.all,
-      );
+      final files = await service.pickFiles();
 
       if (files.isEmpty) return;
 
@@ -261,10 +258,7 @@ class FileUploadButton extends ConsumerWidget {
       final uploadKey = '$spaceId:$documentId';
       final uploader = ref.read(fileUploadNotifierProvider(uploadKey).notifier);
 
-      final files = await service.pickFiles(
-        allowMultiple: true,
-        type: FileTypeFilter.all,
-      );
+      final files = await service.pickFiles();
 
       if (files.isEmpty) return;
 

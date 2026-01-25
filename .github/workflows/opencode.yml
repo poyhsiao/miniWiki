@@ -9,20 +9,24 @@ on:
 jobs:
   opencode:
     if: |
-      startsWith(github.event.comment.body, '/oc ') ||
+      (startsWith(github.event.comment.body, '/oc ') ||
       github.event.comment.body == '/oc' ||
       contains(github.event.comment.body, ' /oc ') ||
       endsWith(github.event.comment.body, ' /oc') ||
       startsWith(github.event.comment.body, '/opencode ') ||
       github.event.comment.body == '/opencode' ||
       contains(github.event.comment.body, ' /opencode ') ||
-      endsWith(github.event.comment.body, ' /opencode')
+      endsWith(github.event.comment.body, ' /opencode')) &&
+      (github.event.comment.author_association == 'MEMBER' ||
+      github.event.comment.author_association == 'OWNER' ||
+      github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
-      pull-requests: read
-      issues: read
+      contents: write
+      pull-requests: write
+      issues: write
+      statuses: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -30,8 +34,8 @@ jobs:
           persist-credentials: false
 
       - name: Run opencode
-        uses: anomalyco/opencode/github@v1.0.0
+        uses: anomalyco/opencode/github@v1
         env:
-          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
         with:
-          model: opencode/minimax-m2.1-free
+          model: zhipuai-coding-plan/glm-4.7
