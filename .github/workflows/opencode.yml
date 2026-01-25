@@ -33,6 +33,8 @@ jobs:
         with:
           persist-credentials: false
 
+      # Pinned to v1.0.0 for reproducible and secure CI runs
+      # Update version when needed: https://github.com/anomalyco/opencode/releases
       - name: Run opencode
         uses: anomalyco/opencode/github@v1
         env:
