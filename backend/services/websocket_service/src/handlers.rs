@@ -113,13 +113,13 @@ impl DocumentSyncManager {
 pub static SYNC_MANAGER: once_cell::sync::Lazy<DocumentSyncManager> =
     once_cell::sync::Lazy::new(DocumentSyncManager::new);
 
-pub async fn handle_message(session: &WebSocketSession, msg: ClientMessage) -> Result<(), String> {
+pub async fn handle_message(session: &WebSocketSession, msg: ClientMessage) -> Result<Vec<ServerMessage>, String> {
     match msg.type_ {
         MessageType::Sync => handle_sync(session, msg.payload).await,
         MessageType::Awareness => handle_awareness(session, msg.payload).await,
         MessageType::Cursor => handle_cursor(session, msg.payload).await,
         MessageType::Ping => handle_ping(session).await,
-        _ => Ok(()),
+        _ => Ok(vec![]),
     }
 }
 
@@ -131,7 +131,7 @@ pub async fn handle_message(session: &WebSocketSession, msg: ClientMessage) -> R
 /// 3. Client applies update and sends its own update (step 2)
 /// 4. Server applies update and broadcasts to other clients
 /// 5. Ongoing updates are exchanged via the Update message type
-async fn handle_sync(session: &WebSocketSession, payload: serde_json::Value) -> Result<(), String> {
+async fn handle_sync(session: &WebSocketSession, payload: serde_json::Value) -> Result<Vec<ServerMessage>, String> {
     let sync_msg: SyncMessage = serde_json::from_value(payload).map_err(|e| format!("Invalid sync message: {}", e))?;
 
     let _sync_state = SYNC_MANAGER.get_or_create_sync_state(session.document_id).await;
@@ -142,13 +142,18 @@ async fn handle_sync(session: &WebSocketSession, payload: serde_json::Value) -> 
         session.user_id
     );
 
+    let mut messages_to_send: Vec<ServerMessage> = Vec::new();
+
     match &sync_msg {
         SyncMessage {
             state_vector: Some(sv),
             update: None,
         } => {
             // Client sending state vector - step 1 of sync
-            handle_sync_step1(session, sv).await;
+            if let Some(response) = handle_sync_step1(session, sv).await {
+                // Send update directly to requesting client
+                messages_to_send.push(response);
+            }
         },
         SyncMessage {
             state_vector: None,
@@ -156,13 +161,16 @@ async fn handle_sync(session: &WebSocketSession, payload: serde_json::Value) -> 
         } => {
             // Client sending update - step 2 or ongoing updates
             handle_sync_step2(session, update).await;
+            // Note: Broadcasting is handled by SYNC_MANAGER, not returned here
         },
         SyncMessage {
             state_vector: Some(sv),
             update: Some(update),
         } => {
             // Both state vector and update (shouldn't happen in standard Yjs)
-            handle_sync_step1(session, sv).await;
+            if let Some(response) = handle_sync_step1(session, sv).await {
+                messages_to_send.push(response);
+            }
             handle_sync_step2(session, update).await;
         },
         _ => {
@@ -171,15 +179,15 @@ async fn handle_sync(session: &WebSocketSession, payload: serde_json::Value) -> 
         },
     }
 
-    Ok(())
+    Ok(messages_to_send)
 }
 
 /// Handle sync step 1: Client sends state vector
-async fn handle_sync_step1(session: &WebSocketSession, state_vector: &[u8]) {
+async fn handle_sync_step1(session: &WebSocketSession, state_vector: &[u8]) -> Option<ServerMessage> {
     // In a real implementation, this would:
-    // 1. Look up the document in the database
+    // 1. Look up document in the database
     // 2. Get the current document state
-    // 3. Compute the diff between state vector and current state
+    // 3. Compute the diff between the state vector and current state
     // 4. Send the diff update to the client
 
     let document_id = session.document_id;
@@ -198,30 +206,10 @@ async fn handle_sync_step1(session: &WebSocketSession, state_vector: &[u8]) {
         timestamp: Utc::now(),
     };
 
-    // Send update directly to requesting client
-    // Note: Actual WebSocket message sending requires access to the actor context
-    // The send_fn closure receives session_id and serialized message
-    if let Ok(json) = serde_json::to_string(&response) {
-        tracing::debug!("Sending sync response directly to requesting session {}", session.id);
-        // In production, this would use the WebSocket connection to send directly:
-        // ctx.text(json);
-        // For now, we log the send attempt
-        tracing::debug!("Direct send to session {} would contain: {}", session.id, json);
-    }
+    tracing::debug!("Computed sync response for document {}, user {}", document_id, user_id);
 
-    // Broadcast to other clients in the document (excluding the requesting client)
-    broadcast_to_document(document_id, response, Some(session.user_id), |_session_id, _msg| {
-        // In production, this would use the WebSocket connection to send:
-        // ctx.text(msg);
-        // For now, we log the send attempt
-        tracing::debug!("Attempting to broadcast message to other sessions");
-    });
-
-    tracing::debug!(
-        "Sent sync update to client for document {}, user {}",
-        document_id,
-        user_id
-    );
+    // Return response so caller can send it
+    Some(response)
 }
 
 /// Handle sync step 2: Client sends update
@@ -251,7 +239,10 @@ async fn compute_yjs_diff(_document_id: Uuid, _state_vector: &[u8]) -> Vec<u8> {
     Vec::new()
 }
 
-async fn handle_awareness(session: &WebSocketSession, payload: serde_json::Value) -> Result<(), String> {
+async fn handle_awareness(
+    session: &WebSocketSession,
+    payload: serde_json::Value,
+) -> Result<Vec<ServerMessage>, String> {
     let _awareness_msg: AwarenessMessage =
         serde_json::from_value(payload.clone()).map_err(|e| format!("Invalid awareness message: {}", e))?;
 
@@ -266,53 +257,40 @@ async fn handle_awareness(session: &WebSocketSession, payload: serde_json::Value
         document_id
     );
 
-    // Update presence in the presence store
-    PRESENCE_STORE.update_cursor(
-        user_id,
-        CursorPosition {
-            x: payload
-                .get("cursor")
-                .and_then(|c| c.get("x"))
-                .and_then(|x| x.as_f64())
-                .unwrap_or(0.0),
-            y: payload
-                .get("cursor")
-                .and_then(|c| c.get("y"))
-                .and_then(|y| y.as_f64())
-                .unwrap_or(0.0),
-            selection_start: payload
-                .get("cursor")
-                .and_then(|c| c.get("selection_start"))
-                .and_then(|s| s.as_u64())
-                .map(|v| v as usize),
-            selection_end: payload
-                .get("cursor")
-                .and_then(|c| c.get("selection_end"))
-                .and_then(|s| s.as_u64())
-                .map(|v| v as usize),
-        },
-    );
+    // Extract cursor once and propagate to broadcast
+    let cursor = payload
+        .get("cursor")
+        .and_then(|c| serde_json::from_value::<CursorPosition>(c.clone()).ok());
+
+    if let Some(ref cursor) = cursor {
+        PRESENCE_STORE.update_cursor(user_id, cursor.clone());
+    }
 
     // Broadcast awareness update to all clients in the document
-    broadcast_awareness_update(
-        document_id,
+    let presence = UserPresence {
         user_id,
         display_name,
         color,
-        None, // Will be filled from the message
-    );
+        cursor,
+        last_active: Utc::now(),
+    };
 
-    Ok(())
+    let message = ServerMessage {
+        type_: MessageType::UserJoin,
+        document_id,
+        payload: json!(presence),
+        timestamp: Utc::now(),
+    };
+
+    Ok(vec![message])
 }
 
-async fn handle_cursor(session: &WebSocketSession, payload: serde_json::Value) -> Result<(), String> {
+async fn handle_cursor(session: &WebSocketSession, payload: serde_json::Value) -> Result<Vec<ServerMessage>, String> {
     let cursor: CursorPosition =
         serde_json::from_value(payload).map_err(|e| format!("Invalid cursor position: {}", e))?;
 
     let user_id = session.user_id;
     let document_id = session.document_id;
-    let display_name = session.display_name.clone();
-    let color = session.color.clone();
 
     tracing::debug!(
         "Cursor update for user {} in document {}: ({}, {})",
@@ -325,15 +303,12 @@ async fn handle_cursor(session: &WebSocketSession, payload: serde_json::Value) -
     // Update cursor in presence store
     PRESENCE_STORE.update_cursor(user_id, cursor.clone());
 
-    // Broadcast cursor position to all other clients in the document
-    broadcast_cursor_position(document_id, user_id, display_name, color, cursor);
-
-    Ok(())
+    Ok(vec![])
 }
 
-async fn handle_ping(_session: &WebSocketSession) -> Result<(), String> {
+async fn handle_ping(_session: &WebSocketSession) -> Result<Vec<ServerMessage>, String> {
     // Ping is handled at the WebSocket actor level for heartbeat
-    Ok(())
+    Ok(vec![])
 }
 
 /// Broadcast a message to all sessions in a document
@@ -391,14 +366,6 @@ pub fn broadcast_awareness_update(
         payload: json!(presence),
         timestamp: Utc::now(),
     };
-
-    // Use placeholder delivery callback
-    // TODO: Wire this to the actual WebSocket send mechanism when actor context is available
-    broadcast_to_document(document_id, message, None, |_session_id, _msg| {
-        // In production, this would use the WebSocket connection to send:
-        // ctx.text(msg);
-        tracing::warn!("broadcast_awareness_update: WebSocket delivery not implemented - message would be sent to session {}", _session_id);
-    });
 }
 
 /// Broadcast user leave event to all clients in a document
@@ -413,7 +380,10 @@ pub fn broadcast_user_leave(document_id: Uuid, user_id: Uuid) {
     // Use placeholder delivery callback
     // TODO: Wire this to the actual WebSocket send mechanism when actor context is available
     broadcast_to_document(document_id, message, None, |_session_id, _msg| {
-        tracing::warn!("broadcast_user_leave: WebSocket delivery not implemented - message would be sent to session {}", _session_id);
+        tracing::warn!(
+            "broadcast_user_leave: WebSocket delivery not implemented - message would be sent to session {}",
+            _session_id
+        );
     });
 }
 
@@ -432,7 +402,10 @@ pub fn broadcast_document_update(document_id: Uuid, update: Vec<u8>, origin_user
     // Use placeholder delivery callback
     // TODO: Wire this to the actual WebSocket send mechanism when actor context is available
     broadcast_to_document(document_id, message, Some(origin_user_id), |_session_id, _msg| {
-        tracing::warn!("broadcast_document_update: WebSocket delivery not implemented - message would be sent to session {}", _session_id);
+        tracing::warn!(
+            "broadcast_document_update: WebSocket delivery not implemented - message would be sent to session {}",
+            _session_id
+        );
     });
 }
 
@@ -464,7 +437,10 @@ pub fn broadcast_cursor_position(
     // Use placeholder delivery callback
     // TODO: Wire this to the actual WebSocket send mechanism when actor context is available
     broadcast_to_document(document_id, message, Some(user_id), |_session_id, _msg| {
-        tracing::warn!("broadcast_cursor_position: WebSocket delivery not implemented - message would be sent to session {}", _session_id);
+        tracing::warn!(
+            "broadcast_cursor_position: WebSocket delivery not implemented - message would be sent to session {}",
+            _session_id
+        );
     });
 }
 

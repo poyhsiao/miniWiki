@@ -1,7 +1,7 @@
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use validator::Validate;
-use chrono::Utc;
 
 #[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Space {
@@ -78,6 +78,7 @@ mod tests {
 
     #[test]
     fn test_space_creation() {
+        let ts = chrono::NaiveDateTime::from_timestamp(0, 0);
         let space = Space {
             id: Uuid::new_v4(),
             owner_id: Uuid::new_v4(),
@@ -85,8 +86,8 @@ mod tests {
             icon: Some("🚀".to_string()),
             description: Some("A test space".to_string()),
             is_public: false,
-            created_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
-            updated_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+            created_at: ts,
+            updated_at: ts,
         };
 
         assert_eq!(space.name, "Test Space");
@@ -146,12 +147,13 @@ mod tests {
 
     #[test]
     fn test_space_membership() {
+        let joined_at = chrono::NaiveDateTime::from_timestamp(0, 0);
         let membership = SpaceMembership {
             id: Uuid::new_v4(),
             space_id: Uuid::new_v4(),
             user_id: Uuid::new_v4(),
             role: "editor".to_string(),
-            joined_at: chrono::DateTime::<Utc>::from_timestamp(0, 0).unwrap().naive_utc(),
+            joined_at,
             invited_by: Uuid::new_v4(),
         };
 

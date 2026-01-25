@@ -10,8 +10,11 @@ fn validate_password(password: &str) -> Result<(), validator::ValidationError> {
     if PASSWORD_REGEX.is_match(password) {
         Ok(())
     } else {
-        Err(validator::ValidationError::new("invalid_password")
-            .with_message("Password must contain at least one lowercase letter, one uppercase letter, and one digit"))
+        Err(
+            validator::ValidationError::new("invalid_password").with_message(std::borrow::Cow::Borrowed(
+                "Password must contain at least one lowercase letter, one uppercase letter, and one digit",
+            )),
+        )
     }
 }
 
@@ -232,7 +235,6 @@ mod tests {
         let request = LogoutRequest { refresh_token: None };
         assert!(request.refresh_token.is_none());
     }
-
 
     #[test]
     fn test_register_request_display_name_max_length() {

@@ -1,13 +1,13 @@
-use std::time::{Duration, Instant};
-use actix_web_actors::ws;
-use actix_web::{web, Error, HttpRequest, HttpResponse};
-use actix::{AsyncContext, ActorContext};
-use uuid::Uuid;
 use crate::{
-    WebSocketSession, SESSION_STORE,
     models::ClientMessage,
-    presence::{PresenceStore, PresenceEntry, PRESENCE_STORE},
+    presence::{PresenceEntry, PresenceStore, PRESENCE_STORE},
+    WebSocketSession, SESSION_STORE,
 };
+use actix::{ActorContext, AsyncContext};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
+use actix_web_actors::ws;
+use std::time::{Duration, Instant};
+use uuid::Uuid;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(30);
 const CLIENT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -24,12 +24,7 @@ pub struct DocumentWsHandler {
 }
 
 impl DocumentWsHandler {
-    pub fn new(
-        document_id: Uuid,
-        user_id: Uuid,
-        display_name: String,
-        color: String,
-    ) -> Self {
+    pub fn new(document_id: Uuid, user_id: Uuid, display_name: String, color: String) -> Self {
         let session_id = Uuid::new_v4();
 
         Self {
@@ -103,39 +98,80 @@ impl actix::Actor for DocumentWsHandler {
     }
 }
 
-impl actix::StreamHandler<Result<ws::Message, ws::ProtocolError>> for DocumentWsHandler {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
-        match msg {
-            Ok(ws::Message::Ping(msg)) => {
-                self.last_heartbeat = Instant::now();
-                ctx.pong(&msg);
-            }
-            Ok(ws::Message::Pong(_)) => {
-                self.last_heartbeat = Instant::now();
-            }
-            Ok(ws::Message::Text(text)) => {
-                self.last_heartbeat = Instant::now();
-                if let Ok(_client_msg) = serde_json::from_str::<ClientMessage>(&text) {
-                }
-            }
-            Ok(ws::Message::Binary(bin)) => {
-                self.last_heartbeat = Instant::now();
-                if let Ok(_client_msg) = serde_json::from_slice::<ClientMessage>(&bin) {
-                }
-            }
-            Ok(ws::Message::Close(reason)) => {
-                ctx.close(reason);
-            }
-            Ok(ws::Message::Nop) => {}
-            Ok(ws::Message::Continuation(_)) => {}
-            Err(e) => {
-                tracing::error!("WebSocket error: {:?}", e);
-            }
-        }
-    }
-}
+ impl actix::StreamHandler<Result<ws::Message, ws::ProtocolError>> for DocumentWsHandler {
+     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+         match msg {
+             Ok(ws::Message::Ping(msg)) => {
+                 self.last_heartbeat = Instant::now();
+                 ctx.pong(&msg);
+             }
+             Ok(ws::Message::Pong(_)) => {
+                 self.last_heartbeat = Instant::now();
+             }
+             Ok(ws::Message::Text(text)) => {
+                 self.last_heartbeat = Instant::now();
+                 if let Ok(client_msg) = serde_json::from_str::<ClientMessage>(&text) {
+                     let session = WebSocketSession {
+                         id: self.session_id,
+                         document_id: self.document_id,
+                         user_id: self.user_id,
+                         display_name: self.display_name.clone(),
+                         color: self.color.clone(),
+                         last_activity: chrono::Utc::now(),
+                     };
 
-pub async fn ws_document_handler(
+                     match handle_message(&session, client_msg) {
+                         Ok(messages_to_send) => {
+                             for msg in messages_to_send {
+                                 if let Ok(json) = msg.to_json() {
+                                     ctx.text(json);
+                                 }
+                             }
+                         }
+                         Err(e) => {
+                             tracing::error!("Error handling WebSocket message: {}", e);
+                         }
+                     }
+                 }
+             }
+             Ok(ws::Message::Binary(bin)) => {
+                 self.last_heartbeat = Instant::now();
+                 if let Ok(client_msg) = serde_json::from_slice::<ClientMessage>(&bin) {
+                     let session = WebSocketSession {
+                         id: self.session_id,
+                         document_id: self.document_id,
+                         user_id: self.user_id,
+                         display_name: self.display_name.clone(),
+                         color: self.color.clone(),
+                         last_activity: chrono::Utc::now(),
+                     };
+
+                     match handle_message(&session, client_msg) {
+                         Ok(messages_to_send) => {
+                             for msg in messages_to_send {
+                                 if let Ok(json) = msg.to_json() {
+                                     ctx.text(json);
+                                 }
+                             }
+                         }
+                         Err(e) => {
+                             tracing::error!("Error handling WebSocket message: {}", e);
+                         }
+                     }
+                 }
+             }
+             Ok(ws::Message::Close(reason)) => {
+                 ctx.close(reason);
+             }
+              Ok(ws::Message::Nop) => {}
+              Ok(ws::Message::Continuation(_)) => {}
+              Err(e) => {
+                  tracing::error!("WebSocket error: {:?}", e);
+              }
+              }
+          }
+
+    pub async fn ws_document_handler(
     req: HttpRequest,
     stream: web::Payload,
     document_id: web::Path<Uuid>,
@@ -149,20 +185,13 @@ pub async fn ws_document_handler(
     let color = color.into_inner();
     let color = if color.is_empty() { "#3B82F6".to_string() } else { color };
 
-    let handler = DocumentWsHandler::new(
-        document_id,
-        user_id,
-        display_name,
-        color,
-    );
+    let handler = DocumentWsHandler::new(document_id, user_id, display_name, color);
 
     let response = ws::start(handler, &req, stream)?;
     Ok(response)
 }
 
-pub async fn ws_info_handler(
-    document_id: web::Path<Uuid>,
-) -> actix_web::Result<HttpResponse> {
+pub async fn ws_info_handler(document_id: web::Path<Uuid>) -> actix_web::Result<HttpResponse> {
     let document_id = document_id.into_inner();
     let sessions = SESSION_STORE.get_document_sessions(document_id);
 
@@ -188,12 +217,6 @@ pub async fn ws_info_handler(
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.route(
-        "/ws/documents/{document_id}",
-        web::get().to(ws_document_handler),
-    );
-    cfg.route(
-        "/ws/documents/{document_id}/info",
-        web::get().to(ws_info_handler),
-    );
+    cfg.route("/ws/documents/{document_id}", web::get().to(ws_document_handler));
+    cfg.route("/ws/documents/{document_id}/info", web::get().to(ws_info_handler));
 }

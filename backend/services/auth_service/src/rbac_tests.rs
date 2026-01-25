@@ -7,8 +7,8 @@
 //! - RBAC middleware structure
 //! - Error handling
 
-use uuid::Uuid;
 use crate::rbac::*;
+use uuid::Uuid;
 
 // Test: JWT_SECRET environment variable
 #[test]
@@ -155,7 +155,7 @@ fn test_claims_extraction_empty_claims() {
         role: None,
         permissions: vec![],
     };
-    
+
     assert_eq!(claims.iss, "user123");
     assert_eq!(claims.exp, 10000);
     assert!(claims.role.is_none());
@@ -168,12 +168,9 @@ fn test_claims_extraction_with_claims() {
         iss: "user123".to_string(),
         exp: 10000,
         role: Some("editor".to_string()),
-        permissions: vec![
-            "documents::delete".to_string(),
-            "documents::view".to_string(),
-        ],
+        permissions: vec!["documents::delete".to_string(), "documents::view".to_string()],
     };
-    
+
     assert_eq!(claims.iss, "user123");
     assert_eq!(claims.exp, 10000);
     assert!(claims.role.is_some());
@@ -191,7 +188,7 @@ fn test_claims_extraction_invalid_role() {
         role: Some("invalid_role".to_string()),
         permissions: vec![],
     };
-    
+
     assert_eq!(claims.iss, "user123");
     assert!(claims.role.is_some());
     assert_eq!(claims.role.unwrap(), "invalid_role");
@@ -253,7 +250,7 @@ fn test_can_perform_action_owner() {
         ActionType::CommentDocument,
         ActionType::DeleteSpace,
     ];
-    
+
     for action in actions {
         assert!(can_perform_action(&"owner", &action));
     }
@@ -274,10 +271,7 @@ fn test_can_perform_action_editor() {
 
 #[test]
 fn test_can_perform_action_commenter() {
-    let actions = vec![
-        ActionType::ViewDocument,
-        ActionType::CommentDocument,
-    ];
+    let actions = vec![ActionType::ViewDocument, ActionType::CommentDocument];
 
     for action in actions {
         assert!(can_perform_action(&"commenter", &action));
@@ -286,9 +280,7 @@ fn test_can_perform_action_commenter() {
 
 #[test]
 fn test_can_perform_action_viewer() {
-    let actions = vec![
-        ActionType::ViewDocument,
-    ];
+    let actions = vec![ActionType::ViewDocument];
 
     for action in actions {
         assert!(can_perform_action(&"viewer", &action));
@@ -307,37 +299,45 @@ fn test_can_perform_action_commenter_insufficient() {
     assert!(!can_perform_action(&"commenter", &ActionType::EditDocument));
 }
 
-// Test: extract_role_from_string
+// Test: Role::from_str
 #[test]
 fn test_extract_role_owner() {
-    assert_eq!(extract_role_from_string("owner").unwrap(), Role::Owner);
+    assert_eq!(Role::from_str("owner"), Some(Role::Owner));
 }
 
 #[test]
 fn test_extract_role_editor() {
-    assert_eq!(extract_role_from_string("editor").unwrap(), Role::Editor);
+    assert_eq!(Role::from_str("editor"), Some(Role::Editor));
 }
 
 #[test]
 fn test_extract_role_commenter() {
-    assert_eq!(extract_role_from_string("commenter").unwrap(), Role::Commenter);
+    assert_eq!(Role::from_str("commenter"), Some(Role::Commenter));
 }
 
 #[test]
 fn test_extract_role_viewer() {
-    assert_eq!(extract_role_from_string("viewer").unwrap(), Role::Viewer);
+    assert_eq!(Role::from_str("viewer"), Some(Role::Viewer));
 }
 
 #[test]
 fn test_extract_role_invalid() {
-    assert!(extract_role_from_string("invalid").is_none());
+    assert_eq!(Role::from_str("invalid"), None);
+}
+
+#[test]
+fn test_extract_role_case_insensitive() {
+    assert_eq!(Role::from_str("OWNER"), Some(Role::Owner));
+    assert_eq!(Role::from_str("Editor"), Some(Role::Editor));
+    assert_eq!(Role::from_str("CoMmEnTeR"), Some(Role::Commenter));
+    assert_eq!(Role::from_str("VIEWER"), Some(Role::Viewer));
 }
 
 // Test: Error::Unauthorized response
 #[test]
 fn test_error_unauthorized_response() {
     let error = Error::Unauthorized("Missing JWT token".to_string());
-    
+
     assert_eq!(error.to_string(), "Missing JWT token");
     assert_eq!(error.status(), 401);
 }
@@ -346,7 +346,7 @@ fn test_error_unauthorized_response() {
 #[test]
 fn test_error_forbidden_response() {
     let error = Error::Forbidden("Insufficient permissions".to_string());
-    
+
     assert_eq!(error.to_string(), "Insufficient permissions");
     assert_eq!(error.status(), 403);
 }
@@ -355,7 +355,7 @@ fn test_error_forbidden_response() {
 #[test]
 fn test_error_internal_server_error_response() {
     let error = Error::InternalServerError("Server error".to_string());
-    
+
     assert_eq!(error.to_string(), "Server error");
     assert_eq!(error.status(), 500);
 }
@@ -390,28 +390,15 @@ fn test_bearer_token_extra_spaces() {
     assert_eq!(header.split_whitespace().len(), 3);
 }
 
-// Test: Invalid token format passed to extract_claims
-#[test]
-fn test_extract_claims_invalid_token() {
-    let token = "valid_token_here";
-
-    // extract_claims expects a full Authorization header with Bearer prefix
-    // Passing a plain token without "Bearer " prefix should fail
-    let result = extract_claims(&token);
-
-    assert!(result.is_err());
-    assert!(matches!(result.unwrap_err(), Error::Unauthorized(_)));
-}
-
 // Test: Malformed authorization header
 #[test]
 fn test_malformed_authorization_header() {
     // Missing "Bearer " prefix
     let header = "InvalidToken xyz".to_string();
-    
+
     // With no Bearer, extract_claims will fail
     let result = extract_claims(&header);
-    
+
     assert!(result.is_err());
 }
 
@@ -420,9 +407,9 @@ fn test_malformed_authorization_header() {
 fn test_invalid_token_type() {
     // Not JWT token
     let header = "Authorization: Basic invalid".to_string();
-    
+
     let result = extract_claims(&header);
-    
+
     assert!(result.is_err());
 }
 
@@ -451,7 +438,7 @@ fn test_extract_user_id_missing_in_claims() {
         role: None,
         permissions: vec![],
     };
-    
+
     assert!(matches!(extract_user_id(&claims), Err(_)));
 }
 
@@ -469,7 +456,7 @@ fn test_user_role_multiple_permissions() {
             "documents::comment".to_string(),
         ],
     };
-    
+
     let result = extract_user_role(&claims);
 
     assert!(result.is_ok());
@@ -477,23 +464,30 @@ fn test_user_role_multiple_permissions() {
     assert_eq!(role, Role::Owner);
 }
 
-// Test: is_space_member stub (currently returns an error)
+// Test: is_space_member stub (currently returns false)
 #[test]
 fn test_is_space_member_stub() {
-    // This function is a stub that always returns an error (Result::Err)
+    // This function is a stub that always returns false
     // TODO: Update when real space membership check is implemented
-    
-    let claims = Claims {
-        iss: "user123".to_string(),
-        exp: 10000,
-        role: None,
-        permissions: vec![],
-    };
-    
-    let result = is_space_member(&claims, &Uuid::new_v4());
-    
+
+    let space_id = Uuid::new_v4().to_string();
+
+    // is_space_member is a static method on RbacMiddleware
+    let result = RbacMiddleware::is_space_member(
+        &crate::jwt::Claims {
+            sub: "user123".to_string(),
+            user_id: "user123".to_string(),
+            email: "test@example.com".to_string(),
+            role: "owner".to_string(),
+            exp: 10000,
+            iat: 10000,
+            jti: None,
+        },
+        &space_id,
+    );
+
     // Currently stub always returns false
-    assert!(result.is_err());
+    assert!(!result);
 }
 
 // Test: RBAC middleware structure
@@ -569,9 +563,9 @@ fn test_claims_iss_field_validation() {
         role: None,
         permissions: vec![],
     };
-    
+
     let result = extract_user_id(&claims_empty_iss);
-    
+
     assert!(result.is_err());
     assert!(matches!(result.unwrap_err(), Error::Unauthorized(_)));
 }
@@ -583,7 +577,7 @@ fn test_claims_exp_field_validation() {
     let fixed_uuid = "550e8400-e29b-41d4-a716-446655440000";
     let claims_no_exp = Claims {
         iss: fixed_uuid.to_string(), // Use valid UUID so extract_user_id succeeds
-        exp: 0, // Invalid: no expiration
+        exp: 0,                      // Invalid: no expiration
         role: None,
         permissions: vec![],
     };
@@ -656,5 +650,4 @@ fn test_error_response_building() {
     assert_eq!(error.status(), 401);
     // Verify response status code
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-}
 }

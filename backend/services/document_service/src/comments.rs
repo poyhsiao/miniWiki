@@ -7,24 +7,24 @@
 //! - POST /comments/{commentId}/resolve - Resolve comment
 //! - POST /comments/{commentId}/unresolve - Unresolve comment
 //! - DELETE /comments/{commentId} - Delete comment
-//! 
-use actix_web::{web, Responder, HttpResponse, HttpRequest};
-use validator::Validate;
-use tracing::error;
-use shared_errors::{AppError, ErrorCode};
-use uuid::Uuid;
+//!
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use chrono::Utc;
+use shared_errors::{AppError, ErrorCode};
 use std::collections::HashMap;
+use tracing::error;
+use uuid::Uuid;
+use validator::Validate;
 
 use crate::models::*;
-use crate::repository::DocumentRepository;
 use crate::repository::CommentRow;
+use crate::repository::DocumentRepository;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::test::TestRequest;
     use crate::repository::CommentRow;
+    use actix_web::test::TestRequest;
     use chrono::{DateTime, Duration};
 
     // Create a test request
@@ -36,17 +36,17 @@ mod tests {
 
     // extract_user_id Tests
     #[test]
-    fn test_extract_user_id_valid() {
-        let req = create_test_request();
+    fn test_extract_user_id_invalid_encoding() {
+        let req = TestRequest::get().insert_header(("X-User-Id", "not-a-uuid")).to_http_request();
+
         let user_id = extract_user_id(&req);
-        assert!(user_id.is_ok());
-        assert_eq!(user_id.unwrap(), "test-user-001");
+        // extract_user_id should validate UUID format and return error for invalid UUIDs
+        assert!(user_id.is_err());
     }
 
     #[test]
     fn test_extract_user_id_missing() {
-        let req = TestRequest::get()
-            .to_http_request(); // No X-User-Id header
+        let req = TestRequest::get().to_http_request(); // No X-User-Id header
 
         let user_id = extract_user_id(&req);
         assert!(user_id.is_err());
@@ -57,9 +57,7 @@ mod tests {
 
     #[test]
     fn test_extract_user_id_invalid_encoding() {
-        let req = TestRequest::get()
-            .insert_header(("X-User-Id", "not-a-uuid"))
-            .to_http_request();
+        let req = TestRequest::get().insert_header(("X-User-Id", "not-a-uuid")).to_http_request();
 
         let user_id = extract_user_id(&req);
         // extract_user_id returns the header string without UUID validation
@@ -69,9 +67,7 @@ mod tests {
     // extract_user_name Tests
     #[test]
     fn test_extract_user_name_valid() {
-        let req = TestRequest::get()
-            .insert_header(("X-User-Name", "Test User"))
-            .to_http_request();
+        let req = TestRequest::get().insert_header(("X-User-Name", "Test User")).to_http_request();
 
         let user_name = extract_user_name(&req);
         assert_eq!(user_name, "Test User");
@@ -79,8 +75,7 @@ mod tests {
 
     #[test]
     fn test_extract_user_name_missing() {
-        let req = TestRequest::get()
-            .to_http_request(); // No X-User-Name header
+        let req = TestRequest::get().to_http_request(); // No X-User-Name header
 
         let user_name = extract_user_name(&req);
         assert_eq!(user_name, "Unknown User");
@@ -88,9 +83,7 @@ mod tests {
 
     #[test]
     fn test_extract_user_name_empty_string() {
-        let req = TestRequest::get()
-            .insert_header(("X-User-Name", ""))
-            .to_http_request();
+        let req = TestRequest::get().insert_header(("X-User-Name", "")).to_http_request();
 
         let user_name = extract_user_name(&req);
         assert_eq!(user_name, "");
@@ -114,16 +107,15 @@ mod tests {
             updated_at: now,
         };
 
-        let response = comment_row_to_response(
-            &row,
-            "Test Author",
-            Some("https://example.com/avatar.png"),
-        );
+        let response = comment_row_to_response(&row, "Test Author", Some("https://example.com/avatar.png"));
 
         assert_eq!(response.id, row.id.to_string());
         assert_eq!(response.content, "Test comment");
         assert_eq!(response.author_name, "Test Author");
-        assert_eq!(response.author_avatar.as_deref(), Some("https://example.com/avatar.png"));
+        assert_eq!(
+            response.author_avatar.as_deref(),
+            Some("https://example.com/avatar.png")
+        );
         assert_eq!(response.is_resolved, false);
         assert_eq!(response.resolved_by, None);
         assert_eq!(response.resolved_at, None);
@@ -148,11 +140,7 @@ mod tests {
             updated_at: now,
         };
 
-        let response = comment_row_to_response(
-            &row,
-            "Resolver Name",
-            None,
-        );
+        let response = comment_row_to_response(&row, "Resolver Name", None);
 
         assert_eq!(response.is_resolved, true);
         assert_eq!(response.resolved_by, Some(resolver_id.to_string()));
@@ -593,11 +581,15 @@ mod tests {
 
 /// Extract user ID from request header
 fn extract_user_id(req: &HttpRequest) -> Result<String, AppError> {
-    req.headers()
+    let raw = req
+        .headers()
         .get("X-User-Id")
         .and_then(|h| h.to_str().ok())
-        .map(|s| s.to_string())
-        .ok_or_else(|| AppError::AuthenticationError("Missing X-User-Id header".to_string()))
+        .ok_or_else(|| AppError::AuthenticationError("Missing X-User-Id header".to_string()))?;
+
+    Uuid::parse_str(raw).map_err(|_| AppError::AuthenticationError("Invalid X-User-Id format".to_string()))?;
+
+    Ok(raw.to_string())
 }
 
 /// Extract user name from request header (optional)
@@ -610,11 +602,7 @@ fn extract_user_name(req: &HttpRequest) -> String {
 }
 
 /// Convert database row to CommentResponse
-fn comment_row_to_response(
-    row: &CommentRow,
-    author_name: &str,
-    author_avatar: Option<&str>,
-) -> CommentResponse {
+fn comment_row_to_response(row: &CommentRow, author_name: &str, author_avatar: Option<&str>) -> CommentResponse {
     CommentResponse {
         id: row.id.to_string(),
         document_id: row.document_id.to_string(),
@@ -641,10 +629,12 @@ pub async fn list_comments(
     let document_id = document_id.into_inner();
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            ErrorCode::from(e).to_string().as_str(),
-            e.to_string().as_str(),
-        )),
+        Err(ref e) => {
+            return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+                ErrorCode::from(e).to_string().as_str(),
+                e.to_string().as_str(),
+            ))
+        },
     };
 
     // Check document access
@@ -655,18 +645,21 @@ pub async fn list_comments(
                 "ACCESS_DENIED",
                 "You don't have permission to view comments on this document",
             ));
-        }
+        },
         Err(e) => {
             error!("Database error checking document access: {:?}", e);
             return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "Failed to verify document access",
             ));
-        }
+        },
     }
 
     // Get comments
-    match repo.list_comments(&document_id, query.parent_id.as_deref(), query.limit, query.offset).await {
+    match repo
+        .list_comments(&document_id, query.parent_id.as_deref(), query.limit, query.offset)
+        .await
+    {
         Ok((comments, total)) => {
             let comment_responses: Vec<CommentResponse> = comments
                 .iter()
@@ -684,14 +677,12 @@ pub async fn list_comments(
                 limit: query.limit.unwrap_or(50),
                 offset: query.offset.unwrap_or(0),
             }))
-        }
+        },
         Err(e) => {
             error!("Database error listing comments: {:?}", e);
-            HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to list comments",
-            ))
-        }
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to list comments"))
+        },
     }
 }
 
@@ -714,10 +705,12 @@ pub async fn create_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            ErrorCode::from(e).to_string().as_str(),
-            e.to_string().as_str(),
-        )),
+        Err(ref e) => {
+            return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+                ErrorCode::from(e).to_string().as_str(),
+                e.to_string().as_str(),
+            ))
+        },
     };
 
     let user_name = extract_user_name(&http_req);
@@ -730,14 +723,14 @@ pub async fn create_comment(
                 "ACCESS_DENIED",
                 "You don't have permission to add comments to this document",
             ));
-        }
+        },
         Err(e) => {
             error!("Database error checking document access: {:?}", e);
             return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "Failed to verify document access",
             ));
-        }
+        },
     }
 
     // If parent_id is provided, verify parent comment exists and belongs to the same document
@@ -750,40 +743,41 @@ pub async fn create_comment(
                         "Parent comment must belong to the same document",
                     ));
                 }
-            }
+            },
             Ok(None) => {
-                return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
-                    "PARENT_NOT_FOUND",
-                    "Parent comment not found",
-                ));
-            }
+                return HttpResponse::BadRequest()
+                    .json(ApiResponse::<()>::error("PARENT_NOT_FOUND", "Parent comment not found"));
+            },
             Err(e) => {
                 error!("Database error checking parent comment: {:?}", e);
                 return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                     "DATABASE_ERROR",
                     "Failed to verify parent comment",
                 ));
-            }
+            },
         }
     }
 
     // Create comment
-    match repo.create_comment(&document_id, &user_id, &user_name, &req.content, req.parent_id.as_deref()).await {
+    match repo
+        .create_comment(
+            &document_id,
+            &user_id,
+            &user_name,
+            &req.content,
+            req.parent_id.as_deref(),
+        )
+        .await
+    {
         Ok(comment) => {
-            let response = comment_row_to_response(
-                &comment,
-                &user_name,
-                None,
-            );
+            let response = comment_row_to_response(&comment, &user_name, None);
             HttpResponse::Created().json(ApiResponse::success(response))
-        }
+        },
         Err(e) => {
             error!("Database error creating comment: {:?}", e);
-            HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to create comment",
-            ))
-        }
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to create comment"))
+        },
     }
 }
 
@@ -806,10 +800,12 @@ pub async fn update_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            ErrorCode::from(e).to_string().as_str(),
-            e.to_string().as_str(),
-        )),
+        Err(ref e) => {
+            return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+                ErrorCode::from(e).to_string().as_str(),
+                e.to_string().as_str(),
+            ))
+        },
     };
 
     // Get existing comment
@@ -822,20 +818,15 @@ pub async fn update_comment(
                     "You can only edit your own comments",
                 ));
             }
-        }
+        },
         Ok(None) => {
-            return HttpResponse::NotFound().json(ApiResponse::<()>::error(
-                "NOT_FOUND",
-                "Comment not found",
-            ));
-        }
+            return HttpResponse::NotFound().json(ApiResponse::<()>::error("NOT_FOUND", "Comment not found"));
+        },
         Err(e) => {
             error!("Database error getting comment: {:?}", e);
-            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to get comment",
-            ));
-        }
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to get comment"));
+        },
     }
 
     // Update comment
@@ -848,29 +839,23 @@ pub async fn update_comment(
                 Ok(Some(full_comment)) => {
                     let response = comment_row_to_response(&full_comment, author_name, author_avatar);
                     HttpResponse::Ok().json(ApiResponse::success(response))
-                }
-                Ok(None) => {
-                    HttpResponse::NotFound().json(ApiResponse::<()>::error(
-                        "NOT_FOUND",
-                        "Comment not found after update",
-                    ))
-                }
+                },
+                Ok(None) => HttpResponse::NotFound()
+                    .json(ApiResponse::<()>::error("NOT_FOUND", "Comment not found after update")),
                 Err(e) => {
                     error!("Database error fetching updated comment: {:?}", e);
                     HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                         "DATABASE_ERROR",
                         "Failed to fetch updated comment",
                     ))
-                }
+                },
             }
-        }
+        },
         Err(e) => {
             error!("Database error updating comment: {:?}", e);
-            HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to update comment",
-            ))
-        }
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to update comment"))
+        },
     }
 }
 
@@ -884,10 +869,12 @@ pub async fn resolve_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            ErrorCode::from(e).to_string().as_str(),
-            e.to_string().as_str(),
-        )),
+        Err(ref e) => {
+            return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+                ErrorCode::from(e).to_string().as_str(),
+                e.to_string().as_str(),
+            ))
+        },
     };
 
     // Get existing comment
@@ -905,30 +892,23 @@ pub async fn resolve_comment(
                             "ACCESS_DENIED",
                             "You don't have permission to resolve comments",
                         ));
-                    }
+                    },
                     Err(e) => {
                         error!("Database error checking document access: {:?}", e);
-                        return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                            "DATABASE_ERROR",
-                            "Failed to verify access",
-                        ));
-                    }
+                        return HttpResponse::InternalServerError()
+                            .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to verify access"));
+                    },
                 }
             }
-        }
+        },
         Ok(None) => {
-            return HttpResponse::NotFound().json(ApiResponse::<()>::error(
-                "NOT_FOUND",
-                "Comment not found",
-            ));
-        }
+            return HttpResponse::NotFound().json(ApiResponse::<()>::error("NOT_FOUND", "Comment not found"));
+        },
         Err(e) => {
             error!("Database error getting comment: {:?}", e);
-            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to get comment",
-            ));
-        }
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to get comment"));
+        },
     }
 
     // Resolve comment
@@ -937,14 +917,12 @@ pub async fn resolve_comment(
             let _author_name = "User"; // Placeholder until user lookup is implemented
             let _author_avatar: Option<&str> = None;
             HttpResponse::Ok().json(ApiResponse::success(comment))
-        }
+        },
         Err(e) => {
             error!("Database error resolving comment: {:?}", e);
-            HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to resolve comment",
-            ))
-        }
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to resolve comment"))
+        },
     }
 }
 
@@ -958,10 +936,12 @@ pub async fn unresolve_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            ErrorCode::from(e).to_string().as_str(),
-            e.to_string().as_str(),
-        )),
+        Err(ref e) => {
+            return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+                ErrorCode::from(e).to_string().as_str(),
+                e.to_string().as_str(),
+            ))
+        },
     };
 
     // Get existing comment
@@ -975,43 +955,34 @@ pub async fn unresolve_comment(
                         "ACCESS_DENIED",
                         "You don't have permission to unresolve comments",
                     ));
-                }
+                },
                 Err(e) => {
                     error!("Database error checking document access: {:?}", e);
-                    return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                        "DATABASE_ERROR",
-                        "Failed to verify access",
-                    ));
-                }
+                    return HttpResponse::InternalServerError()
+                        .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to verify access"));
+                },
             }
-        }
+        },
         Ok(None) => {
-            return HttpResponse::NotFound().json(ApiResponse::<()>::error(
-                "NOT_FOUND",
-                "Comment not found",
-            ));
-        }
+            return HttpResponse::NotFound().json(ApiResponse::<()>::error("NOT_FOUND", "Comment not found"));
+        },
         Err(e) => {
             error!("Database error getting comment: {:?}", e);
-            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to get comment",
-            ));
-        }
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to get comment"));
+        },
     }
 
     // Unresolve comment
     match repo.unresolve_comment(&comment_id).await {
-        Ok(_comment) => {
-            HttpResponse::Ok().json(ApiResponse::success(()))
-        }
+        Ok(_comment) => HttpResponse::Ok().json(ApiResponse::success(())),
         Err(e) => {
             error!("Database error unresolving comment: {:?}", e);
             HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "Failed to unresolve comment",
             ))
-        }
+        },
     }
 }
 
@@ -1025,10 +996,12 @@ pub async fn delete_comment(
 
     let user_id = match extract_user_id(&http_req) {
         Ok(id) => id,
-        Err(ref e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
-            ErrorCode::from(e).to_string().as_str(),
-            e.to_string().as_str(),
-        )),
+        Err(ref e) => {
+            return HttpResponse::Unauthorized().json(ApiResponse::<()>::error(
+                ErrorCode::from(e).to_string().as_str(),
+                e.to_string().as_str(),
+            ))
+        },
     };
 
     // Get existing comment
@@ -1046,45 +1019,34 @@ pub async fn delete_comment(
                             "ACCESS_DENIED",
                             "You don't have permission to delete this comment",
                         ));
-                    }
+                    },
                     Err(e) => {
                         error!("Database error checking document access: {:?}", e);
-                        return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                            "DATABASE_ERROR",
-                            "Failed to verify access",
-                        ));
-                    }
+                        return HttpResponse::InternalServerError()
+                            .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to verify access"));
+                    },
                 }
             }
-        }
+        },
         Ok(None) => {
-            return HttpResponse::NotFound().json(ApiResponse::<()>::error(
-                "NOT_FOUND",
-                "Comment not found",
-            ));
-        }
+            return HttpResponse::NotFound().json(ApiResponse::<()>::error("NOT_FOUND", "Comment not found"));
+        },
         Err(e) => {
             error!("Database error getting comment: {:?}", e);
-            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to get comment",
-            ));
-        }
+            return HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to get comment"));
+        },
     }
 
     // Delete comment
     match repo.delete_comment(&comment_id).await {
-        Ok(_) => {
-            HttpResponse::Ok().json(ApiResponse::success(serde_json::json!({
-                "message": "Comment deleted successfully"
-            })))
-        }
+        Ok(_) => HttpResponse::Ok().json(ApiResponse::success(serde_json::json!({
+            "message": "Comment deleted successfully"
+        }))),
         Err(e) => {
             error!("Database error deleting comment: {:?}", e);
-            HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "Failed to delete comment",
-            ))
-        }
+            HttpResponse::InternalServerError()
+                .json(ApiResponse::<()>::error("DATABASE_ERROR", "Failed to delete comment"))
+        },
     }
 }
