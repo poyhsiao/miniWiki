@@ -157,6 +157,25 @@ class Comment {
     return other is Comment && other.id == id;
   }
 
+  /// Clears resolution information (for unresolveComment)
+  ///
+  /// Returns a new Comment with isResolved set to false
+  /// and resolvedBy/resolvedAt set to null.
+  Comment clearResolutionInfo() => Comment(
+        id: id,
+        documentId: documentId,
+        parentId: parentId,
+        authorId: authorId,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        content: content,
+        isResolved: false,
+        resolvedBy: null,
+        resolvedAt: null,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
+      );
+
   @override
   int get hashCode => id.hashCode;
 }
