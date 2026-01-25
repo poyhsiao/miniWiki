@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/data/repositories/share_repository_impl.dart';
-import 'package:miniwiki/data/repositories/version_repository_impl.dart';
 import 'package:miniwiki/services/comment_service.dart';
 import 'package:miniwiki/services/file_service.dart';
 import 'package:miniwiki/services/share_service.dart';

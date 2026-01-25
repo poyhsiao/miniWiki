@@ -14,7 +14,6 @@ pub mod redis_pubsub;
 pub use handlers::*;
 pub use models::*;
 pub use presence::*;
-pub use connection_manager::*;
 pub use actor::*;
 pub use redis_pubsub::*;
 

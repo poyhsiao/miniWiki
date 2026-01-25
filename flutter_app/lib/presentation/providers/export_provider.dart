@@ -53,8 +53,7 @@ class ExportUiState {
     } else if (downloadProgress is num) {
       validatedProgress = downloadProgress.toDouble();
     } else {
-      throw ArgumentError(
-          'downloadProgress parameter must be num or null, '
+      throw ArgumentError('downloadProgress parameter must be num or null, '
           'got ${downloadProgress.runtimeType}');
     }
 
@@ -177,10 +176,6 @@ class ExportNotifier extends StateNotifier<ExportUiState> {
 /// Export service provider
 final exportServiceProvider = Provider<ExportService>((ref) {
   final configValue = ref.watch(appConfigProvider);
-  if (configValue is! String) {
-    throw StateError(
-        'appConfigProvider returned non-String type: ${configValue.runtimeType}. Expected a String baseUrl.');
-  }
   final config = configValue;
   if (config.isEmpty) {
     throw StateError(

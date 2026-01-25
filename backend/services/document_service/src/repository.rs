@@ -1,6 +1,6 @@
-use sqlx::{PgPool, FromRow};
-use uuid::Uuid;
 use chrono::NaiveDateTime;
+use sqlx::{FromRow, PgPool};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct DocumentRow {
@@ -143,13 +143,9 @@ impl DocumentRepository {
     pub async fn get_by_id(&self, id: &str) -> Result<Option<DocumentRow>, sqlx::Error> {
         let document_id = Uuid::parse_str(id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let document = sqlx::query_as!(
-            DocumentRow,
-            r#"SELECT * FROM documents WHERE id = $1"#,
-            document_id
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let document = sqlx::query_as!(DocumentRow, r#"SELECT * FROM documents WHERE id = $1"#, document_id)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(document)
     }
@@ -219,8 +215,8 @@ impl DocumentRepository {
 
         let documents = match parent_id {
             Some(parent_id_str) => {
-                let parent_uuid = Uuid::parse_str(parent_id_str)
-                    .map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+                let parent_uuid =
+                    Uuid::parse_str(parent_id_str).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
                 sqlx::query_as!(
                     DocumentRow,
                     r#"
@@ -237,7 +233,7 @@ impl DocumentRepository {
                 )
                 .fetch_all(&self.pool)
                 .await?
-            }
+            },
             None => {
                 sqlx::query_as!(
                     DocumentRow,
@@ -254,13 +250,13 @@ impl DocumentRepository {
                 )
                 .fetch_all(&self.pool)
                 .await?
-            }
+            },
         };
 
         let total = match parent_id {
             Some(parent_id_str) => {
-                let parent_uuid = Uuid::parse_str(parent_id_str)
-                    .map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
+                let parent_uuid =
+                    Uuid::parse_str(parent_id_str).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
                 sqlx::query!(
                     r#"
                     SELECT COUNT(*) as "count!" FROM documents
@@ -273,7 +269,7 @@ impl DocumentRepository {
                 .fetch_one(&self.pool)
                 .await?
                 .count
-            }
+            },
             None => {
                 sqlx::query!(
                     r#"
@@ -285,7 +281,7 @@ impl DocumentRepository {
                 .fetch_one(&self.pool)
                 .await?
                 .count
-            }
+            },
         };
 
         Ok((documents, total as i64))
@@ -325,13 +321,7 @@ impl DocumentRepository {
         .fetch_all(&self.pool)
         .await?
         .into_iter()
-        .filter_map(|row| {
-            Some((
-                row.id?,
-                row.title?,
-                row.level?,
-            ))
-        })
+        .filter_map(|row| Some((row.id?, row.title?, row.level?)))
         .collect();
 
         Ok(path)
@@ -411,7 +401,11 @@ impl DocumentRepository {
         Ok((versions, total as i64))
     }
 
-    pub async fn get_version(&self, document_id: &str, version_number: i32) -> Result<Option<DocumentVersionRow>, sqlx::Error> {
+    pub async fn get_version(
+        &self,
+        document_id: &str,
+        version_number: i32,
+    ) -> Result<Option<DocumentVersionRow>, sqlx::Error> {
         let doc_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
         let version = sqlx::query_as!(
@@ -460,13 +454,9 @@ impl DocumentRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        let document = sqlx::query_as!(
-            DocumentRow,
-            r#"SELECT * FROM documents WHERE id = $1"#,
-            doc_uuid
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let document = sqlx::query_as!(DocumentRow, r#"SELECT * FROM documents WHERE id = $1"#, doc_uuid)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(document)
     }
@@ -482,7 +472,8 @@ impl DocumentRepository {
         let from_content_row: Option<ContentRow> = sqlx::query_as!(
             ContentRow,
             r#"SELECT content FROM document_versions WHERE document_id = $1 AND version_number = $2"#,
-            doc_uuid, version_from
+            doc_uuid,
+            version_from
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -490,7 +481,8 @@ impl DocumentRepository {
         let to_content_row: Option<ContentRow> = sqlx::query_as!(
             ContentRow,
             r#"SELECT content FROM document_versions WHERE document_id = $1 AND version_number = $2"#,
-            doc_uuid, version_to
+            doc_uuid,
+            version_to
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -668,12 +660,9 @@ impl DocumentRepository {
     pub async fn delete_space(&self, space_id: &str) -> Result<bool, sqlx::Error> {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query!(
-            r#"DELETE FROM spaces WHERE id = $1"#,
-            space_uuid
-        )
-        .execute(&self.pool)
-        .await?;
+        let result = sqlx::query!(r#"DELETE FROM spaces WHERE id = $1"#, space_uuid)
+            .execute(&self.pool)
+            .await?;
 
         Ok(result.rows_affected() > 0)
     }
@@ -789,7 +778,8 @@ impl DocumentRepository {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query!(
+        let result = sqlx::query_as!(
+            (),
             r#"DELETE FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
             space_uuid,
             user_uuid
@@ -805,13 +795,9 @@ impl DocumentRepository {
     pub async fn get_comment(&self, comment_id: &str) -> Result<Option<CommentRow>, sqlx::Error> {
         let comment_uuid = Uuid::parse_str(comment_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let comment = sqlx::query_as!(
-            CommentRow,
-            r#"SELECT * FROM comments WHERE id = $1"#,
-            comment_uuid
-        )
-        .fetch_optional(&self.pool)
-        .await?;
+        let comment = sqlx::query_as!(CommentRow, r#"SELECT * FROM comments WHERE id = $1"#, comment_uuid)
+            .fetch_optional(&self.pool)
+            .await?;
 
         Ok(comment)
     }
@@ -824,7 +810,9 @@ impl DocumentRepository {
         offset: Option<i32>,
     ) -> Result<(Vec<CommentRow>, i64), sqlx::Error> {
         let document_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
-        let parent_uuid = parent_id.map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into()))).transpose()?;
+        let parent_uuid = parent_id
+            .map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into())))
+            .transpose()?;
 
         let limit_i64 = limit.unwrap_or(50) as i64;
         let offset_i64 = offset.unwrap_or(0) as i64;
@@ -884,7 +872,9 @@ impl DocumentRepository {
     ) -> Result<CommentRow, sqlx::Error> {
         let document_uuid = Uuid::parse_str(document_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let author_uuid = Uuid::parse_str(author_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
-        let parent_uuid = parent_id.map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into()))).transpose()?;
+        let parent_uuid = parent_id
+            .map(|s| Uuid::parse_str(s).map_err(|e| sqlx::Error::Decode(e.to_string().into())))
+            .transpose()?;
 
         let comment = sqlx::query_as!(
             CommentRow,
@@ -986,12 +976,9 @@ impl DocumentRepository {
         .await?;
 
         // Then delete the comment itself
-        let result = sqlx::query!(
-            r#"DELETE FROM comments WHERE id = $1"#,
-            comment_uuid
-        )
-        .execute(&mut *tx)
-        .await?;
+        let result = sqlx::query!(r#"DELETE FROM comments WHERE id = $1"#, comment_uuid)
+            .execute(&mut *tx)
+            .await?;
 
         tx.commit().await?;
 
