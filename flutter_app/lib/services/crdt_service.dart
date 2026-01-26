@@ -204,7 +204,7 @@ class CrdtService {
   }
 
   /// Emit update event
-  void _emitUpdate(String documentId, String field, event) {
+  void _emitUpdate(String documentId, String field, Object? event) {
     _updateController.add({
       'documentId': documentId,
       'field': field,

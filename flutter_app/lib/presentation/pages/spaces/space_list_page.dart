@@ -130,8 +130,8 @@ class SpaceListPage extends ConsumerWidget {
     ref.read(spaceProvider.notifier).selectSpace(space);
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => SpaceDetailPage(spaceId: space.id),
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => SpaceDetailPage(spaceId: space.id),
       ),
     );
   }
@@ -139,8 +139,8 @@ class SpaceListPage extends ConsumerWidget {
   void _openSettings(BuildContext context, Space space) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => SpaceSettingsPage(spaceId: space.id),
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => SpaceSettingsPage(spaceId: space.id),
       ),
     );
   }
@@ -153,7 +153,7 @@ class SpaceListPage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (BuildContext context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Create New Space'),
           content: SingleChildScrollView(
@@ -240,7 +240,7 @@ class SpaceListPage extends ConsumerWidget {
   void _confirmDelete(BuildContext context, WidgetRef ref, Space space) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Delete Space'),
         content: Text(
           'Are you sure you want to delete "${space.name}"? '

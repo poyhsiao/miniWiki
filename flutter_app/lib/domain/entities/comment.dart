@@ -3,6 +3,8 @@
 /// This is a pure domain entity that represents a comment
 /// in the miniWiki Knowledge Management Platform.
 class Comment {
+  static final Object _unset = Object();
+
   /// Unique identifier for the comment
   final String id;
 
@@ -61,8 +63,8 @@ class Comment {
     String? authorAvatar,
     String? content,
     bool? isResolved,
-    String? resolvedBy,
-    DateTime? resolvedAt,
+    Object? resolvedBy = _unset,
+    Object? resolvedAt = _unset,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -75,8 +77,8 @@ class Comment {
         authorAvatar: authorAvatar ?? this.authorAvatar,
         content: content ?? this.content,
         isResolved: isResolved ?? this.isResolved,
-        resolvedBy: resolvedBy ?? this.resolvedBy,
-        resolvedAt: resolvedAt ?? this.resolvedAt,
+        resolvedBy: identical(resolvedBy, _unset) ? this.resolvedBy : resolvedBy as String?,
+        resolvedAt: identical(resolvedAt, _unset) ? this.resolvedAt : resolvedAt as DateTime?,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -156,6 +158,16 @@ class Comment {
     if (identical(this, other)) return true;
     return other is Comment && other.id == id;
   }
+
+  /// Clears resolution information (for unresolveComment)
+  ///
+  /// Returns a new Comment with isResolved set to false
+  /// and resolvedBy/resolvedAt set to null.
+  Comment clearResolutionInfo() => copyWith(
+        isResolved: false,
+        resolvedBy: null,
+        resolvedAt: null,
+      );
 
   @override
   int get hashCode => id.hashCode;

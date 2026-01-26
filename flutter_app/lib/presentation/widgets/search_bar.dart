@@ -65,7 +65,7 @@ class WikiSearchBar extends StatelessWidget {
 
   void _navigateToSearch(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const SearchPage()),
+      MaterialPageRoute(builder: (BuildContext context) => const SearchPage()),
     );
   }
 

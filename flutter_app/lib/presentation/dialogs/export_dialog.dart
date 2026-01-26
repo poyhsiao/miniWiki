@@ -311,7 +311,7 @@ Future<void> showExportDialog({
 }) =>
     showDialog<void>(
       context: context,
-      builder: (context) => ExportDialog(
+      builder: (BuildContext context) => ExportDialog(
         documentId: documentId,
         documentTitle: documentTitle,
         onExportComplete: onExportComplete,

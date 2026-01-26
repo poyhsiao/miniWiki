@@ -138,7 +138,6 @@ class SyncStatusIndicator extends ConsumerWidget {
         break;
 
       case ss.SyncStatus.pending:
-      default:
         if (isOnline) {
           iconColor = onlineColor ?? Colors.green;
           iconData = Icons.cloud;
@@ -181,7 +180,6 @@ class SyncStatusIndicator extends ConsumerWidget {
         break;
 
       case ss.SyncStatus.pending:
-      default:
         if (syncState.isOnline) {
           statusText = 'Online';
           statusColor = onlineColor ?? Colors.green;
@@ -252,7 +250,6 @@ class SyncStatusIcon extends ConsumerWidget {
             ? 'Synced'
             : 'Offline - changes will sync when online';
       case ss.SyncStatus.pending:
-      default:
         return syncState.isOnline ? 'Online' : 'Offline';
     }
   }
@@ -283,7 +280,6 @@ class SyncStatusIcon extends ConsumerWidget {
         break;
 
       case ss.SyncStatus.pending:
-      default:
         if (isOnline) {
           iconColor = Colors.green;
           iconData = Icons.cloud;
@@ -403,7 +399,6 @@ class SyncStatusBanner extends ConsumerWidget {
         );
       case ss.SyncStatus.completed:
       case ss.SyncStatus.pending:
-      default:
         return (
           Icons.cloud,
           Colors.green,

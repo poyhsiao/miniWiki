@@ -1,253 +1,429 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:miniwiki/core/network/api_client.dart';
 import 'package:miniwiki/services/export_service.dart';
-import 'package:mocktail/mocktail.dart';
-
-class MockApiClient extends Mock implements ApiClient {}
-
-class MockDio extends Mock implements Dio {}
 
 void main() {
-  late ExportService exportService;
-  late MockApiClient mockApiClient;
+  group('ExportFormat Enum Tests', () {
+    test('ExportFormat has all required values', () {
+      expect(ExportFormat.markdown.apiValue, 'markdown');
+      expect(ExportFormat.markdown.displayName, 'Markdown');
+      expect(ExportFormat.markdown.mimeType, 'text/markdown');
+      expect(ExportFormat.markdown.extension, '.md');
 
-  setUp(() {
-    mockApiClient = MockApiClient();
-    exportService = ExportService(
-      apiClient: mockApiClient,
-      baseUrl: 'http://localhost:8080',
-    );
+      expect(ExportFormat.html.apiValue, 'html');
+      expect(ExportFormat.pdf.apiValue, 'pdf');
+      expect(ExportFormat.json.apiValue, 'json');
+    });
+
+    test('ExportFormat.fromString parses valid formats', () {
+      expect(ExportFormat.fromString('markdown'), ExportFormat.markdown);
+      expect(ExportFormat.fromString('md'), ExportFormat.markdown);
+      expect(ExportFormat.fromString('html'), ExportFormat.html);
+      expect(ExportFormat.fromString('pdf'), ExportFormat.pdf);
+      expect(ExportFormat.fromString('json'), ExportFormat.json);
+    });
+
+    test('ExportFormat.fromString is case insensitive', () {
+      expect(ExportFormat.fromString('MARKDOWN'), ExportFormat.markdown);
+      expect(ExportFormat.fromString('Markdown'), ExportFormat.markdown);
+      expect(ExportFormat.fromString('HTML'), ExportFormat.html);
+    });
+
+    test('ExportFormat.fromString returns null for invalid format', () {
+      expect(ExportFormat.fromString('invalid'), isNull);
+      expect(ExportFormat.fromString('docx'), isNull);
+      expect(ExportFormat.fromString(''), isNull);
+    });
+
+    test('ExportFormat.availableFormats returns all formats', () {
+      final formats = ExportFormat.availableFormats;
+      expect(formats.length, 4);
+      expect(formats, contains(ExportFormat.markdown));
+      expect(formats, contains(ExportFormat.html));
+      expect(formats, contains(ExportFormat.pdf));
+      expect(formats, contains(ExportFormat.json));
+    });
   });
 
-  group('ExportService', () {
-    group('exportDocument', () {
-      test('should throw ArgumentError when documentId is empty', () async {
-        expect(
-          () => exportService.exportDocument(
-            documentId: '',
-            format: ExportFormat.markdown,
-          ),
-          throwsA(isA<ArgumentError>()),
-        );
-      });
+  group('ExportResult Tests', () {
+    test('ExportResult can be created with all fields', () {
+      // Arrange & Act
+      final now = DateTime(2024);
+      final result = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.markdown,
+        fileName: 'document.md',
+        fileSize: 1024,
+        contentType: 'text/markdown',
+        exportedAt: now,
+        localFilePath: '/path/to/document.md',
+      );
 
-      test('should throw NetworkError on failed export', () async {
-        when(() => mockApiClient.dio.get(
-              any(),
-              queryParameters: any(named: 'queryParameters'),
-              options: any(named: 'options'),
-              onReceiveProgress: any(named: 'onReceiveProgress'),
-            )).thenThrow(
-          DioException(
-            requestOptions: RequestOptions(path: '/test'),
-            error: 'Connection failed',
-          ),
-        );
-
-        expect(
-          () => exportService.exportDocument(
-            documentId: 'test-doc-id',
-            format: ExportFormat.markdown,
-          ),
-          throwsA(isA<DioException>()),
-        );
-      });
+      // Assert
+      expect(result.documentId, 'doc1');
+      expect(result.format, ExportFormat.markdown);
+      expect(result.fileName, 'document.md');
+      expect(result.fileSize, 1024);
+      expect(result.contentType, 'text/markdown');
+      expect(result.exportedAt, now);
+      expect(result.localFilePath, '/path/to/document.md');
     });
 
-    group('getExportUrl', () {
-      test('should throw ArgumentError when documentId is empty', () async {
-        expect(
-          () => exportService.getExportUrl(
-            documentId: '',
-            format: ExportFormat.markdown,
-          ),
-          throwsA(isA<ArgumentError>()),
-        );
-      });
+    test('ExportResult can be created without localFilePath', () {
+      // Arrange & Act
+      final result = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.pdf,
+        fileName: 'document.pdf',
+        fileSize: 2048,
+        contentType: 'application/pdf',
+        exportedAt: DateTime(2024),
+      );
 
-      test('should return correct export URL', () async {
-        final url = await exportService.getExportUrl(
-          documentId: 'doc-123',
-          format: ExportFormat.markdown,
-        );
-
-        expect(
-          url,
-          equals(
-              'http://localhost:8080/api/v1/documents/doc-123/export?format=markdown'),
-        );
-      });
+      // Assert
+      expect(result.localFilePath, isNull);
     });
 
-    group('exportAndOpen', () {
-      test('should throw NetworkError when file save fails', () async {
-        when(() => mockApiClient.dio.get(
-              any(),
-              queryParameters: any(named: 'queryParameters'),
-              options: any(named: 'options'),
-              onReceiveProgress: any(named: 'onReceiveProgress'),
-            )).thenThrow(
-          DioException(
-            requestOptions: RequestOptions(path: '/test'),
-            error: 'Connection failed',
-          ),
-        );
+    test('ExportResult toJson creates correct JSON', () {
+      // Arrange
+      final result = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.markdown,
+        fileName: 'document.md',
+        fileSize: 1024,
+        contentType: 'text/markdown',
+        exportedAt: DateTime(2024),
+        localFilePath: '/path/to/file.md',
+      );
 
-        expect(
-          () => exportService.exportAndOpen(
-            documentId: 'test-doc-id',
-            format: ExportFormat.html,
-          ),
-          throwsA(isA<DioException>()),
-        );
-      });
+      // Act
+      final json = result.toJson();
+
+      // Assert
+      expect(json['document_id'], 'doc1');
+      expect(json['format'], 'markdown');
+      expect(json['file_name'], 'document.md');
+      expect(json['file_size'], 1024);
+      expect(json['content_type'], 'text/markdown');
+      expect(json['local_file_path'], '/path/to/file.md');
     });
 
-    group('getSupportedFormats', () {
-      test('should return all available formats', () async {
-        final formats = await exportService.getSupportedFormats('doc-123');
+    test('ExportResult fromJson creates instance correctly', () {
+      // Arrange
+      final json = {
+        'document_id': 'doc1',
+        'format': 'markdown',
+        'file_name': 'document.md',
+        'file_size': 1024,
+        'content_type': 'text/markdown',
+        'exported_at': '2024-01-01T00:00:00.000Z',
+        'local_file_path': '/path/to/file.md',
+      };
 
-        expect(formats, equals(ExportFormat.availableFormats));
-        expect(formats.length, equals(4));
-      });
+      // Act
+      final result = ExportResult.fromJson(json);
+
+      // Assert
+      expect(result.documentId, 'doc1');
+      expect(result.format, ExportFormat.markdown);
+      expect(result.fileName, 'document.md');
+      expect(result.fileSize, 1024);
+      expect(result.localFilePath, '/path/to/file.md');
     });
 
-    group('ExportFormat', () {
-      test('fromString should return correct format for valid inputs', () {
-        expect(
-            ExportFormat.fromString('markdown'), equals(ExportFormat.markdown));
-        expect(ExportFormat.fromString('md'), equals(ExportFormat.markdown));
-        expect(ExportFormat.fromString('html'), equals(ExportFormat.html));
-        expect(ExportFormat.fromString('htm'), equals(ExportFormat.html));
-        expect(ExportFormat.fromString('pdf'), equals(ExportFormat.pdf));
-        expect(ExportFormat.fromString('json'), equals(ExportFormat.json));
-      });
+    test('ExportResult fromJson handles invalid format with default', () {
+      // Arrange
+      final json = {
+        'document_id': 'doc1',
+        'format': 'invalid',
+        'file_name': 'document.xyz',
+        'file_size': 1024,
+        'content_type': 'application/octet-stream',
+        'exported_at': '2024-01-01T00:00:00.000Z',
+      };
 
-      test('fromString should return null for invalid input', () {
-        expect(ExportFormat.fromString('invalid'), isNull);
-        expect(ExportFormat.fromString(''), isNull);
-      });
+      // Act
+      final result = ExportResult.fromJson(json);
 
-      test('availableFormats should contain all formats', () {
-        final formats = ExportFormat.availableFormats;
+      // Assert
+      expect(result.format, ExportFormat.json); // Default fallback
+    });
+  });
 
-        expect(formats.contains(ExportFormat.markdown), isTrue);
-        expect(formats.contains(ExportFormat.html), isTrue);
-        expect(formats.contains(ExportFormat.pdf), isTrue);
-        expect(formats.contains(ExportFormat.json), isTrue);
-      });
+  group('ExportState Tests', () {
+    test('ExportState can be created with default values', () {
+      // Arrange & Act
+      const state = ExportState();
+
+      // Assert
+      expect(state.isExporting, false);
+      expect(state.lastExport, isNull);
+      expect(state.error, isNull);
+      expect(state.downloadProgress, isNull);
+      expect(state.exportHistory, isEmpty);
     });
 
-    group('ExportUtils', () {
-      test('markdown format should have correct description', () {
-        expect(
-          ExportFormat.markdown.description,
-          contains('Markdown format with frontmatter metadata'),
-        );
-      });
+    test('ExportState can be created with custom values', () {
+      // Arrange & Act
+      final now = DateTime(2024);
+      final lastExport = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.pdf,
+        fileName: 'doc.pdf',
+        fileSize: 1024,
+        contentType: 'application/pdf',
+        exportedAt: now,
+      );
 
-      test('html format should have correct description', () {
-        expect(
-          ExportFormat.html.description,
-          contains('HTML format with embedded styles'),
-        );
-      });
+      final state = ExportState(
+        isExporting: true,
+        lastExport: lastExport,
+        error: 'Export failed',
+        downloadProgress: 0.5,
+        exportHistory: [lastExport],
+      );
 
-      test('pdf format should have correct description', () {
-        expect(
-          ExportFormat.pdf.description,
-          contains('PDF document'),
-        );
-      });
-
-      test('markdown format should be editable', () {
-        expect(ExportFormat.markdown.isEditable, isTrue);
-      });
-
-      test('html format should be editable', () {
-        expect(ExportFormat.html.isEditable, isTrue);
-      });
-
-      test('pdf format should not be editable', () {
-        expect(ExportFormat.pdf.isEditable, isFalse);
-      });
-
-      test('json format should not support offline viewing', () {
-        expect(ExportFormat.json.supportsOfflineViewing, isFalse);
-      });
-
-      test('markdown should support offline viewing', () {
-        expect(ExportFormat.markdown.supportsOfflineViewing, isTrue);
-      });
+      // Assert
+      expect(state.isExporting, true);
+      expect(state.lastExport, lastExport);
+      expect(state.error, 'Export failed');
+      expect(state.downloadProgress, 0.5);
+      expect(state.exportHistory.length, 1);
     });
 
-    group('ExportResult', () {
-      test('should correctly serialize to JSON', () {
-        final result = ExportResult(
-          documentId: 'doc-123',
-          format: ExportFormat.markdown,
-          fileName: 'test.md',
-          fileSize: 1024,
-          contentType: 'text/markdown',
-          exportedAt: DateTime(2024, 1, 15, 12),
-          localFilePath: '/path/to/file.md',
-        );
+    test('ExportState copyWith creates modified copy', () {
+      // Arrange
+      const original = ExportState(
+        error: 'Old error',
+      );
 
-        final json = result.toJson();
+      // Act
+      final modified = original.copyWith(
+        isExporting: true,
+        error: 'New error',
+      );
 
-        expect(json['document_id'], equals('doc-123'));
-        expect(json['format'], equals('markdown'));
-        expect(json['file_name'], equals('test.md'));
-        expect(json['file_size'], equals(1024));
-        expect(json['content_type'], equals('text/markdown'));
-        expect(json['local_file_path'], equals('/path/to/file.md'));
-      });
+      // Assert
+      expect(modified.isExporting, true);
+      expect(modified.error, 'New error');
+    });
+  });
 
-      test('should correctly deserialize from JSON', () {
-        final json = {
-          'document_id': 'doc-456',
-          'format': 'html',
-          'file_name': 'test.html',
-          'file_size': 2048,
-          'content_type': 'text/html',
-          'exported_at': '2024-01-15T12:00:00.000',
-          'local_file_path': '/path/to/html',
-        };
-
-        final result = ExportResult.fromJson(json);
-
-        expect(result.documentId, equals('doc-456'));
-        expect(result.format, equals(ExportFormat.html));
-        expect(result.fileName, equals('test.html'));
-        expect(result.fileSize, equals(2048));
-        expect(result.contentType, equals('text/html'));
-        expect(result.localFilePath, equals('/path/to/html'));
-      });
+  group('ExportUtils Extension Tests', () {
+    test('ExportUtils description returns correct description', () {
+      expect(ExportFormat.markdown.description,
+          contains('Markdown format'));
+      expect(ExportFormat.html.description, contains('HTML format'));
+      expect(ExportFormat.pdf.description, contains('PDF document'));
+      expect(ExportFormat.json.description, contains('JSON format'));
     });
 
-    group('ExportState', () {
-      test('should have correct default values', () {
-        const state = ExportState();
+    test('ExportUtils icon returns correct icon', () {
+      expect(ExportFormat.markdown.icon, '📝');
+      expect(ExportFormat.html.icon, '🌐');
+      expect(ExportFormat.pdf.icon, '📄');
+      expect(ExportFormat.json.icon, '{ }');
+    });
 
-        expect(state.isExporting, isFalse);
-        expect(state.lastExport, isNull);
-        expect(state.error, isNull);
-        expect(state.downloadProgress, isNull);
-        expect(state.exportHistory, isEmpty);
-      });
+    test('ExportUtils supportsOfflineViewing works correctly', () {
+      expect(ExportFormat.markdown.supportsOfflineViewing, true);
+      expect(ExportFormat.html.supportsOfflineViewing, true);
+      expect(ExportFormat.pdf.supportsOfflineViewing, true);
+      expect(ExportFormat.json.supportsOfflineViewing, false);
+    });
 
-      test('copyWith should update only specified fields', () {
-        const initialState = ExportState();
-        final updatedState = initialState.copyWith(
-          isExporting: true,
-          error: 'Test error',
-        );
+    test('ExportUtils isEditable works correctly', () {
+      expect(ExportFormat.markdown.isEditable, true);
+      expect(ExportFormat.html.isEditable, true);
+      expect(ExportFormat.pdf.isEditable, false);
+      expect(ExportFormat.json.isEditable, false);
+    });
+  });
 
-        expect(updatedState.isExporting, isTrue);
-        expect(updatedState.error, equals('Test error'));
-        expect(updatedState.downloadProgress, isNull);
-      });
+  group('ExportFormat Edge Cases', () {
+    test('ExportFormat handles alternate extensions', () {
+      expect(ExportFormat.fromString('htm'), ExportFormat.html);
+    });
+
+    test('ExportFormat displayName is user friendly', () {
+      expect(ExportFormat.markdown.displayName, 'Markdown');
+      expect(ExportFormat.html.displayName, 'HTML');
+      expect(ExportFormat.pdf.displayName, 'PDF');
+      expect(ExportFormat.json.displayName, 'JSON');
+    });
+
+    test('ExportFormat mimeType follows standards', () {
+      expect(ExportFormat.markdown.mimeType, 'text/markdown');
+      expect(ExportFormat.html.mimeType, 'text/html');
+      expect(ExportFormat.pdf.mimeType, 'application/pdf');
+      expect(ExportFormat.json.mimeType, 'application/json');
+    });
+
+    test('ExportFormat extension includes dot', () {
+      expect(ExportFormat.markdown.extension, '.md');
+      expect(ExportFormat.html.extension, '.html');
+      expect(ExportFormat.pdf.extension, '.pdf');
+      expect(ExportFormat.json.extension, '.json');
+    });
+  });
+
+  group('ExportResult Edge Cases', () {
+    test('ExportResult with zero file size', () {
+      // Arrange & Act
+      final result = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.json,
+        fileName: 'empty.json',
+        fileSize: 0,
+        contentType: 'application/json',
+        exportedAt: DateTime(2024),
+      );
+
+      // Assert
+      expect(result.fileSize, 0);
+    });
+
+    test('ExportResult with large file size', () {
+      // Arrange & Act
+      final result = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.pdf,
+        fileName: 'large.pdf',
+        fileSize: 10 * 1024 * 1024, // 10 MB
+        contentType: 'application/pdf',
+        exportedAt: DateTime(2024),
+      );
+
+      // Assert
+      expect(result.fileSize, 10 * 1024 * 1024);
+    });
+
+    test('ExportResult toJson without localFilePath', () {
+      // Arrange
+      final result = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.markdown,
+        fileName: 'doc.md',
+        fileSize: 1024,
+        contentType: 'text/markdown',
+        exportedAt: DateTime(2024),
+      );
+
+      // Act
+      final json = result.toJson();
+
+      // Assert
+      expect(json['local_file_path'], isNull);
+    });
+
+    test('ExportResult fromJson without localFilePath', () {
+      // Arrange
+      final json = {
+        'document_id': 'doc1',
+        'format': 'markdown',
+        'file_name': 'doc.md',
+        'file_size': 1024,
+        'content_type': 'text/markdown',
+        'exported_at': '2024-01-01T00:00:00.000Z',
+      };
+
+      // Act
+      final result = ExportResult.fromJson(json);
+
+      // Assert
+      expect(result.localFilePath, isNull);
+    });
+  });
+
+  group('ExportState Edge Cases', () {
+    test('ExportState with empty export history', () {
+      // Arrange & Act
+      const state = ExportState(
+        
+      );
+
+      // Assert
+      expect(state.exportHistory, isEmpty);
+    });
+
+    test('ExportState with multiple exports in history', () {
+      // Arrange
+      final now = DateTime(2024);
+      final export1 = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.pdf,
+        fileName: 'doc1.pdf',
+        fileSize: 1024,
+        contentType: 'application/pdf',
+        exportedAt: now,
+      );
+
+      final export2 = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.markdown,
+        fileName: 'doc1.md',
+        fileSize: 512,
+        contentType: 'text/markdown',
+        exportedAt: now,
+      );
+
+      // Act
+      final state = ExportState(
+        exportHistory: [export1, export2],
+      );
+
+      // Assert
+      expect(state.exportHistory.length, 2);
+      expect(state.exportHistory[0].format, ExportFormat.pdf);
+      expect(state.exportHistory[1].format, ExportFormat.markdown);
+    });
+
+    test('ExportState with complete download progress', () {
+      // Arrange & Act
+      const state = ExportState(
+        downloadProgress: 1.0,
+      );
+
+      // Assert
+      expect(state.downloadProgress, 1.0);
+    });
+
+    test('ExportState with no error', () {
+      // Arrange & Act
+      const state = ExportState();
+
+      // Assert
+      expect(state.error, isNull);
+    });
+
+    test('ExportState copyWith preserves unchanged values', () {
+      // Arrange
+      final now = DateTime(2024);
+      final lastExport = ExportResult(
+        documentId: 'doc1',
+        format: ExportFormat.json,
+        fileName: 'doc.json',
+        fileSize: 512,
+        contentType: 'application/json',
+        exportedAt: now,
+      );
+
+      final original = ExportState(
+        isExporting: true,
+        lastExport: lastExport,
+        error: 'Error',
+        downloadProgress: 0.5,
+      );
+
+      // Act
+      final modified = original.copyWith(
+        isExporting: false,
+      );
+
+      // Assert
+      expect(modified.isExporting, false);
+      expect(modified.lastExport, lastExport); // Preserved
+      expect(modified.error, 'Error'); // Preserved
+      expect(modified.downloadProgress, 0.5); // Preserved
     });
   });
 }

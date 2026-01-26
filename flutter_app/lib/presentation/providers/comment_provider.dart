@@ -55,6 +55,8 @@ class CommentEditState {
   final bool isSubmitting;
   final String? error;
 
+  static const _unset = '_unset_sentinel_value_';
+
   const CommentEditState({
     this.content = '',
     this.isSubmitting = false,
@@ -64,12 +66,12 @@ class CommentEditState {
   CommentEditState copyWith({
     String? content,
     bool? isSubmitting,
-    String? error,
+    Object? error = _unset,
   }) =>
       CommentEditState(
         content: content ?? this.content,
         isSubmitting: isSubmitting ?? this.isSubmitting,
-        error: error ?? this.error,
+        error: error == _unset ? this.error : error as String?,
       );
 
   bool get isValid => content.trim().isNotEmpty;

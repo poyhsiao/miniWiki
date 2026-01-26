@@ -152,7 +152,7 @@ class ExportService {
     }
 
     // Call the export API
-    final response = await apiClient.dio.get(
+    final response = await apiClient.dio.get<dynamic>(
       '$baseUrl/api/v1/documents/$documentId/export',
       queryParameters: {'format': format.apiValue},
       options: Options(

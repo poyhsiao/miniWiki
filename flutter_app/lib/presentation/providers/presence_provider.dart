@@ -37,8 +37,8 @@ class PresenceState {
 
 class PresenceNotifier extends StateNotifier<PresenceState> {
   final WebSocketService _wsService;
-  StreamSubscription? _presenceSubscription;
-  StreamSubscription? _messageSubscription;
+  StreamSubscription<List<ActiveUser>>? _presenceSubscription;
+  StreamSubscription<dynamic>? _messageSubscription;
 
   PresenceNotifier(this._wsService) : super(PresenceState()) {
     _setupPresenceListener();
@@ -52,7 +52,7 @@ class PresenceNotifier extends StateNotifier<PresenceState> {
           isLoading: false,
         );
       },
-      onError: (error) {
+      onError: (Object error) {
         state = state.copyWith(
           error: error.toString(),
           isLoading: false,

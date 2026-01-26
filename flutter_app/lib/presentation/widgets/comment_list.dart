@@ -7,10 +7,10 @@ import 'package:miniwiki/domain/entities/comment.dart';
 class CommentList extends StatelessWidget {
   final List<Comment> comments;
   final String currentUserId;
-  final Function(Comment) onReply;
-  final Function(Comment) onResolve;
-  final Function(Comment) onUnresolve;
-  final Function(Comment) onDelete;
+  final void Function(Comment) onReply;
+  final void Function(Comment) onResolve;
+  final void Function(Comment) onUnresolve;
+  final void Function(Comment) onDelete;
   final bool isLoading;
 
   const CommentList({
@@ -83,10 +83,10 @@ class CommentList extends StatelessWidget {
     super.debugFillProperties(properties);
     properties.add(IterableProperty<Comment>('comments', comments));
     properties.add(StringProperty('currentUserId', currentUserId));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onReply', onReply));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onResolve', onResolve));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onUnresolve', onUnresolve));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onDelete', onDelete));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onReply', onReply));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onResolve', onResolve));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onUnresolve', onUnresolve));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onDelete', onDelete));
     properties.add(DiagnosticsProperty<bool>('isLoading', isLoading));
   }
 }
@@ -96,10 +96,10 @@ class CommentThread extends StatelessWidget {
   final Comment comment;
   final List<Comment> replies;
   final String currentUserId;
-  final Function(Comment) onReply;
-  final Function(Comment) onResolve;
-  final Function(Comment) onUnresolve;
-  final Function(Comment) onDelete;
+  final void Function(Comment) onReply;
+  final void Function(Comment) onResolve;
+  final void Function(Comment) onUnresolve;
+  final void Function(Comment) onDelete;
 
   const CommentThread({
     required this.comment, required this.replies, required this.currentUserId, required this.onReply, required this.onResolve, required this.onUnresolve, required this.onDelete, super.key,
@@ -344,9 +344,9 @@ class CommentThread extends StatelessWidget {
     properties.add(DiagnosticsProperty<Comment>('comment', comment));
     properties.add(IterableProperty<Comment>('replies', replies));
     properties.add(StringProperty('currentUserId', currentUserId));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onReply', onReply));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onResolve', onResolve));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onUnresolve', onUnresolve));
-    properties.add(ObjectFlagProperty<Function(Comment)>.has('onDelete', onDelete));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onReply', onReply));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onResolve', onResolve));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onUnresolve', onUnresolve));
+    properties.add(ObjectFlagProperty<void Function(Comment)>.has('onDelete', onDelete));
   }
 }

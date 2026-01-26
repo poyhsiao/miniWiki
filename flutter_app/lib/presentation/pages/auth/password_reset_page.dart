@@ -37,7 +37,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(seconds: 1));
 
     setState(() {
       _currentStep = 1;
@@ -55,7 +55,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(seconds: 1));
 
     setState(() {
       _currentStep = 1;
@@ -76,7 +76,7 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Builder(
-                      builder: (context) => Stepper(
+                      builder: (BuildContext context) => Stepper(
                           currentStep: _currentStep,
                           steps: [
                             Step(

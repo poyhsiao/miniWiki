@@ -124,8 +124,8 @@ class DocumentListPage extends ConsumerWidget {
   void _openDocument(BuildContext context, Document document) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => DocumentEditorPage(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => DocumentEditorPage(
           documentId: document.id,
           spaceId: document.spaceId,
         ),
@@ -138,7 +138,7 @@ class DocumentListPage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Create Document'),
         content: TextField(
           controller: titleController,
@@ -172,8 +172,8 @@ class DocumentListPage extends ConsumerWidget {
               if (context.mounted) {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => DocumentEditorPage(
+                  MaterialPageRoute<void>(
+                    builder: (BuildContext context) => DocumentEditorPage(
                       documentId: document.id,
                       spaceId: spaceId,
                     ),
@@ -191,7 +191,7 @@ class DocumentListPage extends ConsumerWidget {
   void _confirmDelete(BuildContext context, WidgetRef ref, Document document) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Delete Document'),
         content: Text('Are you sure you want to delete "${document.title}"?'),
         actions: [

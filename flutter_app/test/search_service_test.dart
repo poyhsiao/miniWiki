@@ -127,7 +127,7 @@ void main() {
         mockRepository.shouldThrow = true;
         mockRepository.dioError = DioException(
           requestOptions: RequestOptions(path: '/search'),
-          response: Response(
+          response: Response<dynamic>(
             requestOptions: RequestOptions(path: '/search'),
             statusCode: 500,
           ),

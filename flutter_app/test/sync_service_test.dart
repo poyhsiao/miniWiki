@@ -383,4 +383,105 @@ void main() {
       expect(modified.skippedEntities[0]['entityType'], 'comment');
     });
   });
+
+  group('SyncLogger Tests', () {
+    test('SyncLogger creates instance with tag', () {
+      final logger = ss.SyncLogger('TestTag');
+      expect(logger, isNotNull);
+    });
+
+    test('SyncLogger warns', () {
+      final logger = ss.SyncLogger('WarnTest');
+      // Should not throw
+      logger.warn('Test warning');
+    });
+
+    test('SyncLogger logs info', () {
+      final logger = ss.SyncLogger('InfoTest');
+      // Should not throw
+      logger.info('Test info');
+    });
+
+    test('SyncLogger logs error', () {
+      final logger = ss.SyncLogger('ErrorTest');
+      // Should not throw
+      logger.error('Test error');
+    });
+  });
+
+  group('SyncStatus Enum Tests', () {
+    test('SyncStatus has correct index values', () {
+      expect(ss.SyncStatus.pending.index, 0);
+      expect(ss.SyncStatus.syncing.index, 1);
+      expect(ss.SyncStatus.completed.index, 2);
+      expect(ss.SyncStatus.failed.index, 3);
+    });
+  });
+
+  group('SyncEventType Enum Tests', () {
+    test('SyncEventType has correct index values', () {
+      expect(ss.SyncEventType.started.index, 0);
+      expect(ss.SyncEventType.success.index, 1);
+      expect(ss.SyncEventType.error.index, 2);
+      expect(ss.SyncEventType.completed.index, 3);
+      expect(ss.SyncEventType.online.index, 4);
+      expect(ss.SyncEventType.offline.index, 5);
+      expect(ss.SyncEventType.queueProcessed.index, 6);
+    });
+  });
+
+  group('SyncResult Field Matching Tests', () {
+    test('SyncResult with same values should have matching fields', () {
+      const result1 = ss.SyncResult(success: true, documentsSynced: 5);
+      const result2 = ss.SyncResult(success: true, documentsSynced: 5);
+
+      // SyncResult doesn't override ==, so we check field-by-field
+      expect(result1.success, equals(result2.success));
+      expect(result1.documentsSynced, equals(result2.documentsSynced));
+      expect(result1.errorMessage, equals(result2.errorMessage));
+    });
+
+    test('SyncResult with different values should have different fields', () {
+      const result1 = ss.SyncResult(success: true, documentsSynced: 5);
+      const result2 = ss.SyncResult(success: false, documentsSynced: 3);
+
+      expect(result1.success, isNot(equals(result2.success)));
+      expect(result1.documentsSynced, isNot(equals(result2.documentsSynced)));
+    });
+  });
+
+  group('SyncEvent Field Matching Tests', () {
+    test('SyncEvent with same values should have matching fields', () {
+      final event1 = ss.SyncEvent(
+        type: ss.SyncEventType.started,
+        timestamp: DateTime(2024),
+      );
+      final event2 = ss.SyncEvent(
+        type: ss.SyncEventType.started,
+        timestamp: DateTime(2024),
+      );
+
+      // SyncEvent doesn't override ==, so we check field-by-field
+      expect(event1.type, equals(event2.type));
+      expect(event1.timestamp, equals(event2.timestamp));
+      expect(event1.documentId, equals(event2.documentId));
+      expect(event1.message, equals(event2.message));
+    });
+
+    test('SyncEvent with different values should have different fields', () {
+      final event1 = ss.SyncEvent(
+        type: ss.SyncEventType.started,
+        timestamp: DateTime(2024),
+        documentId: 'doc-1',
+      );
+      final event2 = ss.SyncEvent(
+        type: ss.SyncEventType.success,
+        timestamp: DateTime(2024),
+        documentId: 'doc-2',
+      );
+
+      expect(event1.type, isNot(equals(event2.type)));
+      expect(event1.documentId, isNot(equals(event2.documentId)));
+    });
+  });
 }
