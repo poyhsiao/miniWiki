@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   // Setup mock preferences for all tests
   setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
     SharedPreferences.setMockInitialValues({});
   });
 

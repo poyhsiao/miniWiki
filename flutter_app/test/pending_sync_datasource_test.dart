@@ -4,6 +4,7 @@ import 'package:miniwiki/data/datasources/pending_sync_datasource.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   // Setup mock preferences
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
