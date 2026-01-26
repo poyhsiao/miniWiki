@@ -23,11 +23,11 @@ void main() {
     test('DocumentSyncState can be created with required fields', () {
       final state = DocumentSyncState(
         documentId: 'doc1',
-        lastSyncedAt: DateTime(2025, 1, 1, 12, 0),
+        lastSyncedAt: DateTime(2025, 1, 1, 12),
       );
 
       expect(state.documentId, 'doc1');
-      expect(state.lastSyncedAt, DateTime(2025, 1, 1, 12, 0));
+      expect(state.lastSyncedAt, DateTime(2025, 1, 1, 12));
       expect(state.status, SyncStatus.idle);
       expect(state.errorMessage, isNull);
     });
@@ -35,9 +35,8 @@ void main() {
     test('DocumentSyncState can be created with all fields', () {
       final state = DocumentSyncState(
         documentId: 'doc1',
-        lastSyncedAt: DateTime(2025, 1, 1, 12, 0),
+        lastSyncedAt: DateTime(2025, 1, 1, 12),
         status: SyncStatus.success,
-        errorMessage: null,
       );
 
       expect(state.status, SyncStatus.success);
@@ -46,7 +45,7 @@ void main() {
     test('DocumentSyncState can be created with error', () {
       final state = DocumentSyncState(
         documentId: 'doc1',
-        lastSyncedAt: DateTime(2025, 1, 1, 12, 0),
+        lastSyncedAt: DateTime(2025, 1, 1, 12),
         status: SyncStatus.error,
         errorMessage: 'Sync failed',
       );
@@ -58,7 +57,7 @@ void main() {
     test('DocumentSyncState copyWith updates specified fields', () {
       final state = DocumentSyncState(
         documentId: 'doc1',
-        lastSyncedAt: DateTime(2025, 1, 1, 12, 0),
+        lastSyncedAt: DateTime(2025, 1, 1, 12),
       );
 
       final updated = state.copyWith(
@@ -75,7 +74,7 @@ void main() {
     test('DocumentSyncState copyWith updates error message', () {
       final state = DocumentSyncState(
         documentId: 'doc1',
-        lastSyncedAt: DateTime(2025, 1, 1, 12, 0),
+        lastSyncedAt: DateTime(2025, 1, 1, 12),
         status: SyncStatus.error,
         errorMessage: 'Error',
       );
@@ -110,10 +109,10 @@ void main() {
       final now = DateTime.now();
       final doc = CrdtDocument(
         id: 'doc1',
-        doc: {'type': 'Y.Doc'},
+        doc: <String, dynamic>{'type': 'Y.Doc'},
         text: 'Hello world',
-        arrays: {'items': []},
-        maps: {'meta': {}},
+        arrays: <String, dynamic>{'items': <dynamic>[]},
+        maps: <String, dynamic>{'meta': <String, dynamic>{}},
         lastSyncedAt: now,
         isDirty: true,
       );
@@ -141,7 +140,7 @@ void main() {
 
   group('CrdtService - SyncResult Tests', () {
     test('SyncResult can be created with success', () {
-      final result = const SyncResult(
+      const result = SyncResult(
         success: true,
         documentsSynced: 5,
       );
@@ -152,10 +151,9 @@ void main() {
     });
 
     test('SyncResult can be created with failure', () {
-      final result = const SyncResult(
+      const result = SyncResult(
         success: false,
         errorMessage: 'Network error',
-        documentsSynced: 0,
       );
 
       expect(result.success, false);
@@ -163,7 +161,7 @@ void main() {
     });
 
     test('SyncResult default documentsSynced is 0', () {
-      final result = const SyncResult(success: true);
+      const result = SyncResult(success: true);
       expect(result.documentsSynced, 0);
     });
   });

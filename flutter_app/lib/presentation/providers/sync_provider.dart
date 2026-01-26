@@ -66,8 +66,8 @@ class SyncStateNotifier extends StateNotifier<SyncState> {
   final ss.SyncService _syncService;
   final OfflineService _offlineService;
 
-  StreamSubscription? _syncEventsSubscription;
-  StreamSubscription? _offlineStateSubscription;
+  StreamSubscription<ss.SyncEvent>? _syncEventsSubscription;
+  StreamSubscription<OfflineServiceState>? _offlineStateSubscription;
 
   SyncStateNotifier({
     required ss.SyncService syncService,

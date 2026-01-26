@@ -191,7 +191,7 @@ void main() {
 
       // List top-level comments (setUp created 2, plus the parent = 3 total)
       final topLevelResult =
-          await service.listComments(documentId: 'doc1', parentId: null);
+          await service.listComments(documentId: 'doc1');
       expect(topLevelResult.comments.length, 3);
 
       // List replies
@@ -267,7 +267,6 @@ void main() {
       final comment = await service.createComment(
         documentId: 'doc1',
         content: 'Top-level comment',
-        parentId: null,
       );
 
       expect(comment.parentId, isNull);
@@ -640,7 +639,7 @@ void main() {
 
       // List top-level comments (should only include parent)
       final allComments =
-          await service.listComments(documentId: 'doc1', parentId: null);
+          await service.listComments(documentId: 'doc1');
       expect(allComments.comments.length, 1);
 
       // List replies only
@@ -664,7 +663,7 @@ void main() {
 
       // First page
       final page1 =
-          await service.listComments(documentId: 'doc1', limit: 20, offset: 0);
+          await service.listComments(documentId: 'doc1', limit: 20);
       expect(page1.comments.length, 20);
       expect(page1.total, 100);
       expect(page1.hasMore, true);
@@ -798,8 +797,8 @@ void main() {
     });
 
     test('hasMore handles empty result', () {
-      final result = CommentListResult(
-        comments: const [],
+      const result = CommentListResult(
+        comments: [],
         total: 0,
         limit: 10,
         offset: 0,
@@ -811,7 +810,7 @@ void main() {
 
   group('Comment - Entity Operations', () {
     test('Comment copyWith updates all fields independently', () {
-      final now = DateTime(2025, 1, 1, 12, 0);
+      final now = DateTime(2025, 1, 1, 12);
       final comment = Comment(
         id: 'comment1',
         documentId: 'doc1',
@@ -846,7 +845,7 @@ void main() {
         content: 'Original',
       );
 
-      final updated = comment.copyWith(content: null);
+      final updated = comment.copyWith();
 
       expect(updated.content, 'Original');
     });
@@ -920,7 +919,7 @@ void main() {
     });
 
     test('Comment toJson converts camelCase to snake_case', () {
-      final now = DateTime(2025, 1, 1, 12, 0);
+      final now = DateTime(2025, 1, 1, 12);
       final comment = Comment(
         id: 'comment1',
         documentId: 'doc1',

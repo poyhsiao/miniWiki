@@ -358,7 +358,7 @@ class _VersionListItem extends ConsumerWidget {
   void _showRestoreDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         title: const Text('Restore Version?'),
         content: Text(
           'This will create a new version with the content from version '
@@ -401,7 +401,7 @@ class _VersionListItem extends ConsumerWidget {
   void _viewVersionDetails(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
+      builder: (BuildContext dialogContext) => AlertDialog(
         title: Text('Version ${version.versionNumber} Details'),
         content: SingleChildScrollView(
           child: Column(

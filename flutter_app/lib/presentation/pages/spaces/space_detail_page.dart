@@ -72,8 +72,9 @@ class SpaceDetailPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildDocumentList(BuildContext context, String spaceId) => FutureBuilder<List>(
-      future: Future.value([]),
+  Widget _buildDocumentList(BuildContext context, String spaceId) =>
+      FutureBuilder<List<dynamic>>(
+        future: Future.value([]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -106,7 +107,7 @@ class SpaceDetailPage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('New Document'),
         content: TextField(
           controller: titleController,

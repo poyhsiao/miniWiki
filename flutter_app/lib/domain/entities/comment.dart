@@ -169,9 +169,6 @@ class Comment {
         authorName: authorName,
         authorAvatar: authorAvatar,
         content: content,
-        isResolved: false,
-        resolvedBy: null,
-        resolvedAt: null,
         createdAt: createdAt,
         updatedAt: updatedAt,
       );

@@ -74,14 +74,12 @@ class MockFileRepository implements FileRepository {
     String? documentId,
     int limit = 50,
     int offset = 0,
-  }) async {
-    return _files.values
+  }) async => _files.values
         .where((f) => f.spaceId == spaceId)
         .where((f) => documentId == null || f.documentId == documentId)
         .skip(offset)
         .take(limit)
         .toList();
-  }
 
   @override
   Future<void> deleteFile(String fileId) async {
@@ -95,7 +93,7 @@ class MockFileRepository implements FileRepository {
   Future<FileEntity> restoreFile(String fileId) async {
     final file = _files[fileId];
     if (file != null) {
-      final restored = file.copyWith(isDeleted: false, deletedAt: null);
+      final restored = file.copyWith(isDeleted: false);
       _files[fileId] = restored;
       return restored;
     }
@@ -255,7 +253,7 @@ void main() {
     });
 
     test('FileState can be created with all fields', () {
-      final file = FileEntity(
+      const file = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -283,7 +281,7 @@ void main() {
     });
 
     test('FileState copyWith updates specified fields', () {
-      final state = FileState(
+      const state = FileState(
         isLoading: true,
         error: 'Error',
       );
@@ -552,7 +550,7 @@ void main() {
 
   group('FileEntity - Entity Operations', () {
     test('FileEntity can be created with required fields', () {
-      final file = FileEntity(
+      const file = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -569,7 +567,7 @@ void main() {
     });
 
     test('FileEntity copyWith updates specified fields', () {
-      final file = FileEntity(
+      const file = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -587,7 +585,7 @@ void main() {
     });
 
     test('FileEntity formattedSize works correctly', () {
-      final smallFile = FileEntity(
+      const smallFile = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -597,7 +595,7 @@ void main() {
         downloadUrl: 'https://example.com/file1',
       );
 
-      final mediumFile = FileEntity(
+      const mediumFile = FileEntity(
         id: 'file2',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -612,7 +610,7 @@ void main() {
     });
 
     test('FileEntity extension works correctly', () {
-      final file = FileEntity(
+      const file = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -626,7 +624,7 @@ void main() {
     });
 
     test('FileEntity type checks work correctly', () {
-      final image = FileEntity(
+      const image = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -636,7 +634,7 @@ void main() {
         downloadUrl: 'https://example.com/file1',
       );
 
-      final pdf = FileEntity(
+      const pdf = FileEntity(
         id: 'file2',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -653,7 +651,7 @@ void main() {
     });
 
     test('FileEntity icon returns correct emoji', () {
-      final image = FileEntity(
+      const image = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -663,7 +661,7 @@ void main() {
         downloadUrl: 'https://example.com/file1',
       );
 
-      final pdf = FileEntity(
+      const pdf = FileEntity(
         id: 'file2',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -927,7 +925,7 @@ void main() {
 
   group('FileUtils - Extension Methods', () {
     test('FileUtils extension provides formattedSize', () {
-      final file = FileEntity(
+      const file = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -941,7 +939,7 @@ void main() {
     });
 
     test('FileUtils extension provides extension', () {
-      final file = FileEntity(
+      const file = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -955,7 +953,7 @@ void main() {
     });
 
     test('FileUtils extension provides type checks', () {
-      final image = FileEntity(
+      const image = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -965,7 +963,7 @@ void main() {
         downloadUrl: 'https://example.com/file1',
       );
 
-      final video = FileEntity(
+      const video = FileEntity(
         id: 'file2',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -982,7 +980,7 @@ void main() {
     });
 
     test('FileUtils extension provides icon', () {
-      final image = FileEntity(
+      const image = FileEntity(
         id: 'file1',
         spaceId: 'space1',
         uploadedBy: 'user1',
@@ -992,7 +990,7 @@ void main() {
         downloadUrl: 'https://example.com/file1',
       );
 
-      final video = FileEntity(
+      const video = FileEntity(
         id: 'file2',
         spaceId: 'space1',
         uploadedBy: 'user1',

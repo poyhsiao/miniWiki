@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:miniwiki/core/config/providers.dart';
 import 'package:miniwiki/domain/entities/file.dart';
 import 'package:miniwiki/presentation/providers/file_provider.dart';
-import 'package:miniwiki/services/file_service.dart';
 import 'package:miniwiki/services/providers.dart';
 
 /// Widget for uploading files

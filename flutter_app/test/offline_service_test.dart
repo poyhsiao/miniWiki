@@ -283,13 +283,13 @@ void main() {
       final subscription = offlineService.connectivityChanges.listen(changes.add);
 
       // Give the stream listener time to register
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       offlineService.setConnectivity(ConnectivityResult.mobile);
       offlineService.setConnectivity(ConnectivityResult.none);
 
       // Wait for events to be processed
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
 
       await subscription.cancel();
 

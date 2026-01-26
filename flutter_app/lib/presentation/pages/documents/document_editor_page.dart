@@ -177,7 +177,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   Future<void> _handleDeleteComment(Comment comment) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Delete Comment'),
         content: const Text('Are you sure you want to delete this comment?'),
         actions: [
@@ -433,7 +433,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   void _showVersionHistory(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => _VersionHistorySheet(
+      builder: (BuildContext context) => _VersionHistorySheet(
         documentId: widget.documentId,
       ),
     );
@@ -442,7 +442,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   void _showMoreOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      builder: (context) => _MoreOptionsSheet(
+      builder: (BuildContext context) => _MoreOptionsSheet(
         documentId: widget.documentId,
         spaceId: widget.spaceId,
       ),
@@ -553,7 +553,7 @@ class _VersionHistorySheet extends ConsumerWidget {
   ) async {
     final confirmed = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (BuildContext context) => AlertDialog(
             title: const Text('Restore Version'),
             content: Text(
                 'Are you sure you want to restore to version $versionNumber?'),
@@ -639,7 +639,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
               Navigator.pop(context);
               showDialog(
                 context: parentContext,
-                builder: (context) => ShareLinkDialog(
+                builder: (BuildContext context) => ShareLinkDialog(
                   documentId: documentId,
                   documentTitle: documentTitle,
                 ),

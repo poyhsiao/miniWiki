@@ -7,7 +7,7 @@ import 'package:mocktail/mocktail.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 
-class MockResponse extends Mock implements Response {}
+class MockResponse extends Mock implements Response<Object?> {}
 
 class DocumentEntityFake extends Fake implements DocumentEntity {}
 
@@ -28,7 +28,7 @@ void main() {
 
     group('listDocuments', () {
       test('listDocuments returns list from API', () async {
-        final response = MockResponse();
+        final response = MockResponse<dynamic>();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -77,7 +77,7 @@ void main() {
 
     group('getDocument', () {
       test('getDocument returns document from API', () async {
-        final response = MockResponse();
+        final response = MockResponse<dynamic>();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -117,7 +117,7 @@ void main() {
 
     group('createDocument', () {
       test('createDocument creates and returns document', () async {
-        final response = MockResponse();
+        final response = MockResponse<dynamic>();
         when(() => response.statusCode).thenReturn(201);
         when(() => response.data).thenReturn({
           'data': {
@@ -155,7 +155,7 @@ void main() {
 
     group('updateDocument', () {
       test('updateDocument updates and returns document', () async {
-        final response = MockResponse();
+        final response = MockResponse<dynamic>();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -190,7 +190,7 @@ void main() {
     group('deleteDocument', () {
       test('deleteDocument calls API', () async {
         when(() => apiClient.delete('/documents/doc-uuid'))
-            .thenAnswer((_) async => MockResponse()..statusCode = 200);
+            .thenAnswer((_) async => MockResponse<dynamic>()..statusCode = 200);
 
         await expectLater(
           documentRepository.deleteDocument('doc-uuid'),
@@ -201,7 +201,7 @@ void main() {
 
     group('getDocumentChildren', () {
       test('getDocumentChildren returns child documents', () async {
-        final response = MockResponse();
+        final response = MockResponse<dynamic>();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -237,7 +237,7 @@ void main() {
 
     group('getDocumentPath', () {
       test('getDocumentPath returns path from root to document', () async {
-        final response = MockResponse();
+        final response = MockResponse<dynamic>();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -246,7 +246,7 @@ void main() {
                 'id': 'root-doc',
                 'space_id': 'space-uuid',
                 'title': 'Root',
-                'content': {},
+                'content': <String, dynamic>{},
                 'created_by': 'user',
                 'last_edited_by': 'user',
               },
@@ -255,7 +255,7 @@ void main() {
                 'space_id': 'space-uuid',
                 'parent_id': 'root-doc',
                 'title': 'Child',
-                'content': {},
+                'content': <String, dynamic>{},
                 'created_by': 'user',
                 'last_edited_by': 'user',
               },

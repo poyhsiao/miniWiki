@@ -187,7 +187,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
   void _showSearchBottomSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => Padding(
+      builder: (BuildContext context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
@@ -218,7 +218,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute<bool>(
-        builder: (context) => DocumentEditorPage(
+        builder: (BuildContext context) => DocumentEditorPage(
           spaceId: widget.spaceId,
           parentId: _parentId,
         ),
@@ -234,7 +234,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
     final result = await Navigator.push(
       context,
       MaterialPageRoute<bool>(
-        builder: (context) => DocumentEditorPage(
+        builder: (BuildContext context) => DocumentEditorPage(
           spaceId: widget.spaceId,
           documentId: document.id,
         ),
@@ -249,7 +249,7 @@ class _DocumentListPageState extends ConsumerState<DocumentListPage> {
   Future<void> _deleteDocument(BuildContext context, Document document) async {
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Delete Document'),
         content: Text('Are you sure you want to delete "${document.title}"?'),
         actions: [

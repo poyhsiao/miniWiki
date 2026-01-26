@@ -73,8 +73,8 @@ class MemberManagementPage extends ConsumerWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color:
-                                    _getRoleColor(member.role).withOpacity(0.1),
+                                color: _getRoleColor(member.role)
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -169,7 +169,7 @@ class MemberManagementPage extends ConsumerWidget {
       BuildContext context, WidgetRef ref, SpaceMembership member) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Remove Member'),
         content: Text(
             'Are you sure you want to remove ${member.userId} from this space?'),
@@ -200,7 +200,7 @@ class MemberManagementPage extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (BuildContext context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Invite Member'),
           content: SingleChildScrollView(

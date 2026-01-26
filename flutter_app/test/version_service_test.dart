@@ -264,10 +264,10 @@ void main() {
 
     group('compareVersions', () {
       test('returns diff between two versions', () async {
-        final diff = {
-          'added': ['New paragraph'],
-          'removed': [],
-          'modified': [],
+        final diff = <String, dynamic>{
+          'added': <String>['New paragraph'],
+          'removed': <String>[],
+          'modified': <String>[],
         };
 
         when(() => mockRepository.compareVersions('doc-1', 1, 2))

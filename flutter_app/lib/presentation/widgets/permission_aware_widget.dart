@@ -431,7 +431,7 @@ class PermissionGuardedButton extends ConsumerWidget {
   Future<void> _showDeniedDialog(BuildContext context) async {
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: Text(dialogTitle ?? 'Permission Denied'),
         content: Text(deniedMessage ??
             'You do not have permission to perform this action. '

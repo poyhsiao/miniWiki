@@ -166,7 +166,7 @@ class _SpaceSettingsPageState extends ConsumerState<SpaceSettingsPage> {
   void _showDeleteConfirmation(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Delete Space'),
         content: const Text(
           'Are you sure you want to delete this space? All documents will be permanently removed.',

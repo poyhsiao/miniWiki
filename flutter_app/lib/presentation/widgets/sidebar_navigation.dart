@@ -246,7 +246,7 @@ class _SidebarNavigationState extends ConsumerState<SidebarNavigation> {
   void _showCreateSpaceDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (BuildContext context) => AlertDialog(
         title: const Text('Create New Space'),
         content: const Text('Space creation dialog would open here.'),
         actions: [
@@ -416,6 +416,7 @@ class _DocumentTreeItem extends StatelessWidget {
     required this.title,
     required this.onTap,
     this.icon,
+    this.isSelected = false,
   });
 
   @override

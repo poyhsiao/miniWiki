@@ -318,7 +318,6 @@ class FileService {
       case FileTypeFilter.document:
       case FileTypeFilter.archive:
       case FileTypeFilter.all:
-      default:
         fileType = FileType.any;
         break;
     }

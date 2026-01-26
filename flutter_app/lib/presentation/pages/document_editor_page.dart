@@ -261,7 +261,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
-      builder: (context) =>
+      builder: (BuildContext context) =>
           _VersionHistorySheet(documentId: widget.documentId!),
     );
   }
@@ -272,7 +272,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
         (_titleController.text.isEmpty ? 'Untitled' : _titleController.text);
     showDialog<void>(
       context: context,
-      builder: (context) => ExportDialog(
+      builder: (BuildContext context) => ExportDialog(
         documentId: widget.documentId!,
         documentTitle: documentTitle,
         onExportComplete: () {
@@ -316,7 +316,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   void _showFileAttachments(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => _FileAttachmentsSheet(
+      builder: (BuildContext context) => _FileAttachmentsSheet(
         spaceId: widget.spaceId,
         documentId: widget.documentId!,
       ),
@@ -326,7 +326,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
   void _showMoreOptions(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => _MoreOptionsSheet(
+      builder: (BuildContext context) => _MoreOptionsSheet(
         documentId: widget.documentId!,
         onDeleted: () => Navigator.popUntil(context, (route) => route.isFirst),
       ),
@@ -338,7 +338,7 @@ class _DocumentEditorPageState extends ConsumerState<DocumentEditorPage> {
     if (state.hasUnsavedChanges) {
       final shouldDiscard = await showDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
+        builder: (BuildContext context) => AlertDialog(
           title: const Text('Unsaved Changes'),
           content: const Text('You have unsaved changes. Discard them?'),
           actions: [
@@ -497,7 +497,7 @@ class _MoreOptionsSheet extends ConsumerWidget {
                 Navigator.pop(context);
                 final confirm = await showDialog<bool>(
                   context: context,
-                  builder: (context) => AlertDialog(
+                  builder: (BuildContext context) => AlertDialog(
                     title: const Text('Delete Document'),
                     content: const Text(
                         'Are you sure you want to delete this document?'),

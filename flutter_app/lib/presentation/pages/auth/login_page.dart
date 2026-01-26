@@ -57,7 +57,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
 
       if (mounted) {
         await Navigator.of(context).pushReplacement(
-          MaterialPageRoute<void>(builder: (_) => const HomePage()),
+          MaterialPageRoute(builder: (_) => const HomePage()),
         );
       }
     } on Exception catch (e) {
@@ -201,7 +201,7 @@ class _LoginFormState extends ConsumerState<_LoginForm> {
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute<void>(
+                      MaterialPageRoute(
                         builder: (_) => const RegisterPage(),
                       ),
                     );

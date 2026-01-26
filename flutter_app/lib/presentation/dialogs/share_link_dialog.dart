@@ -584,7 +584,7 @@ class _ShareLinkDialogState extends ConsumerState<ShareLinkDialog> {
                   onPressed: () async {
                     final confirmed = await showDialog<bool>(
                       context: context,
-                      builder: (context) => AlertDialog(
+                      builder: (BuildContext context) => AlertDialog(
                         title: const Text('Delete Share Link'),
                         content: const Text(
                           'Are you sure you want to delete this share link? '

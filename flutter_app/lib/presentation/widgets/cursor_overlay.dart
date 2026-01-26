@@ -7,7 +7,7 @@ import 'package:miniwiki/services/websocket_service.dart';
 /// Widget that overlays remote users' cursors on the document editor
 class CursorOverlay extends ConsumerWidget {
   final Widget child;
-  final Function(CursorPosition)? onCursorMoved;
+  final void Function(CursorPosition)? onCursorMoved;
 
   const CursorOverlay({
     required this.child,
@@ -51,7 +51,7 @@ class CursorOverlay extends ConsumerWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has(
+    properties.add(ObjectFlagProperty<void Function(CursorPosition)?>.has(
         'onCursorMoved', onCursorMoved));
   }
 }
@@ -60,7 +60,7 @@ class CursorOverlay extends ConsumerWidget {
 class _RemoteCursorWidget extends StatelessWidget {
   final ActiveUser user;
   final CursorPosition cursor;
-  final Function(CursorPosition)? onCursorMoved;
+  final void Function(CursorPosition)? onCursorMoved;
 
   const _RemoteCursorWidget({
     required this.user,
@@ -120,7 +120,7 @@ class _RemoteCursorWidget extends StatelessWidget {
     super.debugFillProperties(properties);
     properties.add(DiagnosticsProperty<ActiveUser>('user', user));
     properties.add(DiagnosticsProperty<CursorPosition>('cursor', cursor));
-    properties.add(ObjectFlagProperty<Function(CursorPosition)?>.has(
+    properties.add(ObjectFlagProperty<void Function(CursorPosition)?>.has(
         'onCursorMoved', onCursorMoved));
   }
 
