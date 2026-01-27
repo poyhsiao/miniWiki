@@ -128,12 +128,14 @@ CoverageReport parseLcov(String content) {
         linesHit: 0,
       );
     } else if (line.startsWith('LF:') && currentFile != null) {
+      final value = int.tryParse(line.substring(3)) ?? 0;
       currentFile = currentFile.copyWith(
-        linesFound: int.parse(line.substring(3)),
+        linesFound: value,
       );
     } else if (line.startsWith('LH:') && currentFile != null) {
+      final value = int.tryParse(line.substring(3)) ?? 0;
       currentFile = currentFile.copyWith(
-        linesHit: int.parse(line.substring(3)),
+        linesHit: value,
       );
     } else if (line.startsWith('FNF:') && currentFile != null) {
       currentFile = currentFile.copyWith(

@@ -228,6 +228,8 @@ void main() {
 
         // Assert
         expect(result, savePath);
+        expect(await File(savePath).exists(), true);
+        expect(await File(savePath).readAsBytes(), fileBytes);
         // Clean up
         if (await File(savePath).exists()) {
           await File(savePath).delete();

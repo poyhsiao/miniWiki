@@ -421,7 +421,7 @@ void main() {
 
         // Assert
         expect(result.length, 2);
-        expect(result.every((s) => s.contains('flutt')), true);
+        expect(result.every((s) => s.contains('flutter')), true);
       });
 
       test('should pass query parameter correctly', () async {
