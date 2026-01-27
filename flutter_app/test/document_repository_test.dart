@@ -28,7 +28,7 @@ void main() {
 
     group('listDocuments', () {
       test('listDocuments returns list from API', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -77,7 +77,7 @@ void main() {
 
     group('getDocument', () {
       test('getDocument returns document from API', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -117,7 +117,7 @@ void main() {
 
     group('createDocument', () {
       test('createDocument creates and returns document', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(201);
         when(() => response.data).thenReturn({
           'data': {
@@ -155,7 +155,7 @@ void main() {
 
     group('updateDocument', () {
       test('updateDocument updates and returns document', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -189,8 +189,10 @@ void main() {
 
     group('deleteDocument', () {
       test('deleteDocument calls API', () async {
+        final mockResponse = MockResponse();
+        when(() => mockResponse.statusCode).thenReturn(200);
         when(() => apiClient.delete('/documents/doc-uuid'))
-            .thenAnswer((_) async => MockResponse<dynamic>()..statusCode = 200);
+            .thenAnswer((_) async => mockResponse);
 
         await expectLater(
           documentRepository.deleteDocument('doc-uuid'),
@@ -201,7 +203,7 @@ void main() {
 
     group('getDocumentChildren', () {
       test('getDocumentChildren returns child documents', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
@@ -237,7 +239,7 @@ void main() {
 
     group('getDocumentPath', () {
       test('getDocumentPath returns path from root to document', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'data': {
