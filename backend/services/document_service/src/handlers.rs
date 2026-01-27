@@ -75,15 +75,17 @@ fn version_row_to_response(row: &crate::repository::DocumentVersionRow) -> Versi
 
 // User extraction - supports both JWT Authorization header and X-User-Id header for backward compatibility
 fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
-    // Get JWT secret from environment variable, with fallback to default for test mode only
+    // Get JWT secret from environment variable, with fallback to default for test/debug mode only
     let jwt_secret = match std::env::var("JWT_SECRET") {
         Ok(secret) => secret,
         Err(_) => {
-            #[cfg(any(test, feature = "test-utils"))]
+            // Allow fallback to test secret in debug/test mode for consistency with routes/mod.rs
+            #[cfg(any(debug_assertions, test))]
             {
+                eprintln!("WARNING: Using default JWT secret. Set JWT_SECRET environment variable in production!");
                 "test-secret-key-for-testing-only-do-not-use-in-production".to_string()
             }
-            #[cfg(not(any(test, feature = "test-utils")))]
+            #[cfg(not(any(debug_assertions, test)))]
             {
                 return Err(AppError::AuthenticationError("JWT_SECRET not configured".to_string()));
             }

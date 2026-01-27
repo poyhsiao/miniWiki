@@ -43,7 +43,7 @@ fn default_app_env() -> String {
 impl Config {
     pub fn from_env() -> Result<Self, config::ConfigError> {
         let config: Self = config::Config::builder()
-            .add_source(config::Environment::default())
+            .add_source(config::Environment::default().separator("__"))
             .build()?
             .try_deserialize()?;
 

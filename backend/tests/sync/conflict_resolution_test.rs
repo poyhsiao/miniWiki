@@ -27,6 +27,8 @@ struct SyncUpdate {
 struct CrdtDocumentState {
     state_vector: StateVector,
     content: HashMap<String, String>,  // Simple key-value for testing
+    applied_updates: Vec<(String, u64)>,  // Track (origin, clock) of applied updates
+    client_clocks: HashMap<String, u64>,  // Track max clock seen per client
 }
 
 impl CrdtDocumentState {
@@ -37,28 +39,63 @@ impl CrdtDocumentState {
                 clock: 0,
             },
             content: HashMap::new(),
+            applied_updates: Vec::new(),
+            client_clocks: HashMap::new(),
         }
     }
 
     /// Merge another update into this document
     fn merge(&mut self, update: &SyncUpdate) -> bool {
-        // Check if update is from a different client or newer state
-        let needs_merge = update.state_vector.client_id != self.state_vector.client_id
-            || update.state_vector.clock > self.state_vector.clock;
+        // Check if this specific update has already been applied
+        let update_key = (update.origin.clone(), update.state_vector.clock);
+        let was_applied = self.applied_updates.contains(&update_key);
 
-        if needs_merge {
-            // Simulate CRDT merge logic
-            // In real implementation, this would use Yjs/Lib0 merge algorithm
-            self.state_vector.clock = self.state_vector.clock.max(update.state_vector.clock) + 1;
-
-            // Simulate content update
-            self.content.insert(
-                format!("update_from_{}", update.origin),
-                update.update.clone(),
-            );
+        if was_applied {
+            // Already applied, return false (idempotent)
+            return false;
         }
 
-        needs_merge
+        // Determine if this update should be merged
+        let needs_merge = if update.state_vector.client_id != self.state_vector.client_id {
+            // From different client: always merge
+            true
+        } else {
+            // From same client: check if this is a new update (not outdated)
+            let max_clock = self.client_clocks
+                .entry(update.state_vector.client_id.clone())
+                .or_insert(0);
+            update.state_vector.clock > *max_clock
+        };
+
+        if needs_merge {
+            // Update client clock tracking - insert new clients or max existing clocks
+            self.client_clocks
+                .entry(update.state_vector.client_id.clone())
+                .and_modify(|clock| *clock = (*clock).max(update.state_vector.clock))
+                .or_insert(update.state_vector.clock);
+
+            // For same client updates, adopt the sender's clock
+            // For different client updates, merge clocks (take max)
+            if update.state_vector.client_id == self.state_vector.client_id {
+                self.state_vector.clock = update.state_vector.clock;
+            } else {
+                self.state_vector.clock = self.state_vector.clock.max(update.state_vector.clock);
+            }
+
+            // Increment our local clock to account for this merge operation
+            self.state_vector.clock += 1;
+
+            // Simulate content update - use unique key per update
+            let content_key = format!("{}_{}_{}", update.origin, update.state_vector.clock, update.update);
+            self.content.insert(content_key, update.update.clone());
+
+            // Mark this update as applied
+            self.applied_updates.push(update_key);
+
+            true
+        } else {
+            false
+        }
     }
 }
 
