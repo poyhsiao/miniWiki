@@ -21,7 +21,7 @@ void main() {
 
     group('login', () {
       test('login with valid credentials returns auth tokens', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'user': {
@@ -51,7 +51,7 @@ void main() {
       });
 
       test('login with invalid credentials throws error', () async {
-        final errorResponse = MockResponse<dynamic>();
+        final errorResponse = MockResponse();
         when(() => errorResponse.statusCode).thenReturn(401);
         when(() => apiClient.post('/auth/login', data: any(named: 'data')))
             .thenThrow(DioException(
@@ -71,7 +71,7 @@ void main() {
 
     group('register', () {
       test('register with valid data returns user entity', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(201);
         when(() => response.data).thenReturn({
           'user': {
@@ -98,7 +98,7 @@ void main() {
       });
 
       test('register with existing email throws conflict error', () async {
-        final errorResponse = MockResponse<dynamic>();
+        final errorResponse = MockResponse();
         when(() => errorResponse.statusCode).thenReturn(409);
         when(() => apiClient.post('/auth/register', data: any(named: 'data')))
             .thenThrow(DioException(
@@ -119,7 +119,7 @@ void main() {
 
     group('logout', () {
       test('logout succeeds without errors', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => apiClient.post('/auth/logout'))
             .thenAnswer((_) async => response);
@@ -130,7 +130,7 @@ void main() {
 
     group('refreshToken', () {
       test('refresh token completes without error', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'access_token': 'new-access-token',
@@ -146,7 +146,7 @@ void main() {
 
     group('getCurrentUser', () {
       test('getCurrentUser returns user entity', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'id': 'user-uuid',
@@ -168,7 +168,7 @@ void main() {
 
       test('getCurrentUser throws StateError when ID is not a string',
           () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'id': 12345, // Not a string
@@ -189,7 +189,7 @@ void main() {
       });
 
       test('isAuthenticated returns true after login', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'user': {
@@ -221,7 +221,7 @@ void main() {
       });
 
       test('getAccessToken returns token after login', () async {
-        final response = MockResponse<dynamic>();
+        final response = MockResponse();
         when(() => response.statusCode).thenReturn(200);
         when(() => response.data).thenReturn({
           'user': {

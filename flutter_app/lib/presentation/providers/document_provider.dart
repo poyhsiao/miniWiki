@@ -316,7 +316,7 @@ class DocumentEditNotifier extends StateNotifier<DocumentEditState> {
   }
 
   void clearError() {
-    state = state.copyWith();
+    state = state.copyWith(error: null);
   }
 
   void reset() {
