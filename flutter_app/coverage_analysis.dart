@@ -138,20 +138,24 @@ CoverageReport parseLcov(String content) {
         linesHit: value,
       );
     } else if (line.startsWith('FNF:') && currentFile != null) {
+      final value = int.tryParse(line.substring(4)) ?? 0;
       currentFile = currentFile.copyWith(
-        functionsFound: int.parse(line.substring(4)),
+        functionsFound: value,
       );
     } else if (line.startsWith('FNH:') && currentFile != null) {
+      final value = int.tryParse(line.substring(4)) ?? 0;
       currentFile = currentFile.copyWith(
-        functionsHit: int.parse(line.substring(4)),
+        functionsHit: value,
       );
     } else if (line.startsWith('BRF:') && currentFile != null) {
+      final value = int.tryParse(line.substring(4)) ?? 0;
       currentFile = currentFile.copyWith(
-        branchesFound: int.parse(line.substring(4)),
+        branchesFound: value,
       );
     } else if (line.startsWith('BRH:') && currentFile != null) {
+      final value = int.tryParse(line.substring(4)) ?? 0;
       currentFile = currentFile.copyWith(
-        branchesHit: int.parse(line.substring(4)),
+        branchesHit: value,
       );
     } else if (line == 'end_of_record' && currentFile != null) {
       files.add(currentFile);
