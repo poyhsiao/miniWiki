@@ -548,7 +548,7 @@ async fn same_client_outdated_update_with_lower_clock_is_ignored() {
     let doc_client_id = Uuid::new_v4();
     let mut doc = CrdtDocumentState::new(&doc_client_id);
 
-    let client_id = "client-a".to_string();
+    let client_id = doc_client_id.to_string();
     let initial_clock = 5;
 
     let first_update = SyncUpdate {
@@ -615,7 +615,7 @@ async fn same_client_outdated_update_with_equal_clock_is_ignored() {
     let doc_client_id = Uuid::new_v4();
     let mut doc = CrdtDocumentState::new(&doc_client_id);
 
-    let client_id = "client-a".to_string();
+    let client_id = doc_client_id.to_string();
     let initial_clock = 5;
 
     let first_update = SyncUpdate {
@@ -696,7 +696,7 @@ mod content_key_distinctness_tests {
             update: "payload-1".to_string(),
             state_vector: StateVector {
                 client_id: doc_client_id.to_string(),
-                clock: doc.state_vector.clock,
+                clock: doc.state_vector.clock + 1,
             },
             origin: "client-1".to_string(),
         };
