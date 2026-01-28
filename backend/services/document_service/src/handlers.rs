@@ -673,11 +673,20 @@ pub async fn get_version(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-            "ACCESS_DENIED",
-            "You don't have access to this document",
-        ));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {},
+        Ok(false) => {
+            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                "ACCESS_DENIED",
+                "You don't have access to this document",
+            ));
+        },
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.get_version(&document_id, version_number).await {
@@ -706,11 +715,20 @@ pub async fn restore_version(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-            "ACCESS_DENIED",
-            "You don't have access to this document",
-        ));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {},
+        Ok(false) => {
+            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                "ACCESS_DENIED",
+                "You don't have access to this document",
+            ));
+        },
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.restore_version(&document_id, version_number, &user_id).await {
@@ -762,11 +780,20 @@ pub async fn get_version_diff(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-            "ACCESS_DENIED",
-            "You don't have access to this document",
-        ));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {},
+        Ok(false) => {
+            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                "ACCESS_DENIED",
+                "You don't have access to this document",
+            ));
+        },
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.get_version_diff(&document_id, from_version, to_version).await {
