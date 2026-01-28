@@ -14,7 +14,7 @@
 //! Run with: cargo test -p document-service export
 
 use serde::{Deserialize, Serialize};
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::PathBuf;

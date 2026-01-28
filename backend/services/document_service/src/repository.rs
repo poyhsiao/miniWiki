@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
@@ -778,8 +778,7 @@ impl DocumentRepository {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query_as!(
-            (),
+        let result = sqlx::query!(
             r#"DELETE FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
             space_uuid,
             user_uuid

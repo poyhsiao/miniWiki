@@ -663,8 +663,8 @@ pub async fn get_presigned_upload_url(
     req: web::Json<PresignedUploadRequest>,
     storage: web::Data<Arc<S3Storage>>,
 ) -> impl Responder {
-    const MIN_EXPIRES_IN: u64 = 60; // 1 minute minimum
-    const MAX_EXPIRES_IN: u64 = 7200; // 2 hours maximum
+    const MIN_EXPIRES_IN: i32 = 60; // 1 minute minimum
+    const MAX_EXPIRES_IN: i32 = 7200; // 2 hours maximum
 
     let file_id = Uuid::new_v4();
     let storage_path = format!("{}/{}/{}", req.space_id, file_id, req.file_name);
