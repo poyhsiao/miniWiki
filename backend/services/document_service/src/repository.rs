@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 use sqlx::{FromRow, PgPool};
 use uuid::Uuid;
 
@@ -78,6 +78,8 @@ pub struct CommentRow {
     pub document_id: Uuid,
     pub parent_id: Option<Uuid>,
     pub author_id: Uuid,
+    pub author_name: Option<String>,
+    pub author_avatar: Option<String>,
     pub content: String,
     pub is_resolved: bool,
     pub resolved_by: Option<Uuid>,
@@ -982,5 +984,586 @@ impl DocumentRepository {
         tx.commit().await?;
 
         Ok(result.rows_affected() > 0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{Duration, Utc};
+    use serde_json::json;
+    use uuid::Uuid;
+
+    // ===== DocumentRow Tests =====
+
+    #[test]
+    fn test_document_row_creation_all_fields() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+        let space_id = Uuid::new_v4();
+        let parent_id = Uuid::new_v4();
+        let created_by = Uuid::new_v4();
+        let last_edited_by = Uuid::new_v4();
+
+        let row = DocumentRow {
+            id,
+            space_id,
+            parent_id: Some(parent_id),
+            title: "Test Document".to_string(),
+            icon: Some("📄".to_string()),
+            content: json!({"delta": "test content"}).into(),
+            content_size: 100,
+            is_archived: false,
+            archived_at: None,
+            created_by,
+            last_edited_by,
+            created_at: now,
+            updated_at: now,
+            version: 1,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: None,
+        };
+
+        assert_eq!(row.id, id);
+        assert_eq!(row.space_id, space_id);
+        assert_eq!(row.parent_id, Some(parent_id));
+        assert_eq!(row.title, "Test Document");
+        assert_eq!(row.icon, Some("📄".to_string()));
+        assert_eq!(row.content_size, 100);
+        assert!(!row.is_archived);
+        assert!(row.archived_at.is_none());
+    }
+
+    #[test]
+    fn test_document_row_with_null_parent() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+        let space_id = Uuid::new_v4();
+        let created_by = Uuid::new_v4();
+        let last_edited_by = Uuid::new_v4();
+
+        let row = DocumentRow {
+            id,
+            space_id,
+            parent_id: None, // Root document
+            title: "Root Document".to_string(),
+            icon: None,
+            content: json!({"delta": "root"}).into(),
+            content_size: 50,
+            is_archived: false,
+            archived_at: None,
+            created_by,
+            last_edited_by,
+            created_at: now,
+            updated_at: now,
+            version: 1,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: None,
+        };
+
+        assert!(row.parent_id.is_none());
+        assert!(row.icon.is_none());
+    }
+
+    #[test]
+    fn test_document_row_archived_document() {
+        let now = Utc::now().naive_utc();
+        let archived_at = now - Duration::hours(1);
+
+        let row = DocumentRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            parent_id: None,
+            title: "Archived Document".to_string(),
+            icon: None,
+            content: json!({}).into(),
+            content_size: 0,
+            is_archived: true,
+            archived_at: Some(archived_at),
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: now,
+            updated_at: now,
+            version: 5,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: Some("synced".to_string()),
+        };
+
+        assert!(row.is_archived);
+        assert_eq!(row.archived_at, Some(archived_at));
+        assert_eq!(row.version, 5);
+    }
+
+    #[test]
+    fn test_document_row_sync_fields() {
+        let now = Utc::now().naive_utc();
+        let vector_clock = json!({"client1": 10, "client2": 5});
+        let expected_clock = vector_clock.clone();
+
+        let row = DocumentRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            parent_id: None,
+            title: "Synced Document".to_string(),
+            icon: None,
+            content: json!({}).into(),
+            content_size: 0,
+            is_archived: false,
+            archived_at: None,
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: now,
+            updated_at: now,
+            version: 100,
+            last_synced_at: Some(now),
+            vector_clock: Some(vector_clock),
+            client_id: Some(Uuid::new_v4()),
+            sync_state: Some("pending".to_string()),
+        };
+
+        assert!(row.last_synced_at.is_some());
+        assert_eq!(row.vector_clock, Some(expected_clock));
+        assert!(row.client_id.is_some());
+        assert_eq!(row.sync_state, Some("pending".to_string()));
+    }
+
+    // ===== DocumentVersionRow Tests =====
+
+    #[test]
+    fn test_document_version_row_creation() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+        let document_id = Uuid::new_v4();
+        let created_by = Uuid::new_v4();
+
+        let version = DocumentVersionRow {
+            id,
+            document_id,
+            version_number: 3,
+            title: "Version 3".to_string(),
+            content: json!({"ops": [{"insert": "Hello World"}]}).into(),
+            created_by,
+            created_at: now,
+            change_summary: Some("Fixed typos".to_string()),
+        };
+
+        assert_eq!(version.id, id);
+        assert_eq!(version.document_id, document_id);
+        assert_eq!(version.version_number, 3);
+        assert_eq!(version.title, "Version 3");
+        assert_eq!(version.change_summary, Some("Fixed typos".to_string()));
+    }
+
+    #[test]
+    fn test_document_version_row_no_summary() {
+        let now = Utc::now().naive_utc();
+
+        let version = DocumentVersionRow {
+            id: Uuid::new_v4(),
+            document_id: Uuid::new_v4(),
+            version_number: 1,
+            title: "Initial Version".to_string(),
+            content: json!({"ops": []}).into(),
+            created_by: Uuid::new_v4(),
+            created_at: now,
+            change_summary: None,
+        };
+
+        assert!(version.change_summary.is_none());
+    }
+
+    // ===== SpaceRow Tests =====
+
+    #[test]
+    fn test_space_row_creation() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+        let owner_id = Uuid::new_v4();
+
+        let space = SpaceRow {
+            id,
+            owner_id,
+            name: "My Space".to_string(),
+            icon: Some("📚".to_string()),
+            description: Some("A test space".to_string()),
+            is_public: false,
+            created_at: now,
+            updated_at: now,
+            user_role: Some("owner".to_string()),
+        };
+
+        assert_eq!(space.id, id);
+        assert_eq!(space.owner_id, owner_id);
+        assert_eq!(space.name, "My Space");
+        assert!(!space.is_public);
+        assert_eq!(space.user_role, Some("owner".to_string()));
+    }
+
+    #[test]
+    fn test_space_row_public_space() {
+        let now = Utc::now().naive_utc();
+
+        let space = SpaceRow {
+            id: Uuid::new_v4(),
+            owner_id: Uuid::new_v4(),
+            name: "Public Space".to_string(),
+            icon: None,
+            description: None,
+            is_public: true,
+            created_at: now,
+            updated_at: now,
+            user_role: Some("viewer".to_string()),
+        };
+
+        assert!(space.is_public);
+        assert!(space.icon.is_none());
+        assert!(space.description.is_none());
+    }
+
+    // ===== SpaceMembershipRow Tests =====
+
+    #[test]
+    fn test_space_membership_row_creation() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+        let space_id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let invited_by = Uuid::new_v4();
+
+        let membership = SpaceMembershipRow {
+            id,
+            space_id,
+            user_id,
+            role: "editor".to_string(),
+            joined_at: now,
+            invited_by,
+        };
+
+        assert_eq!(membership.id, id);
+        assert_eq!(membership.space_id, space_id);
+        assert_eq!(membership.user_id, user_id);
+        assert_eq!(membership.role, "editor");
+        assert_eq!(membership.joined_at, now);
+    }
+
+    #[test]
+    fn test_space_membership_row_roles() {
+        let now = Utc::now().naive_utc();
+
+        let roles = ["owner", "editor", "commenter", "viewer"];
+
+        for role in roles {
+            let membership = SpaceMembershipRow {
+                id: Uuid::new_v4(),
+                space_id: Uuid::new_v4(),
+                user_id: Uuid::new_v4(),
+                role: role.to_string(),
+                joined_at: now,
+                invited_by: Uuid::new_v4(),
+            };
+
+            assert_eq!(membership.role, role);
+        }
+    }
+
+    // ===== CommentRow Tests =====
+
+    #[test]
+    fn test_comment_row_creation() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+        let document_id = Uuid::new_v4();
+        let author_id = Uuid::new_v4();
+
+        let comment = CommentRow {
+            id,
+            document_id,
+            parent_id: None,
+            author_id,
+            author_name: Some("John Doe".to_string()),
+            author_avatar: Some("https://example.com/avatar.png".to_string()),
+            content: "This is a comment".to_string(),
+            is_resolved: false,
+            resolved_by: None,
+            resolved_at: None,
+            created_at: now,
+            updated_at: now,
+        };
+
+        assert_eq!(comment.id, id);
+        assert_eq!(comment.document_id, document_id);
+        assert_eq!(comment.author_id, author_id);
+        assert_eq!(comment.author_name, Some("John Doe".to_string()));
+        assert_eq!(comment.content, "This is a comment");
+        assert!(!comment.is_resolved);
+        assert!(comment.resolved_by.is_none());
+    }
+
+    #[test]
+    fn test_comment_row_resolved() {
+        let now = Utc::now().naive_utc();
+        let resolved_at = now + Duration::hours(1);
+
+        let comment = CommentRow {
+            id: Uuid::new_v4(),
+            document_id: Uuid::new_v4(),
+            parent_id: None,
+            author_id: Uuid::new_v4(),
+            author_name: None,
+            author_avatar: None,
+            content: "Resolved comment".to_string(),
+            is_resolved: true,
+            resolved_by: Some(Uuid::new_v4()),
+            resolved_at: Some(resolved_at),
+            created_at: now,
+            updated_at: now,
+        };
+
+        assert!(comment.is_resolved);
+        assert!(comment.resolved_by.is_some());
+        assert_eq!(comment.resolved_at, Some(resolved_at));
+        assert!(comment.author_name.is_none());
+    }
+
+    #[test]
+    fn test_comment_row_reply() {
+        let now = Utc::now().naive_utc();
+        let parent_id = Uuid::new_v4();
+
+        let reply = CommentRow {
+            id: Uuid::new_v4(),
+            document_id: Uuid::new_v4(),
+            parent_id: Some(parent_id),
+            author_id: Uuid::new_v4(),
+            author_name: Some("Replier".to_string()),
+            author_avatar: None,
+            content: "This is a reply".to_string(),
+            is_resolved: false,
+            resolved_by: None,
+            resolved_at: None,
+            created_at: now,
+            updated_at: now,
+        };
+
+        assert_eq!(reply.parent_id, Some(parent_id));
+    }
+
+    // ===== DocumentPathRow Tests =====
+
+    #[test]
+    fn test_document_path_row() {
+        let path_row = DocumentPathRow {
+            id: Some(Uuid::new_v4()),
+            title: Some("Document Title".to_string()),
+            level: Some(2),
+        };
+
+        assert!(path_row.id.is_some());
+        assert!(path_row.title.is_some());
+        assert_eq!(path_row.level, Some(2));
+    }
+
+    #[test]
+    fn test_document_path_row_null_fields() {
+        let path_row = DocumentPathRow {
+            id: None,
+            title: None,
+            level: None,
+        };
+
+        assert!(path_row.id.is_none());
+        assert!(path_row.title.is_none());
+        assert!(path_row.level.is_none());
+    }
+
+    // ===== DocumentRepository Tests =====
+
+    #[test]
+    fn test_document_repository_struct_size() {
+        let _ = std::mem::size_of::<DocumentRepository>();
+    }
+
+    // ===== UUID Parsing Tests =====
+
+    #[test]
+    fn test_uuid_parsing_valid() {
+        let valid_uuid = "550e8400-e29b-41d4-a716-446655440000";
+        let result = Uuid::parse_str(valid_uuid);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().to_string(), valid_uuid);
+    }
+
+    #[test]
+    fn test_uuid_parsing_invalid() {
+        let invalid_uuid = "not-a-uuid";
+        let result = Uuid::parse_str(invalid_uuid);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_uuid_parsing_partial() {
+        let partial_uuid = "550e8400-e29b-41d4";
+        let result = Uuid::parse_str(partial_uuid);
+        assert!(result.is_err());
+    }
+
+    // ===== Content JSON Tests =====
+
+    #[test]
+    fn test_content_json_various_types() {
+        let test_cases = vec![
+            json!({"delta": "simple text"}),
+            json!({"ops": [{"insert": "rich text"}]}),
+            json!({"document": {"type": "root", "content": []}}),
+            json!([]),
+            json!({}),
+        ];
+
+        for content in test_cases {
+            let row = DocumentRow {
+                id: Uuid::new_v4(),
+                space_id: Uuid::new_v4(),
+                parent_id: None,
+                title: "Test".to_string(),
+                icon: None,
+                content: content.clone().into(),
+                content_size: content.to_string().len() as i32,
+                is_archived: false,
+                archived_at: None,
+                created_by: Uuid::new_v4(),
+                last_edited_by: Uuid::new_v4(),
+                created_at: Utc::now().naive_utc(),
+                updated_at: Utc::now().naive_utc(),
+                version: 1,
+                last_synced_at: None,
+                vector_clock: None,
+                client_id: None,
+                sync_state: None,
+            };
+            assert_eq!(row.content.0, content);
+        }
+    }
+
+    // ===== DateTime Tests =====
+
+    #[test]
+    fn test_naive_datetime_operations() {
+        let now = Utc::now().naive_utc();
+        let later = now + Duration::hours(1);
+        let earlier = now - Duration::days(1);
+
+        assert!(later > now);
+        assert!(earlier < now);
+        assert_eq!((later - now).num_hours(), 1);
+        assert_eq!((now - earlier).num_days(), 1);
+    }
+
+    // ===== Clone and Debug Tests =====
+
+    #[test]
+    fn test_row_cloning() {
+        let now = Utc::now().naive_utc();
+        let id = Uuid::new_v4();
+
+        let original = DocumentRow {
+            id,
+            space_id: Uuid::new_v4(),
+            parent_id: None,
+            title: "Clone Test".to_string(),
+            icon: None,
+            content: json!({}).into(),
+            content_size: 0,
+            is_archived: false,
+            archived_at: None,
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: now,
+            updated_at: now,
+            version: 1,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: None,
+        };
+
+        let cloned = original.clone();
+
+        assert_eq!(cloned.id, original.id);
+        assert_eq!(cloned.title, original.title);
+        // Verify it's a true clone (not same reference)
+        assert!(std::ptr::eq(&original, &cloned) == false);
+    }
+
+    // ===== Debug Output Tests =====
+
+    #[test]
+    fn test_row_debug_output() {
+        let row = DocumentRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            parent_id: None,
+            title: "Debug Test".to_string(),
+            icon: None,
+            content: json!({"test": true}).into(),
+            content_size: 15,
+            is_archived: false,
+            archived_at: None,
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+            version: 1,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: None,
+        };
+
+        let debug_str = format!("{:?}", row);
+        assert!(debug_str.contains("Debug Test"));
+        assert!(debug_str.contains("space_id"));
+    }
+
+    // ===== Vector Clock Tests =====
+
+    #[test]
+    fn test_vector_clock_json() {
+        let vector_clock = json!({
+            "client_a": 10,
+            "client_b": 5,
+            "client_c": 0
+        });
+
+        let row = DocumentRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            parent_id: None,
+            title: "Vector Clock Test".to_string(),
+            icon: None,
+            content: json!({}).into(),
+            content_size: 0,
+            is_archived: false,
+            archived_at: None,
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: Utc::now().naive_utc(),
+            updated_at: Utc::now().naive_utc(),
+            version: 1,
+            last_synced_at: None,
+            vector_clock: Some(vector_clock.clone()),
+            client_id: None,
+            sync_state: None,
+        };
+
+        let clock = row.vector_clock.unwrap();
+        assert_eq!(clock["client_a"], 10);
+        assert_eq!(clock["client_b"], 5);
+        assert_eq!(clock["client_c"], 0);
     }
 }
