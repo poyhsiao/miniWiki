@@ -668,11 +668,20 @@ pub async fn get_version(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-            "ACCESS_DENIED",
-            "You don't have access to this document",
-        ));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {},
+        Ok(false) => {
+            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                "ACCESS_DENIED",
+                "You don't have access to this document",
+            ));
+        },
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.get_version(&document_id, version_number).await {
@@ -701,11 +710,20 @@ pub async fn restore_version(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-            "ACCESS_DENIED",
-            "You don't have access to this document",
-        ));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {},
+        Ok(false) => {
+            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                "ACCESS_DENIED",
+                "You don't have access to this document",
+            ));
+        },
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.restore_version(&document_id, version_number, &user_id).await {
@@ -757,11 +775,20 @@ pub async fn get_version_diff(
     };
 
     // Check document access
-    if !repo.check_document_access(&document_id, &user_id).await.unwrap_or(false) {
-        return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-            "ACCESS_DENIED",
-            "You don't have access to this document",
-        ));
+    match check_document_access(&repo, &document_id, &user_id).await {
+        Ok(true) => {},
+        Ok(false) => {
+            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                "ACCESS_DENIED",
+                "You don't have access to this document",
+            ));
+        },
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.get_version_diff(&document_id, from_version, to_version).await {
@@ -1240,7 +1267,8 @@ pub async fn update_space_member(
                 "Only space owner can update member roles",
             ));
         },
-        Err(_) => {
+        Err(e) => {
+            error!("Database error checking space owner: {:?}", e);
             return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "A database error occurred. Please try again later.",
@@ -1249,11 +1277,21 @@ pub async fn update_space_member(
     }
 
     // Cannot change owner role
-    if let Ok(true) = repo.is_space_owner(&space_id, &member_user_id).await {
-        return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
-            "INVALID_OPERATION",
-            "Cannot change owner role",
-        ));
+    match repo.is_space_owner(&space_id, &member_user_id).await {
+        Ok(true) => {
+            return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
+                "INVALID_OPERATION",
+                "Cannot change owner role",
+            ));
+        },
+        Ok(false) => {},
+        Err(e) => {
+            error!("Database error checking space owner: {:?}", e);
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.update_space_member(&space_id, &member_user_id, &req.role).await {
@@ -1284,7 +1322,16 @@ pub async fn remove_space_member(
     };
 
     // Check permissions: owner can remove anyone, member can remove themselves
-    let is_owner = repo.is_space_owner(&space_id, &user_id).await.unwrap_or(false);
+    let is_owner = match repo.is_space_owner(&space_id, &user_id).await {
+        Ok(v) => v,
+        Err(e) => {
+            error!("Database error checking space owner: {:?}", e);
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
+    };
     let is_self = member_user_id == user_id;
 
     if !is_owner && !is_self {
@@ -1295,11 +1342,23 @@ pub async fn remove_space_member(
     }
 
     // Cannot remove owner
-    if is_owner && repo.is_space_owner(&space_id, &member_user_id).await.unwrap_or(false) {
-        return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
-            "INVALID_OPERATION",
-            "Cannot remove space owner",
-        ));
+    if is_owner {
+        match repo.is_space_owner(&space_id, &member_user_id).await {
+            Ok(true) => {
+                return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
+                    "INVALID_OPERATION",
+                    "Cannot remove space owner",
+                ));
+            },
+            Ok(false) => {},
+            Err(e) => {
+                error!("Database error checking space owner: {:?}", e);
+                return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                    "DATABASE_ERROR",
+                    "A database error occurred. Please try again later.",
+                ));
+            },
+        }
     }
 
     match repo.remove_space_member(&space_id, &member_user_id).await {

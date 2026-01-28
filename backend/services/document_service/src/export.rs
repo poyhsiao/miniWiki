@@ -178,16 +178,25 @@ impl ExportService {
 
         let file_path = self.output_dir.join(&file_name);
 
-        // Generate content based on format
-        let content_str = match format {
-            ExportFormat::Markdown => self.export_markdown(title, content, metadata.as_ref())?,
-            ExportFormat::Html => self.export_html(title, content, metadata.as_ref())?,
-            ExportFormat::Pdf => self.export_pdf(title, content, metadata.as_ref())?,
-            ExportFormat::Json => self.export_json(content)?,
-        };
-
-        // Write to file
-        fs::write(&file_path, &content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+        // Generate content based on format and write to file
+        match format {
+            ExportFormat::Markdown => {
+                let content_str = self.export_markdown(title, content, metadata.as_ref())?;
+                fs::write(&file_path, content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
+            ExportFormat::Html => {
+                let content_str = self.export_html(title, content, metadata.as_ref())?;
+                fs::write(&file_path, content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
+            ExportFormat::Pdf => {
+                let content_bytes = self.export_pdf(title, content, metadata.as_ref())?;
+                fs::write(&file_path, content_bytes).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
+            ExportFormat::Json => {
+                let content_str = self.export_json(content)?;
+                fs::write(&file_path, content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
+        }
 
         // Get file size
         let file_size = fs::metadata(&file_path)
@@ -343,7 +352,7 @@ impl ExportService {
         title: &str,
         content: &serde_json::Value,
         metadata: Option<&DocumentMetadata>,
-    ) -> Result<String, ExportError> {
+    ) -> Result<Vec<u8>, ExportError> {
         // First generate HTML
         let html = self.export_html(title, content, metadata)?;
 
@@ -351,15 +360,16 @@ impl ExportService {
         let weasyprint_path = match &self.weasyprint_path {
             Some(path) => path,
             None => {
-                // Return HTML with note that PDF requires weasyprint
-                return Ok(html
+                // Return HTML as bytes with note that PDF requires weasyprint
+                return Ok((html
                     + r#"
 <!--
 NOTE: PDF export requires weasyprint to be installed.
 Install with: pip install weasyprint
 Or convert this HTML to PDF using another tool.
 -->
-"#);
+"#)
+                .into_bytes());
             },
         };
 
@@ -389,8 +399,8 @@ Or convert this HTML to PDF using another tool.
             )));
         }
 
-        // Return the actual PDF content
-        fs::read_to_string(&output_path).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))
+        // Return the actual PDF content as bytes
+        fs::read(&output_path).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))
     }
 
     /// Export as JSON (raw Yjs state)
