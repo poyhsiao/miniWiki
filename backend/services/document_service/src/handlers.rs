@@ -1285,11 +1285,20 @@ pub async fn update_space_member(
     }
 
     // Cannot change owner role
-    if let Ok(true) = repo.is_space_owner(&space_id, &member_user_id).await {
-        return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
-            "INVALID_OPERATION",
-            "Cannot change owner role",
-        ));
+    match repo.is_space_owner(&space_id, &member_user_id).await {
+        Ok(true) => {
+            return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
+                "INVALID_OPERATION",
+                "Cannot change owner role",
+            ));
+        },
+        Ok(false) => {},
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
     }
 
     match repo.update_space_member(&space_id, &member_user_id, &req.role).await {
