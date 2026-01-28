@@ -139,6 +139,7 @@ fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
     req.headers()
         .get("X-User-Id")
         .and_then(|h| h.to_str().ok())
+        .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .ok_or_else(|| AppError::AuthenticationError("Missing or invalid authentication".to_string()))
 }
@@ -1319,7 +1320,15 @@ pub async fn remove_space_member(
     };
 
     // Check permissions: owner can remove anyone, member can remove themselves
-    let is_owner = repo.is_space_owner(&space_id, &user_id).await.unwrap_or(false);
+    let is_owner = match repo.is_space_owner(&space_id, &user_id).await {
+        Ok(result) => result,
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
+    };
     let is_self = member_user_id == user_id;
 
     if !is_owner && !is_self {
@@ -1330,7 +1339,16 @@ pub async fn remove_space_member(
     }
 
     // Cannot remove owner
-    if is_owner && repo.is_space_owner(&space_id, &member_user_id).await.unwrap_or(false) {
+    let target_is_owner = match repo.is_space_owner(&space_id, &member_user_id).await {
+        Ok(result) => result,
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
+    };
+    if is_owner && target_is_owner {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "INVALID_OPERATION",
             "Cannot remove space owner",
