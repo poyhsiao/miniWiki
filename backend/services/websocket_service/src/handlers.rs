@@ -87,13 +87,17 @@ impl DocumentSyncManager {
 
     pub async fn get_or_create_sync_state(&self, document_id: Uuid) -> Arc<Mutex<DocumentSyncState>> {
         let mut states = self.states.lock().await;
-        states.entry(document_id).or_insert_with(|| Arc::new(Mutex::new(DocumentSyncState::default())));
+        states
+            .entry(document_id)
+            .or_insert_with(|| Arc::new(Mutex::new(DocumentSyncState::default())));
         Arc::clone(states.get(&document_id).unwrap())
     }
 
     pub async fn get_broadcast_sender(&self, document_id: Uuid) -> Arc<DocumentBroadcastSender> {
         let mut senders = self.broadcast_senders.lock().await;
-        senders.entry(document_id).or_insert_with(|| Arc::new(DocumentBroadcastSender::new(document_id)));
+        senders
+            .entry(document_id)
+            .or_insert_with(|| Arc::new(DocumentBroadcastSender::new(document_id)));
         Arc::clone(senders.get(&document_id).unwrap())
     }
 
@@ -338,30 +342,6 @@ pub fn broadcast_to_document(
             send_fn(session.id, json);
         }
     }
-}
-
-/// Broadcast awareness update to all clients in a document
-pub fn broadcast_awareness_update(
-    document_id: Uuid,
-    user_id: Uuid,
-    display_name: String,
-    color: String,
-    cursor: Option<CursorPosition>,
-) {
-    let presence = UserPresence {
-        user_id,
-        display_name,
-        color,
-        cursor,
-        last_active: Utc::now(),
-    };
-
-    let _message = ServerMessage {
-        type_: MessageType::UserJoin,
-        document_id,
-        payload: json!(presence),
-        timestamp: Utc::now(),
-    };
 }
 
 /// Broadcast user leave event to all clients in a document

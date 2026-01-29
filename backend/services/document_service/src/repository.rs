@@ -693,7 +693,7 @@ impl DocumentRepository {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query_as!(
+        let result: Option<SpaceMembershipRow> = sqlx::query_as!(
             SpaceMembershipRow,
             r#"SELECT * FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
             space_uuid,
@@ -780,7 +780,7 @@ impl DocumentRepository {
         let space_uuid = Uuid::parse_str(space_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
         let user_uuid = Uuid::parse_str(user_id).map_err(|e| sqlx::Error::Decode(e.to_string().into()))?;
 
-        let result = sqlx::query!(
+        let _result = sqlx::query!(
             r#"DELETE FROM space_memberships WHERE space_id = $1 AND user_id = $2"#,
             space_uuid,
             user_uuid
@@ -788,7 +788,7 @@ impl DocumentRepository {
         .execute(&self.pool)
         .await?;
 
-        Ok(result.rows_affected() > 0)
+        Ok(_result.rows_affected() > 0)
     }
 
     // ==================== Comment Operations ====================
@@ -841,23 +841,25 @@ impl DocumentRepository {
             .await?
         };
 
-        let total: i64 = if let Some(parent) = parent_uuid {
-            sqlx::query_scalar!(
+        let total = if let Some(parent) = parent_uuid {
+            let count1: i64 = sqlx::query_scalar!(
                 r#"SELECT COUNT(*) FROM comments WHERE document_id = $1 AND parent_id = $2"#,
                 document_uuid,
                 parent
             )
             .fetch_one(&self.pool)
             .await?
-            .unwrap_or(0)
+            .unwrap_or(0);
+            count1
         } else {
-            sqlx::query_scalar!(
+            let count2: i64 = sqlx::query_scalar!(
                 r#"SELECT COUNT(*) FROM comments WHERE document_id = $1 AND parent_id IS NULL"#,
                 document_uuid
             )
             .fetch_one(&self.pool)
             .await?
-            .unwrap_or(0)
+            .unwrap_or(0);
+            count2
         };
 
         Ok((comments, total))
@@ -977,13 +979,14 @@ impl DocumentRepository {
         .await?;
 
         // Then delete the comment itself
-        let result = sqlx::query!(r#"DELETE FROM comments WHERE id = $1"#, comment_uuid)
-            .execute(&mut *tx)
-            .await?;
+        let _result: sqlx::postgres::PgQueryResult =
+            sqlx::query!(r#"DELETE FROM comments WHERE id = $1"#, comment_uuid)
+                .execute(&mut *tx)
+                .await?;
 
         tx.commit().await?;
 
-        Ok(result.rows_affected() > 0)
+        Ok(_result.rows_affected() > 0)
     }
 }
 

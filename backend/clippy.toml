@@ -1,6 +1,5 @@
 # clippy configuration for miniWiki backend
 # Generated: 2026-01-29
 
-# Allow specific lints
-allow-print-in-tests = true
-allow-dbg-in-tests = true
+# Suppress specific lints in tests
+too_many_lines = { level = "allow", priority = 1 }

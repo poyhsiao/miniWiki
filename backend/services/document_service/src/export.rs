@@ -335,7 +335,9 @@ impl ExportService {
         output.push_str("\n    </div>\n");
 
         // Title
-        output.push_str(&format!("    <h1>{}</h1>\n\n", escape_html(title));
+        
+let title_escaped = escape_html(title);
+        output.push_str(&format!("    <h1>{}</h1>\n\n", title_escaped));
 
         // Content - convert Yjs JSON to HTML
         let html_content = Self::yjs_to_html(content);

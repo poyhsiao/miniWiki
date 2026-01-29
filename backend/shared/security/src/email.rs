@@ -48,8 +48,12 @@ impl fmt::Display for EmailValidationError {
             EmailValidationError::MissingDomain => write!(f, "Email address must have a domain after @"),
             EmailValidationError::DomainMissingDot => write!(f, "Email domain must contain at least one dot"),
             EmailValidationError::DomainTooShort => write!(f, "Email domain is too short"),
-            EmailValidationError::LocalPartTooShort => write!(f, "Email name before @ is too short (minimum 1 character)"),
-            EmailValidationError::LocalPartTooLong => write!(f, "Email name before @ is too long (maximum 64 characters)"),
+            EmailValidationError::LocalPartTooShort => {
+                write!(f, "Email name before @ is too short (minimum 1 character)")
+            },
+            EmailValidationError::LocalPartTooLong => {
+                write!(f, "Email name before @ is too long (maximum 64 characters)")
+            },
             EmailValidationError::InvalidCharacter => write!(f, "Email address contains invalid characters"),
             EmailValidationError::LeadingTrailingDot => write!(f, "Email address cannot start or end with a dot"),
             EmailValidationError::ConsecutiveDots => write!(f, "Email address cannot contain consecutive dots"),
@@ -66,7 +70,7 @@ impl fmt::Display for EmailValidationError {
 ///
 /// - Must contain exactly one @ symbol
 /// - Local part (before @) must be 1-64 characters
-/// - Domain part (after @) must be at least 4 characters (e.g., "a.bc")
+/// - Domain part (after @) must contain at least one dot and non-empty labels
 /// - Total length must not exceed 254 characters (RFC 5321)
 /// - Must not start or end with a dot
 /// - Must not contain consecutive dots
@@ -132,9 +136,6 @@ pub fn validate_email(email: &str) -> Result<(), EmailValidationError> {
     if domain_part.is_empty() {
         return Err(EmailValidationError::MissingDomain);
     }
-    if domain_part.len() < 4 {
-        return Err(EmailValidationError::DomainTooShort);
-    }
     if !domain_part.contains('.') {
         return Err(EmailValidationError::DomainMissingDot);
     }
@@ -157,15 +158,11 @@ pub fn validate_email(email: &str) -> Result<(), EmailValidationError> {
 
     // Validate characters separately for local and domain parts
     // Local part allows: alphanumeric, dot, underscore, hyphen, plus
-    let valid_local_chars = |c: char| -> bool {
-        c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '+')
-    };
+    let valid_local_chars = |c: char| -> bool { c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '+') };
 
     // Domain part follows DNS hostname rules: alphanumeric, hyphen, dot only
     // Labels must not start or end with '-' and must be non-empty
-    let valid_domain_chars = |c: char| -> bool {
-        c.is_alphanumeric() || matches!(c, '-' | '.')
-    };
+    let valid_domain_chars = |c: char| -> bool { c.is_alphanumeric() || matches!(c, '-' | '.') };
 
     if !local_part.chars().all(valid_local_chars) {
         return Err(EmailValidationError::InvalidCharacter);
@@ -313,11 +310,10 @@ mod tests {
     }
 
     #[test]
-    fn test_domain_too_short() {
+    fn test_domain_missing_dot() {
         let result = validate_email("user@abc");
-        // Domain is too short (less than 4 characters)
-        // Also missing dot, but length check comes first
-        assert!(matches!(result, Err(EmailValidationError::DomainTooShort)));
+        // Domain is missing dot
+        assert!(matches!(result, Err(EmailValidationError::DomainMissingDot)));
     }
 
     #[test]
@@ -495,10 +491,7 @@ mod tests {
 
     #[test]
     fn test_error_validation_to_string() {
-        assert_eq!(
-            format!("{}", EmailValidationError::Empty),
-            "Email address is required"
-        );
+        assert_eq!(format!("{}", EmailValidationError::Empty), "Email address is required");
         assert_eq!(
             format!("{}", EmailValidationError::TooLong),
             "Email address is too long (maximum 254 characters)"

@@ -1,7 +1,7 @@
 use actix_web::{
     body::MessageBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
-    http::header::{self, HeaderValue},
+    http::header::{self},
     Error,
 };
 use futures_util::future::LocalBoxFuture;
@@ -9,15 +9,6 @@ use std::future::Ready;
 use std::sync::Arc;
 
 use crate::config::SecurityHeadersConfig;
-
-// Logging for security header validation failures
-fn log_invalid_header(header_name: &str, value: &str) {
-    tracing::warn!(
-        "Invalid security header value for '{}': '{}'. Header will not be set.",
-        header_name,
-        value
-    );
-}
 
 /// Security headers middleware with configurable policies
 ///
@@ -101,94 +92,130 @@ where
         Box::pin(async move {
             let mut res = fut.await?;
 
-            // Apply HSTS header
-            match HeaderValue::from_str(&config.strict_transport_security) {
-                Ok(hsts_value) => {
+            // Apply HSTS header (pre-validated at configuration time)
+            if let Some(hsts_value) = config.strict_transport_security.as_ref() {
+                res.headers_mut()
+                    .insert(header::STRICT_TRANSPORT_SECURITY, hsts_value.clone());
+            }
+
+            // Apply X-Frame-Options header (pre-validated)
+            if let Some(frame_value) = config.x_frame_options.as_ref() {
+                res.headers_mut()
+                    .insert(header::X_FRAME_OPTIONS, frame_value.clone());
+            }
+
+            // Apply X-Content-Type-Options header (pre-validated)
+            if let Some(ct_value) = config.x_content_type_options.as_ref() {
+                res.headers_mut()
+                    .insert(header::X_CONTENT_TYPE_OPTIONS, ct_value.clone());
+            }
+
+            // Apply Referrer-Policy header (pre-validated)
+            if let Some(referrer_value) = config.referrer_policy.as_ref() {
+                res.headers_mut()
+                    .insert(header::REFERRER_POLICY, referrer_value.clone());
+            }
+
+            // Apply Permissions-Policy header (pre-validated)
+            if let Some(perm_value) = config.permissions_policy.as_ref() {
+                res.headers_mut()
+                    .insert(header::PERMISSIONS_POLICY, perm_value.clone());
+            }
+
+            // Apply CSP header only if not already set (pre-validated)
+            if !res.headers().contains_key(header::CONTENT_SECURITY_POLICY) {
+                if let Some(csp_value) = config.content_security_policy.as_ref() {
                     res.headers_mut()
-                        .insert(header::STRICT_TRANSPORT_SECURITY, hsts_value);
-                }
-                Err(_) => {
-                    log_invalid_header("Strict-Transport-Security", &config.strict_transport_security);
+                        .insert(header::CONTENT_SECURITY_POLICY, csp_value.clone());
                 }
             }
+
+            // Apply Cache-Control header (pre-validated)
+            if let Some(cache_value) = config.cache_control.as_ref() {
+                res.headers_mut()
+                    .insert(header::CACHE_CONTROL, cache_value.clone());
+            }
+
+            // Apply Pragma header (pre-validated)
+            if let Some(pragma_value) = config.pragma.as_ref() {
+                res.headers_mut()
+                    .insert(header::PRAGMA, pragma_value.clone());
+            }
+
+            Ok(res)
+        })
+    }
 
             // Apply X-Frame-Options header
             match HeaderValue::from_str(&config.x_frame_options) {
                 Ok(frame_value) => {
-                    res.headers_mut()
-                        .insert(header::X_FRAME_OPTIONS, frame_value);
-                }
+                    res.headers_mut().insert(header::X_FRAME_OPTIONS, frame_value);
+                },
                 Err(_) => {
                     log_invalid_header("X-Frame-Options", &config.x_frame_options);
-                }
+                },
             }
 
             // Apply X-Content-Type-Options header
             match HeaderValue::from_str(&config.x_content_type_options) {
                 Ok(ct_value) => {
-                    res.headers_mut()
-                        .insert(header::X_CONTENT_TYPE_OPTIONS, ct_value);
-                }
+                    res.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS, ct_value);
+                },
                 Err(_) => {
                     log_invalid_header("X-Content-Type-Options", &config.x_content_type_options);
-                }
+                },
             }
 
             // Apply Referrer-Policy header
             match HeaderValue::from_str(&config.referrer_policy) {
                 Ok(referrer_value) => {
-                    res.headers_mut()
-                        .insert(header::REFERRER_POLICY, referrer_value);
-                }
+                    res.headers_mut().insert(header::REFERRER_POLICY, referrer_value);
+                },
                 Err(_) => {
                     log_invalid_header("Referrer-Policy", &config.referrer_policy);
-                }
+                },
             }
 
             // Apply Permissions-Policy header
             match HeaderValue::from_str(&config.permissions_policy) {
                 Ok(perm_value) => {
-                    res.headers_mut()
-                        .insert(header::PERMISSIONS_POLICY, perm_value);
-                }
+                    res.headers_mut().insert(header::PERMISSIONS_POLICY, perm_value);
+                },
                 Err(_) => {
                     log_invalid_header("Permissions-Policy", &config.permissions_policy);
-                }
+                },
             }
 
             // Apply CSP header only if not already set
             if !res.headers().contains_key(header::CONTENT_SECURITY_POLICY) {
                 match HeaderValue::from_str(&config.content_security_policy) {
                     Ok(csp_value) => {
-                        res.headers_mut()
-                            .insert(header::CONTENT_SECURITY_POLICY, csp_value);
-                    }
+                        res.headers_mut().insert(header::CONTENT_SECURITY_POLICY, csp_value);
+                    },
                     Err(_) => {
                         log_invalid_header("Content-Security-Policy", &config.content_security_policy);
-                    }
+                    },
                 }
             }
 
             // Apply Cache-Control header
             match HeaderValue::from_str(&config.cache_control) {
                 Ok(cache_value) => {
-                    res.headers_mut()
-                        .insert(header::CACHE_CONTROL, cache_value);
-                }
+                    res.headers_mut().insert(header::CACHE_CONTROL, cache_value);
+                },
                 Err(_) => {
                     log_invalid_header("Cache-Control", &config.cache_control);
-                }
+                },
             }
 
             // Apply Pragma header
             match HeaderValue::from_str(&config.pragma) {
                 Ok(pragma_value) => {
-                    res.headers_mut()
-                        .insert(header::PRAGMA, pragma_value);
-                }
+                    res.headers_mut().insert(header::PRAGMA, pragma_value);
+                },
                 Err(_) => {
                     log_invalid_header("Pragma", &config.pragma);
-                }
+                },
             }
 
             Ok(res)
@@ -207,12 +234,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_security_headers_are_added() {
-        let app = test::init_service(
-            App::new()
-                .wrap(SecurityHeaders::new())
-                .route("/", web::get().to(index)),
-        )
-        .await;
+        let app = test::init_service(App::new().wrap(SecurityHeaders::new()).route("/", web::get().to(index))).await;
 
         let req = test::TestRequest::get().to_request();
         let resp = test::call_service(&app, req).await;
@@ -220,7 +242,9 @@ mod tests {
         // Check HSTS header
         assert_eq!(
             resp.headers().get(header::STRICT_TRANSPORT_SECURITY),
-            Some(&HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"))
+            Some(&HeaderValue::from_static(
+                "max-age=31536000; includeSubDomains; preload"
+            ))
         );
 
         // Check X-Frame-Options
@@ -242,15 +266,14 @@ mod tests {
         );
 
         // Check Permissions-Policy
-        assert!(resp
-            .headers()
-            .get(header::PERMISSIONS_POLICY)
-            .is_some());
+        assert!(resp.headers().get(header::PERMISSIONS_POLICY).is_some());
 
         // Check Cache-Control
         assert_eq!(
             resp.headers().get(header::CACHE_CONTROL),
-            Some(&HeaderValue::from_static("no-store, no-cache, must-revalidate, private"))
+            Some(&HeaderValue::from_static(
+                "no-store, no-cache, must-revalidate, private"
+            ))
         );
 
         // Check Pragma
@@ -262,20 +285,12 @@ mod tests {
 
     #[actix_web::test]
     async fn test_csp_header_added_when_missing() {
-        let app = test::init_service(
-            App::new()
-                .wrap(SecurityHeaders::new())
-                .route("/", web::get().to(index)),
-        )
-        .await;
+        let app = test::init_service(App::new().wrap(SecurityHeaders::new()).route("/", web::get().to(index))).await;
 
         let req = test::TestRequest::get().to_request();
         let resp = test::call_service(&app, req).await;
 
-        assert!(resp
-            .headers()
-            .get(header::CONTENT_SECURITY_POLICY)
-            .is_some());
+        assert!(resp.headers().get(header::CONTENT_SECURITY_POLICY).is_some());
     }
 
     #[actix_web::test]
@@ -331,10 +346,7 @@ mod tests {
     async fn test_csp_header_not_overridden_when_set() {
         async fn index_with_csp() -> HttpResponse {
             HttpResponse::Ok()
-                .insert_header((
-                    header::CONTENT_SECURITY_POLICY,
-                    "custom-csp-directive",
-                ))
+                .insert_header((header::CONTENT_SECURITY_POLICY, "custom-csp-directive"))
                 .body("test")
         }
 
@@ -400,29 +412,18 @@ mod tests {
         let resp = test::call_service(&app, req).await;
 
         // Invalid header values should be silently ignored (not set)
-        assert!(resp
-            .headers()
-            .get(header::STRICT_TRANSPORT_SECURITY)
-            .is_none());
+        assert!(resp.headers().get(header::STRICT_TRANSPORT_SECURITY).is_none());
     }
 
     #[actix_web::test]
     async fn test_security_headers_default_impl() {
         let headers = SecurityHeaders::default();
-        let app = test::init_service(
-            App::new()
-                .wrap(headers)
-                .route("/", web::get().to(index)),
-        )
-        .await;
+        let app = test::init_service(App::new().wrap(headers).route("/", web::get().to(index))).await;
 
         let req = test::TestRequest::get().to_request();
         let resp = test::call_service(&app, req).await;
 
         // Verify default headers are applied
-        assert!(resp
-            .headers()
-            .get(header::X_CONTENT_TYPE_OPTIONS)
-            .is_some());
+        assert!(resp.headers().get(header::X_CONTENT_TYPE_OPTIONS).is_some());
     }
 }

@@ -38,14 +38,12 @@ pub async fn reset_password(
 ) -> impl actix_web::Responder {
     // Validate token format
     if let Err(e) = validate_token_format(&req.token) {
-        return HttpResponse::BadRequest()
-            .json(json!({ "error": "VALIDATION_ERROR", "message": e }));
+        return HttpResponse::BadRequest().json(json!({ "error": "VALIDATION_ERROR", "message": e }));
     }
 
     // Validate password strength using shared security module
     if let Err(e) = shared_security::validate_password_strength(&req.new_password) {
-        return HttpResponse::BadRequest()
-            .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
+        return HttpResponse::BadRequest().json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
 
     // Find reset token and verify it's valid
@@ -53,14 +51,16 @@ pub async fn reset_password(
         Ok(info) => info,
         Err(e) => {
             return match e {
-                AppError::NotFound(msg) => HttpResponse::NotFound()
-                    .json(json!({ "error": "INVALID_TOKEN", "message": msg })),
-                AppError::ValidationError(msg) => HttpResponse::BadRequest()
-                    .json(json!({ "error": "INVALID_TOKEN", "message": msg })),
+                AppError::NotFound(msg) => {
+                    HttpResponse::NotFound().json(json!({ "error": "INVALID_TOKEN", "message": msg }))
+                },
+                AppError::ValidationError(msg) => {
+                    HttpResponse::BadRequest().json(json!({ "error": "INVALID_TOKEN", "message": msg }))
+                },
                 _ => HttpResponse::InternalServerError()
                     .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to validate reset token" })),
             };
-        }
+        },
     };
 
     // Hash new password using shared security module
@@ -70,7 +70,7 @@ pub async fn reset_password(
             tracing::error!("Failed to hash password: {}", e);
             return HttpResponse::InternalServerError()
                 .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process password" }));
-        }
+        },
     };
 
     // Update user password
@@ -80,19 +80,18 @@ pub async fn reset_password(
             tracing::error!("Failed to update password: {}", e);
             return HttpResponse::InternalServerError()
                 .json(json!({ "error": "DATABASE_ERROR", "message": "Failed to update password" }));
-        }
+        },
     }
 
     // Mark token as used
     match mark_reset_token_used(&req.token, repo).await {
-        Ok(_) => {}
+        Ok(_) => {},
         Err(e) => {
             tracing::warn!("Failed to mark reset token as used: {}", e);
-        }
+        },
     }
 
-    HttpResponse::Ok()
-        .json(json!({ "message": "Password reset successfully".to_string() }))
+    HttpResponse::Ok().json(json!({ "message": "Password reset successfully".to_string() }))
 }
 
 /// Request password reset for email
@@ -106,18 +105,17 @@ pub async fn request_password_reset(
             None => {
                 return HttpResponse::BadRequest()
                     .json(json!({ "error": "VALIDATION_ERROR", "message": "Email must be a string" }));
-            }
+            },
         },
         None => {
             return HttpResponse::BadRequest()
                 .json(json!({ "error": "VALIDATION_ERROR", "message": "Email is required" }));
-        }
+        },
     };
 
     // Validate email using shared security module
     if let Err(e) = shared_security::validate_email(email) {
-        return HttpResponse::BadRequest()
-            .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
+        return HttpResponse::BadRequest().json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
 
     // Check if user exists (but don't reveal if not found for security)
@@ -128,16 +126,16 @@ pub async fn request_password_reset(
             // This prevents email enumeration attacks
             return HttpResponse::Ok()
                 .json(json!({ "message": "If the email is registered, a reset link has been sent".to_string() }));
-        }
+        },
         Err(e) => {
             tracing::error!("Failed to lookup user: {}", e);
             return HttpResponse::InternalServerError()
                 .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request" }));
-        }
+        },
     };
 
-    // Generate and store password reset token
-    let token = generate_reset_token();
+    // Generate and store password reset token using shared security module
+    let token = shared_security::generate_reset_token(64);
     if let Err(e) = store_reset_token(user.id, &token, repo.clone()).await {
         tracing::error!("Failed to store reset token: {}", e);
         return HttpResponse::InternalServerError()
@@ -148,8 +146,7 @@ pub async fn request_password_reset(
     // For now, just log the token (in production, this should send an email)
     tracing::info!("Password reset token generated for {}: {}", email, token);
 
-    HttpResponse::Ok()
-        .json(json!({ "message": "If the email is registered, a reset link has been sent".to_string() }))
+    HttpResponse::Ok().json(json!({ "message": "If the email is registered, a reset link has been sent".to_string() }))
 }
 
 /// Resend verification email
@@ -163,18 +160,17 @@ pub async fn resend_verification_email(
             None => {
                 return HttpResponse::BadRequest()
                     .json(json!({ "error": "VALIDATION_ERROR", "message": "Email must be a string" }));
-            }
+            },
         },
         None => {
             return HttpResponse::BadRequest()
                 .json(json!({ "error": "VALIDATION_ERROR", "message": "Email is required" }));
-        }
+        },
     };
 
     // Validate email using shared security module
     if let Err(e) = shared_security::validate_email(email) {
-        return HttpResponse::BadRequest()
-            .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
+        return HttpResponse::BadRequest().json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
 
     // Check if user exists
@@ -183,12 +179,12 @@ pub async fn resend_verification_email(
         Ok(None) => {
             return HttpResponse::NotFound()
                 .json(json!({ "error": "USER_NOT_FOUND", "message": "No user found with this email".to_string() }));
-        }
+        },
         Err(e) => {
             tracing::error!("Failed to lookup user: {}", e);
             return HttpResponse::InternalServerError()
                 .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request" }));
-        }
+        },
     };
 
     if user.is_email_verified {
@@ -196,8 +192,8 @@ pub async fn resend_verification_email(
             .json(json!({ "error": "ALREADY_VERIFIED", "message": "Email is already verified".to_string() }));
     }
 
-    // Generate and store new verification token
-    let token = generate_verification_token();
+    // Generate and store new verification token using shared security module
+    let token = shared_security::generate_reset_token(64);
     if let Err(e) = store_verification_token(user.id, &token, repo).await {
         tracing::error!("Failed to store verification token: {}", e);
         return HttpResponse::InternalServerError()
@@ -207,8 +203,7 @@ pub async fn resend_verification_email(
     // TODO: Send email with verification link
     tracing::info!("Verification token resent for {}: {}", email, token);
 
-    HttpResponse::Ok()
-        .json(json!({ "message": "Verification email sent successfully".to_string() }))
+    HttpResponse::Ok().json(json!({ "message": "Verification email sent successfully".to_string() }))
 }
 
 // ============================================================================
@@ -223,19 +218,14 @@ fn validate_token_format(token: &str) -> Result<(), String> {
     if token.len() != 64 {
         return Err("Token must be 64 characters long".to_string());
     }
-    if !token.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err("Token must contain only hexadecimal characters".to_string());
+    if !token.chars().all(|c| c.is_alphanumeric()) {
+        return Err("Token must contain only alphanumeric characters".to_string());
     }
     Ok(())
 }
 
-fn generate_reset_token() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let mut hash = format!("{:?}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos());
-    hash.push_str(&Uuid::new_v4().to_string());
-    use sha2::{Sha256, Digest};
-    let hash = Sha256::digest(hash.as_bytes());
-    format!("{:x}", hash)
+fn generate_verification_token() -> String {
+    shared_security::generate_reset_token(64)
 }
 
 fn generate_verification_token() -> String {
@@ -246,28 +236,19 @@ fn generate_verification_token() -> String {
 // Database Operations (TODO: These should be in AuthRepository)
 // ============================================================================
 
-async fn find_valid_reset_token(
-    token: &str,
-    repo: web::Data<AuthRepository>,
-) -> Result<ResetTokenInfo, AppError> {
+async fn find_valid_reset_token(token: &str, repo: web::Data<AuthRepository>) -> Result<ResetTokenInfo, AppError> {
     // TODO: Implement actual database lookup
     // This should check password_resets table for valid token
     Err(AppError::NotFound("Reset token not found or expired".to_string()))
 }
 
-async fn mark_reset_token_used(
-    token: &str,
-    repo: web::Data<AuthRepository>,
-) -> Result<(), AppError> {
+async fn mark_reset_token_used(token: &str, repo: web::Data<AuthRepository>) -> Result<(), AppError> {
     // TODO: Implement actual database update
     // This should update password_resets table setting used_at
     Ok(())
 }
 
-async fn find_user_by_email(
-    email: &str,
-    repo: web::Data<AuthRepository>,
-) -> Result<Option<User>, AppError> {
+async fn find_user_by_email(email: &str, repo: web::Data<AuthRepository>) -> Result<Option<User>, AppError> {
     // TODO: This should use AuthRepository.find_by_email
     repo.find_by_email(email).await
 }
@@ -281,20 +262,12 @@ async fn update_user_password(
     Ok(())
 }
 
-async fn store_reset_token(
-    user_id: Uuid,
-    token: &str,
-    repo: web::Data<AuthRepository>,
-) -> Result<(), AppError> {
+async fn store_reset_token(user_id: Uuid, token: &str, repo: web::Data<AuthRepository>) -> Result<(), AppError> {
     // TODO: Implement actual token storage in password_resets table
     Ok(())
 }
 
-async fn store_verification_token(
-    user_id: Uuid,
-    token: &str,
-    repo: web::Data<AuthRepository>,
-) -> Result<(), AppError> {
+async fn store_verification_token(user_id: Uuid, token: &str, repo: web::Data<AuthRepository>) -> Result<(), AppError> {
     // TODO: Implement actual token storage in email_verifications table
     Ok(())
 }
@@ -309,31 +282,31 @@ mod tests {
 
     #[test]
     fn test_validate_token_format_valid() {
-        let valid_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        let valid_token = "test_token_valid_0123456789abcdef0123456789abcdef0123456789abc";
         assert!(validate_token_format(&valid_token).is_ok());
     }
 
     #[test]
     fn test_validate_token_format_too_short() {
-        let short_token = "0123456789abcdef";
+        let short_token = "test_short";
         assert!(validate_token_format(&short_token).is_err());
     }
 
     #[test]
     fn test_validate_token_format_too_long() {
-        let long_token = "0123456789abcdef".repeat(5);
+        let long_token = format!("test_{}", "a".repeat(100));
         assert!(validate_token_format(&long_token).is_err());
     }
 
     #[test]
     fn test_validate_token_format_invalid_chars() {
-        let invalid_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg";
+        let invalid_token = "test_token_with_invalid_char_g_0123456789abcdef0123456789abcdef0123";
         assert!(validate_token_format(&invalid_token).is_err());
     }
 
     #[test]
     fn test_validate_token_format_non_hex() {
-        let invalid_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcXYZ";
+        let invalid_token = "test_token_with_XYZ_0123456789abcdef0123456789abcdef0123";
         assert!(validate_token_format(&invalid_token).is_err());
     }
 
@@ -343,26 +316,26 @@ mod tests {
 
     #[test]
     fn test_generate_reset_token_length() {
-        let token = generate_reset_token();
+        let token = shared_security::generate_reset_token(64);
         assert_eq!(token.len(), 64);
     }
 
     #[test]
     fn test_generate_reset_token_unique() {
-        let token1 = generate_reset_token();
-        let token2 = generate_reset_token();
+        let token1 = shared_security::generate_reset_token(64);
+        let token2 = shared_security::generate_reset_token(64);
         assert_ne!(token1, token2);
     }
 
     #[test]
-    fn test_generate_reset_token_hex_only() {
-        let token = generate_reset_token();
-        assert!(token.chars().all(|c| c.is_ascii_hexdigit()));
+    fn test_generate_reset_token_alphanumeric_only() {
+        let token = shared_security::generate_reset_token(64);
+        assert!(token.chars().all(|c| c.is_alphanumeric()));
     }
 
     #[test]
     fn test_generate_verification_token_same_as_reset() {
-        let reset_token = generate_reset_token();
+        let reset_token = shared_security::generate_reset_token(64);
         let verification_token = generate_verification_token();
         // Tokens should be unique (generated at different times)
         assert_ne!(reset_token, verification_token);
@@ -382,7 +355,11 @@ mod tests {
             "user-name@example.co.uk",
         ];
         for email in valid_emails {
-            assert!(shared_security::validate_email(email).is_ok(), "Email should be valid: {}", email);
+            assert!(
+                shared_security::validate_email(email).is_ok(),
+                "Email should be valid: {}",
+                email
+            );
         }
     }
 
@@ -399,7 +376,11 @@ mod tests {
             "user.@example.com",
         ];
         for email in invalid_emails {
-            assert!(shared_security::validate_email(email).is_err(), "Email should be invalid: {}", email);
+            assert!(
+                shared_security::validate_email(email).is_err(),
+                "Email should be invalid: {}",
+                email
+            );
         }
     }
 
@@ -409,28 +390,25 @@ mod tests {
 
     #[test]
     fn test_password_validation_valid_passwords() {
-        let valid_passwords = vec![
-            "TestPass123",
-            "MyPassword1",
-            "SecurePass2024",
-            "AnotherValid123",
-        ];
+        let valid_passwords = vec!["TestPass123", "MyPassword1", "SecurePass2024", "AnotherValid123"];
         for password in valid_passwords {
-            assert!(shared_security::validate_password_strength(password).is_ok(), "Password should be valid: {}", password);
+            assert!(
+                shared_security::validate_password_strength(password).is_ok(),
+                "Password should be valid: {}",
+                password
+            );
         }
     }
 
     #[test]
     fn test_password_validation_invalid_passwords() {
-        let invalid_passwords = vec![
-            "short",
-            "alllowercase",
-            "ALLUPPERCASE",
-            "NoDigits",
-            "NoDigitsButLong",
-        ];
+        let invalid_passwords = vec!["short", "alllowercase", "ALLUPPERCASE", "NoDigits", "NoDigitsButLong"];
         for password in invalid_passwords {
-            assert!(shared_security::validate_password_strength(password).is_err(), "Password should be invalid: {}", password);
+            assert!(
+                shared_security::validate_password_strength(password).is_err(),
+                "Password should be invalid: {}",
+                password
+            );
         }
     }
 }

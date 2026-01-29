@@ -1,13 +1,18 @@
-use actix_web::{dev::{Service, ServiceRequest, ServiceResponse, Transform}, error::Error, http::{header, Method}, HttpRequest};
+use actix_web::{
+    dev::{Service, ServiceRequest, ServiceResponse, Transform},
+    error::Error,
+    http::{header, Method},
+    HttpRequest,
+};
+use async_trait::async_trait;
+use chrono::Utc;
+use redis::AsyncCommands;
+use serde::{Deserialize, Serialize};
 use std::future::{ready, Ready};
 use std::pin::Pin;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use chrono::Utc;
-use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use redis::AsyncCommands;
+use uuid::Uuid;
 
 /// CSRF token structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,10 +46,18 @@ pub struct CsrfConfig {
     pub secure_cookie: bool,
 }
 
-fn default_cookie_name() -> String { "csrf_token".to_string() }
-fn default_cookie_max_age() -> u64 { 3600 }
-fn default_header_name() -> String { "X-CSRF-Token".to_string() }
-fn default_secure_cookie() -> bool { true }
+fn default_cookie_name() -> String {
+    "csrf_token".to_string()
+}
+fn default_cookie_max_age() -> u64 {
+    3600
+}
+fn default_header_name() -> String {
+    "X-CSRF-Token".to_string()
+}
+fn default_secure_cookie() -> bool {
+    true
+}
 
 impl Default for CsrfConfig {
     fn default() -> Self {
@@ -173,17 +186,17 @@ impl RedisConnection for redis::aio::MultiplexedConnection {
     async fn add_token(&self, key: String, token: String, ttl: u64) -> Result<(), redis::RedisError> {
         let mut conn = self.clone();
         let ttl_secs = ttl.try_into().unwrap_or(3600);
-        
+
         // Add token to set; refresh TTL only when token is newly added
         // This prevents resetting the TTL on every token addition
         let added: bool = conn.sadd(&key, &token).await?;
-        
+
         if added {
             // Token was newly added, refresh TTL to full duration
             // This extends the session window for all tokens in the set
             let _: () = conn.expire(&key, ttl_secs).await?;
         }
-        
+
         Ok(())
     }
 
@@ -225,12 +238,10 @@ impl CsrfStore for RedisCsrfStore {
             3600
         };
 
-        self.redis.add_token(key, token.clone(), u_ttl)
-            .await
-            .map_err(|e| {
-                log::error!("Failed to store CSRF token in Redis: {}", e);
-                actix_web::error::ErrorInternalServerError("Failed to store CSRF token")
-            })?;
+        self.redis.add_token(key, token.clone(), u_ttl).await.map_err(|e| {
+            log::error!("Failed to store CSRF token in Redis: {}", e);
+            actix_web::error::ErrorInternalServerError("Failed to store CSRF token")
+        })?;
 
         Ok(token)
     }
@@ -242,7 +253,7 @@ impl CsrfStore for RedisCsrfStore {
             Err(e) => {
                 log::error!("Redis error during CSRF validation: {}", e);
                 false
-            }
+            },
         }
     }
 
@@ -298,7 +309,7 @@ where
     type Future = Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-        if let Ok(svc) = self.service.try_lock() {
+        if let Ok(mut svc) = self.service.try_lock() {
             svc.poll_ready(cx)
         } else {
             std::task::Poll::Pending
@@ -332,27 +343,30 @@ where
             let mut res = svc.call(req).await;
             drop(svc); // Release lock before token generation
 
-            if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE)
-                && session_id.is_some() {
-                    if let Ok(ref mut response) = res {
-                        if response.status().is_success() {
-                            let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
-                            if let Ok(token) = store.generate(session_id.as_ref().unwrap(), ttl_i64).await {
-                                let display_ttl = config.cookie_max_age.min(i64::MAX as u64);
-                                let mut cookie = format!("{}={}; SameSite=Strict; Path=/; Max-Age={}", config.cookie_name, token, display_ttl);
-                                if config.secure_cookie {
-                                    cookie.push_str("; Secure");
-                                }
-                                response.headers_mut().append(
-                                    header::SET_COOKIE,
-                                    header::HeaderValue::from_str(&cookie).map_err(actix_web::error::ErrorInternalServerError)?
-                                );
-                            } else {
-                                tracing::error!("Failed to generate CSRF token");
+            if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE) && session_id.is_some() {
+                if let Ok(ref mut response) = res {
+                    if response.status().is_success() {
+                        let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
+                        if let Ok(token) = store.generate(session_id.as_ref().unwrap(), ttl_i64).await {
+                            let display_ttl = config.cookie_max_age.min(i64::MAX as u64);
+                            let mut cookie = format!(
+                                "{}={}; SameSite=Strict; Path=/; Max-Age={}",
+                                config.cookie_name, token, display_ttl
+                            );
+                            if config.secure_cookie {
+                                cookie.push_str("; Secure");
                             }
+                            response.headers_mut().append(
+                                header::SET_COOKIE,
+                                header::HeaderValue::from_str(&cookie)
+                                    .map_err(actix_web::error::ErrorInternalServerError)?,
+                            );
+                        } else {
+                            tracing::error!("Failed to generate CSRF token");
                         }
                     }
                 }
+            }
 
             res
         })
@@ -373,7 +387,10 @@ fn get_session_id_from_request(req: &HttpRequest) -> Option<String> {
 
 fn get_csrf_token_from_request(req: &HttpRequest, config: &CsrfConfig) -> Result<String, Error> {
     if let Some(header) = req.headers().get(&config.header_name) {
-        return header.to_str().map(|s| s.to_string()).map_err(|_| actix_web::error::ErrorBadRequest("Invalid CSRF header"));
+        return header
+            .to_str()
+            .map(|s| s.to_string())
+            .map_err(|_| actix_web::error::ErrorBadRequest("Invalid CSRF header"));
     }
     Err(actix_web::error::ErrorBadRequest("Missing CSRF token"))
 }
@@ -381,14 +398,18 @@ fn get_csrf_token_from_request(req: &HttpRequest, config: &CsrfConfig) -> Result
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{test, App, web, HttpResponse};
     use actix_web::http::Method;
+    use actix_web::{test, web, App, HttpResponse};
 
     struct MockStore;
     #[async_trait]
     impl CsrfStore for MockStore {
-        async fn generate(&self, _sid: &str, _ttl: i64) -> Result<String, actix_web::Error> { Ok("new-token".to_string()) }
-        async fn validate_and_consume(&self, _sid: &str, _token: &str) -> bool { true }
+        async fn generate(&self, _sid: &str, _ttl: i64) -> Result<String, actix_web::Error> {
+            Ok("new-token".to_string())
+        }
+        async fn validate_and_consume(&self, _sid: &str, _token: &str) -> bool {
+            true
+        }
         async fn cleanup_expired(&self) {}
     }
 
@@ -407,8 +428,9 @@ mod tests {
         let srv = test::init_service(
             App::new()
                 .wrap(middleware)
-                .default_service(web::to(|| async { HttpResponse::Ok().finish() }))
-        ).await;
+                .default_service(web::to(|| async { HttpResponse::Ok().finish() })),
+        )
+        .await;
 
         let req = test::TestRequest::with_uri("/")
             .method(Method::POST)
@@ -419,7 +441,10 @@ mod tests {
         let resp = test::call_service(&srv, req).await;
         let cookie = resp.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap();
 
-        assert!(!cookie.contains("Secure"), "Cookie should not contain 'Secure' when secure_cookie is false");
+        assert!(
+            !cookie.contains("Secure"),
+            "Cookie should not contain 'Secure' when secure_cookie is false"
+        );
     }
 
     #[actix_web::test]
@@ -437,8 +462,9 @@ mod tests {
         let srv = test::init_service(
             App::new()
                 .wrap(middleware)
-                .default_service(web::to(|| async { HttpResponse::Ok().finish() }))
-        ).await;
+                .default_service(web::to(|| async { HttpResponse::Ok().finish() })),
+        )
+        .await;
 
         let req = test::TestRequest::with_uri("/")
             .method(Method::POST)
@@ -451,7 +477,10 @@ mod tests {
 
         // If it overflows to negative, it might be a small number or negative.
         // We want to ensure it is correctly clamped or handled.
-        assert!(cookie.contains("Max-Age=9223372036854775807"), "Cookie Max-Age should be clamped to i64::MAX");
+        assert!(
+            cookie.contains("Max-Age=9223372036854775807"),
+            "Cookie Max-Age should be clamped to i64::MAX"
+        );
     }
 
     struct MockRedis {
@@ -565,7 +594,10 @@ mod tests {
 
         // Should be approximately now + ttl (within a few seconds tolerance)
         let expected = now + ttl;
-        assert!((token.expires_at - expected).abs() <= 2, "expires_at should be approximately now + ttl");
+        assert!(
+            (token.expires_at - expected).abs() <= 2,
+            "expires_at should be approximately now + ttl"
+        );
     }
 
     /// RED TEST: Verify that expired tokens are NOT cleaned up automatically
@@ -591,7 +623,11 @@ mod tests {
 
         // Both sessions exist because cleanup_expired is never called automatically
         let tokens = store.tokens.read().await;
-        assert_eq!(tokens.len(), 2, "Both sessions exist - expired tokens are not cleaned up");
+        assert_eq!(
+            tokens.len(),
+            2,
+            "Both sessions exist - expired tokens are not cleaned up"
+        );
     }
 
     /// GREEN TEST: Verify that multiple tokens can coexist for multi-tab scenarios
@@ -611,15 +647,23 @@ mod tests {
         let token3 = store.generate(session_id, 3600).await.unwrap();
 
         // FIXED: All three tokens are now valid independently
-        assert!(store.validate_and_consume(session_id, &token1).await, "Token1 should be valid");
-        assert!(store.validate_and_consume(session_id, &token2).await, "Token2 should be valid");
-        assert!(store.validate_and_consume(session_id, &token3).await, "Token3 should be valid");
+        assert!(
+            store.validate_and_consume(session_id, &token1).await,
+            "Token1 should be valid"
+        );
+        assert!(
+            store.validate_and_consume(session_id, &token2).await,
+            "Token2 should be valid"
+        );
+        assert!(
+            store.validate_and_consume(session_id, &token3).await,
+            "Token3 should be valid"
+        );
 
         // Verify all tokens were consumed
         let tokens = store.tokens.read().await;
         assert!(!tokens.contains_key(session_id), "All tokens should be consumed");
     }
-
 
     /// Test that cleanup_expired method works correctly when called manually
     #[tokio::test]
@@ -647,4 +691,3 @@ mod tests {
         assert!(!tokens.contains_key("session1"), "Expired token should be removed");
     }
 }
-

@@ -1,30 +1,26 @@
 use serde::{Deserialize, Serialize};
+use shared_security::PasswordRequirements;
 use validator::Validate;
 
-// Helper function to validate password without look-ahead regex
-// Rust's regex crate doesn't support look-ahead/look-behind
+// Helper function to validate password using shared security module
+// This delegates to shared_security for centralized password validation
 fn validate_password(password: &str) -> Result<(), validator::ValidationError> {
-    if password.len() < 8 || password.len() > 100 {
-        return Err(
-            validator::ValidationError::new("invalid_password").with_message(std::borrow::Cow::Borrowed(
-                "Password must be 8-100 characters long",
-            )),
-        );
+    let requirements = PasswordRequirements {
+        min_length: 8,
+        max_length: 100,
+        require_uppercase: true,
+        require_lowercase: true,
+        require_digit: true,
+        require_special_char: false,
+    };
+
+    match shared_security::validate_password_strength_with_requirements(password, &requirements) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            Err(validator::ValidationError::new("invalid_password")
+                .with_message(std::borrow::Cow::Owned(e.to_string())))
+        },
     }
-
-    let has_lowercase = password.chars().any(|c| c.is_lowercase());
-    let has_uppercase = password.chars().any(|c| c.is_uppercase());
-    let has_digit = password.chars().any(|c| c.is_ascii_digit());
-
-    if !has_lowercase || !has_uppercase || !has_digit {
-        return Err(
-            validator::ValidationError::new("invalid_password").with_message(std::borrow::Cow::Borrowed(
-                "Password must contain at least one lowercase letter, one uppercase letter, and one digit",
-            )),
-        );
-    }
-
-    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
