@@ -13,8 +13,8 @@
 //!
 //! Run with: cargo test -p document-service export
 
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, NaiveDateTime, Utc};
 use std::fmt::Write as FmtWrite;
 use std::fs;
 use std::path::PathBuf;
@@ -139,10 +139,7 @@ impl ExportService {
                 PathBuf::from("/usr/bin/weasyprint"),
                 PathBuf::from("/opt/homebrew/bin/weasyprint"),
             ];
-            locations
-                .iter()
-                .find(|p| p.exists())
-                .cloned()
+            locations.iter().find(|p| p.exists()).cloned()
         };
 
         // Ensure output directory exists
@@ -171,7 +168,8 @@ impl ExportService {
         // Generate unique filename
         let file_name = format!(
             "{}_{}.{}",
-            title.replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
+            title
+                .replace(|c: char| !c.is_alphanumeric() && c != '_', "_")
                 .trim_start_matches('_')
                 .trim_end_matches('_'),
             document_id.split('-').next().unwrap_or(document_id),
@@ -180,25 +178,25 @@ impl ExportService {
 
         let file_path = self.output_dir.join(&file_name);
 
-        // Generate content based on format
-        let content_str = match format {
+        // Generate content based on format and write to file
+        match format {
             ExportFormat::Markdown => {
-                self.export_markdown(title, content, metadata.as_ref())?
-            }
+                let content_str = self.export_markdown(title, content, metadata.as_ref())?;
+                fs::write(&file_path, content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
             ExportFormat::Html => {
-                self.export_html(title, content, metadata.as_ref())?
-            }
+                let content_str = self.export_html(title, content, metadata.as_ref())?;
+                fs::write(&file_path, content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
             ExportFormat::Pdf => {
-                self.export_pdf(title, content, metadata.as_ref())?
-            }
+                let content_bytes = self.export_pdf(title, content, metadata.as_ref())?;
+                fs::write(&file_path, content_bytes).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
             ExportFormat::Json => {
-                self.export_json(content)?
-            }
-        };
-
-        // Write to file
-        fs::write(&file_path, &content_str)
-            .map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+                let content_str = self.export_json(content)?;
+                fs::write(&file_path, content_str).map_err(|e| ExportError::ExportFailed(e.to_string()))?;
+            },
+        }
 
         // Get file size
         let file_size = fs::metadata(&file_path)
@@ -230,16 +228,10 @@ impl ExportService {
 
         if let Some(meta) = metadata {
             if let Some(created_at) = meta.created_at {
-                output.push_str(&format!(
-                    "created_at: {}\n",
-                    created_at.format("%Y-%m-%d %H:%M:%S")
-                ));
+                output.push_str(&format!("created_at: {}\n", created_at.format("%Y-%m-%d %H:%M:%S")));
             }
             if let Some(updated_at) = meta.updated_at {
-                output.push_str(&format!(
-                    "updated_at: {}\n",
-                    updated_at.format("%Y-%m-%d %H:%M:%S")
-                ));
+                output.push_str(&format!("updated_at: {}\n", updated_at.format("%Y-%m-%d %H:%M:%S")));
             }
             if let Some(created_by) = &meta.created_by {
                 output.push_str(&format!("author: \"{}\"\n", escape_yaml(created_by)));
@@ -269,12 +261,14 @@ impl ExportService {
         let mut output = String::new();
 
         // HTML header with embedded CSS
-        output.push_str(r#"<!DOCTYPE html>
+        output.push_str(
+            r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>"#);
+    <title>"#,
+        );
         output.push_str(title);
         output.push_str(r#"</title>
     <style>
@@ -316,10 +310,20 @@ impl ExportService {
         output.push_str("    <div class=\"metadata\">\n");
         if let Some(meta) = metadata {
             if let Some(created_at) = meta.created_at {
-                write!(output, r#"        <span>Created: {}</span>"#, created_at.format("%Y-%m-%d %H:%M")).unwrap();
+                write!(
+                    output,
+                    r#"        <span>Created: {}</span>"#,
+                    created_at.format("%Y-%m-%d %H:%M")
+                )
+                .unwrap();
             }
             if let Some(updated_at) = meta.updated_at {
-                write!(output, r#"        <span>Updated: {}</span>"#, updated_at.format("%Y-%m-%d %H:%M")).unwrap();
+                write!(
+                    output,
+                    r#"        <span>Updated: {}</span>"#,
+                    updated_at.format("%Y-%m-%d %H:%M")
+                )
+                .unwrap();
             }
         }
         output.push_str("\n    </div>\n");
@@ -348,7 +352,7 @@ impl ExportService {
         title: &str,
         content: &serde_json::Value,
         metadata: Option<&DocumentMetadata>,
-    ) -> Result<String, ExportError> {
+    ) -> Result<Vec<u8>, ExportError> {
         // First generate HTML
         let html = self.export_html(title, content, metadata)?;
 
@@ -356,22 +360,15 @@ impl ExportService {
         let weasyprint_path = match &self.weasyprint_path {
             Some(path) => path,
             None => {
-                // Return HTML with note that PDF requires weasyprint
-                return Ok(html +
-                    r#"
-<!--
-NOTE: PDF export requires weasyprint to be installed.
-Install with: pip install weasyprint
-Or convert this HTML to PDF using another tool.
--->
-"#);
-            }
+                return Err(ExportError::PdfGenerationFailed(
+                    "weasyprint is not installed. Install with: pip install weasyprint".to_string(),
+                ));
+            },
         };
 
         // Generate PDF using weasyprint
         let temp_html_path = self.output_dir.join("temp_export.html");
-        fs::write(&temp_html_path, &html)
-            .map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
+        fs::write(&temp_html_path, &html).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
 
         let output_path = temp_html_path.with_extension("pdf");
 
@@ -389,20 +386,19 @@ Or convert this HTML to PDF using another tool.
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(ExportError::PdfGenerationFailed(
-                format!("weasyprint failed: {}", error_msg),
-            ));
+            return Err(ExportError::PdfGenerationFailed(format!(
+                "weasyprint failed: {}",
+                error_msg
+            )));
         }
 
-        // Return the actual PDF content
-        fs::read_to_string(&output_path)
-            .map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))
+        // Return the actual PDF content as bytes
+        fs::read(&output_path).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))
     }
 
     /// Export as JSON (raw Yjs state)
     fn export_json(&self, content: &serde_json::Value) -> Result<String, ExportError> {
-        serde_json::to_string_pretty(content)
-            .map_err(|e| ExportError::ConversionFailed(e.to_string()))
+        serde_json::to_string_pretty(content).map_err(|e| ExportError::ConversionFailed(e.to_string()))
     }
 
     /// Convert Yjs document state to Markdown
@@ -511,7 +507,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                     html.push_str(&escape_html(s));
                 }
             }
-        }
+        },
         "heading" | "heading1" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -519,7 +515,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
             }
             let text = item.get("text").or(item.get("content")).and_then(|v| v.as_str()).unwrap_or("");
             html.push_str(&format!("  <h1>{}</h1>\n", escape_html(text)));
-        }
+        },
         "heading2" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -527,7 +523,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
             }
             let text = item.get("text").or(item.get("content")).and_then(|v| v.as_str()).unwrap_or("");
             html.push_str(&format!("  <h2>{}</h2>\n", escape_html(text)));
-        }
+        },
         "heading3" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -535,7 +531,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
             }
             let text = item.get("text").or(item.get("content")).and_then(|v| v.as_str()).unwrap_or("");
             html.push_str(&format!("  <h3>{}</h3>\n", escape_html(text)));
-        }
+        },
         "bullet_list" | "list" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -554,7 +550,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                 }
             }
             html.push_str("  </ul>\n");
-        }
+        },
         "ordered_list" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -573,7 +569,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                 }
             }
             html.push_str("  </ol>\n");
-        }
+        },
         "code_block" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -583,7 +579,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
             html.push_str("  <pre><code>");
             html.push_str(&escape_html(text));
             html.push_str("</code></pre>\n");
-        }
+        },
         "blockquote" => {
             if *in_paragraph {
                 html.push_str("</p>\n");
@@ -593,7 +589,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
             html.push_str("  <blockquote>");
             html.push_str(&escape_html(text));
             html.push_str("</blockquote>\n");
-        }
+        },
         "bold" | "strong" => {
             if let Some(text) = item.get("text").or(item.get("content")) {
                 if let Some(s) = text.as_str() {
@@ -602,7 +598,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                     html.push_str("</strong>");
                 }
             }
-        }
+        },
         "italic" | "em" => {
             if let Some(text) = item.get("text").or(item.get("content")) {
                 if let Some(s) = text.as_str() {
@@ -611,7 +607,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                     html.push_str("</em>");
                 }
             }
-        }
+        },
         "inline_code" => {
             if let Some(text) = item.get("text").or(item.get("content")) {
                 if let Some(s) = text.as_str() {
@@ -620,7 +616,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                     html.push_str("</code>");
                 }
             }
-        }
+        },
         _ => {
             // Default: try to extract text
             if let Some(text) = item.get("text").or(item.get("content")) {
@@ -634,7 +630,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                     }
                 }
             }
-        }
+        },
     }
 }
 
@@ -646,12 +642,12 @@ fn extract_text_recursive(value: &serde_json::Value, output: &mut String, _depth
                 output.push_str(s);
                 output.push_str("\n\n");
             }
-        }
+        },
         serde_json::Value::Array(arr) => {
             for item in arr {
                 extract_text_recursive(item, output, _depth + 1);
             }
-        }
+        },
         serde_json::Value::Object(obj) => {
             // Look for common text fields
             for key in ["text", "content", "value", "body"] {
@@ -659,8 +655,8 @@ fn extract_text_recursive(value: &serde_json::Value, output: &mut String, _depth
                     extract_text_recursive(val, output, _depth + 1);
                 }
             }
-        }
-        _ => {}
+        },
+        _ => {},
     }
 }
 
@@ -675,19 +671,19 @@ fn extract_html_recursive(value: &serde_json::Value, html: &mut String, in_parag
                 }
                 html.push_str(&escape_html(s));
             }
-        }
+        },
         serde_json::Value::Array(arr) => {
             for item in arr {
                 process_html_item(item, html, in_paragraph);
             }
-        }
+        },
         serde_json::Value::Object(obj) => {
             // Look for content field
             if let Some(content) = obj.get("content").or(obj.get("text")) {
                 extract_html_recursive(content, html, in_paragraph);
             }
-        }
-        _ => {}
+        },
+        _ => {},
     }
 }
 

@@ -484,7 +484,7 @@ mod tests {
 
     #[test]
     fn test_api_response_error() {
-        let response = ApiResponse::error("NOT_FOUND", "Document not found");
+        let response: ApiResponse<()> = ApiResponse::error("NOT_FOUND", "Document not found");
         assert!(!response.success);
         assert!(response.data.is_none());
         assert!(response.error.is_some());

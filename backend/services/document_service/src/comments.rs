@@ -9,9 +9,7 @@
 //! - DELETE /comments/{commentId} - Delete comment
 //!
 use actix_web::{web, HttpRequest, HttpResponse, Responder};
-use chrono::Utc;
 use shared_errors::{AppError, ErrorCode};
-use std::collections::HashMap;
 use tracing::error;
 use uuid::Uuid;
 use validator::Validate;
@@ -25,7 +23,7 @@ mod tests {
     use super::*;
     use crate::repository::CommentRow;
     use actix_web::test::TestRequest;
-    use chrono::{DateTime, Duration};
+    use chrono::{DateTime, Duration, Utc};
 
     // Create a test request
     fn create_test_request() -> HttpRequest {
@@ -36,7 +34,7 @@ mod tests {
 
     // extract_user_id Tests
     #[test]
-    fn test_extract_user_id_invalid_encoding() {
+    fn test_extract_user_id_invalid_format() {
         let req = TestRequest::get().insert_header(("X-User-Id", "not-a-uuid")).to_http_request();
 
         let user_id = extract_user_id(&req);
@@ -53,15 +51,6 @@ mod tests {
         let err = user_id.unwrap_err();
         assert!(matches!(err, AppError::AuthenticationError(_)));
         assert!(err.to_string().contains("Missing X-User-Id header"));
-    }
-
-    #[test]
-    fn test_extract_user_id_invalid_encoding() {
-        let req = TestRequest::get().insert_header(("X-User-Id", "not-a-uuid")).to_http_request();
-
-        let user_id = extract_user_id(&req);
-        // extract_user_id returns the header string without UUID validation
-        assert_eq!(user_id.unwrap(), "not-a-uuid");
     }
 
     // extract_user_name Tests
@@ -99,6 +88,8 @@ mod tests {
             document_id: Uuid::new_v4(),
             parent_id: None,
             author_id: Uuid::new_v4(),
+            author_name: Some("Test Author".to_string()),
+            author_avatar: Some("https://example.com/avatar.png".to_string()),
             content: "Test comment".to_string(),
             is_resolved: false,
             resolved_by: None,
@@ -132,6 +123,8 @@ mod tests {
             document_id: Uuid::new_v4(),
             parent_id: None,
             author_id: Uuid::new_v4(),
+            author_name: None,
+            author_avatar: None,
             content: "Resolved comment".to_string(),
             is_resolved: true,
             resolved_by: Some(resolver_id),
@@ -157,6 +150,8 @@ mod tests {
             document_id: Uuid::new_v4(),
             parent_id: Some(parent_id),
             author_id: Uuid::new_v4(),
+            author_name: None,
+            author_avatar: None,
             content: "Reply comment".to_string(),
             is_resolved: false,
             resolved_by: None,
@@ -180,6 +175,8 @@ mod tests {
             document_id: Uuid::new_v4(),
             parent_id: None,
             author_id: Uuid::new_v4(),
+            author_name: None,
+            author_avatar: None,
             content: "No avatar".to_string(),
             is_resolved: false,
             resolved_by: None,

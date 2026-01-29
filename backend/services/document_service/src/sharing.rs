@@ -706,7 +706,7 @@ mod tests {
         encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret("test_secret_32_chars_long!!"),
+            &EncodingKey::from_secret(b"test_secret_32_chars_long!!"),
         )
         .unwrap()
     }
