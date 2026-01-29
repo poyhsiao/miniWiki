@@ -360,16 +360,9 @@ impl ExportService {
         let weasyprint_path = match &self.weasyprint_path {
             Some(path) => path,
             None => {
-                // Return HTML as bytes with note that PDF requires weasyprint
-                return Ok((html
-                    + r#"
-<!--
-NOTE: PDF export requires weasyprint to be installed.
-Install with: pip install weasyprint
-Or convert this HTML to PDF using another tool.
--->
-"#)
-                .into_bytes());
+                return Err(ExportError::PdfGenerationFailed(
+                    "weasyprint is not installed. Install with: pip install weasyprint".to_string(),
+                ));
             },
         };
 
