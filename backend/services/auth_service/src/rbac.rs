@@ -54,6 +54,12 @@ impl ResponseError for Error {
 /// and enforces permission-based access control.
 pub struct RbacMiddleware;
 
+impl Default for RbacMiddleware {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RbacMiddleware {
     pub fn new() -> Self {
         Self

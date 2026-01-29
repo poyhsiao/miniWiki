@@ -1,35 +1,6 @@
 # clippy configuration for miniWiki backend
-# Generated: 2026-01-11
+# Generated: 2026-01-29
 
-# Allow warnings in CI (can be overridden by --deny warnings)
-# Performance lints
-unnecessary_to_owned
-redundant_closure_for_method_calls
-
-# Style lints
-module_name_repetitions
-items_after_statements
-pattern_type_mismatch
-
-# Complexity lints
-redundant_pub_crate
-
-# Nursery lints (allowed by default in recent clippy)
-clone_on_ref_ptr
-deprecated_cfg_attr
-empty_line_after_doc_comments
-exhaustive_enums
-exhaustive_structs
-lossy_provenance_comjections
-mixed_attributes_style
-redundant_closure_call
-semicolon_in_expressions_from_macros
-unnecessary_wraps
-
-# Deny lints (treated as errors)
-missing_docs_in_private_items
-unreachable_pub
-
-# Suppress lints (used sparingly)
-result_large_err
-too_many_lines
+# Allow specific lints
+allow-print-in-tests = true
+allow-dbg-in-tests = true

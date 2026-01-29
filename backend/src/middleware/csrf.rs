@@ -72,6 +72,12 @@ pub struct InMemoryCsrfStore {
     max_tokens_per_session: usize,
 }
 
+impl Default for InMemoryCsrfStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InMemoryCsrfStore {
     pub fn new() -> Self {
         Self {
@@ -292,7 +298,7 @@ where
     type Future = Pin<Box<dyn std::future::Future<Output = Result<Self::Response, Self::Error>>>>;
 
     fn poll_ready(&self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
-        if let Ok(mut svc) = self.service.try_lock() {
+        if let Ok(svc) = self.service.try_lock() {
             svc.poll_ready(cx)
         } else {
             std::task::Poll::Pending
@@ -309,7 +315,7 @@ where
             let session_id = get_session_id_from_request(req.request());
 
             if method == Method::OPTIONS {
-                let mut svc = service.lock().await;
+                let svc = service.lock().await;
                 return svc.call(req).await;
             }
 
@@ -322,12 +328,12 @@ where
                 }
             }
 
-            let mut svc = service.lock().await;
+            let svc = service.lock().await;
             let mut res = svc.call(req).await;
             drop(svc); // Release lock before token generation
 
-            if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE) {
-                if session_id.is_some() {
+            if matches!(method, Method::POST | Method::PUT | Method::PATCH | Method::DELETE)
+                && session_id.is_some() {
                     if let Ok(ref mut response) = res {
                         if response.status().is_success() {
                             let ttl_i64 = i64::try_from(config.cookie_max_age).unwrap_or(i64::MAX);
@@ -347,7 +353,6 @@ where
                         }
                     }
                 }
-            }
 
             res
         })

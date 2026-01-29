@@ -138,7 +138,7 @@ pub async fn create_share_link(
         .bind(document_id)
         .fetch_optional(pool.get_ref())
         .await
-        .map_err(|e| AppError::DatabaseError(e))?;
+        .map_err(AppError::DatabaseError)?;
 
     match owner_check {
         Some((owner_id,)) => {
@@ -259,7 +259,7 @@ pub async fn get_document_share_links(
         .bind(document_id)
         .fetch_optional(pool.get_ref())
         .await
-        .map_err(|e| AppError::DatabaseError(e))?;
+        .map_err(AppError::DatabaseError)?;
 
     match owner_check {
         Some((owner_id,)) => {
@@ -335,7 +335,7 @@ pub async fn get_document_share_links(
                     token,
                     access_code_required: access_code.is_some(),
                     expires_at: expires_at.map(|d| d.to_rfc3339()),
-                    permission: permission,
+                    permission,
                     is_active,
                     created_at: created_at.to_rfc3339(),
                     click_count,

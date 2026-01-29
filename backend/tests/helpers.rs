@@ -1,10 +1,8 @@
 use sqlx::PgPool;
 use sqlx::Error as SqlxError;
 use uuid::Uuid;
-use reqwest;
 use auth_service::jwt::{JwtService, JwtConfig};
 use serde_json::Value;
-use serde_json;
 use serde_json::json;
 use std::future::Future;
 
@@ -23,7 +21,7 @@ pub struct ResponseValidator {
 
 impl ResponseValidator {
     /// Create a new validator from a response
-    pub async fn new(mut response: reqwest::Response) -> Self {
+    pub async fn new(response: reqwest::Response) -> Self {
         let status = response.status();
         let body = response.json().await.unwrap_or_else(|_| json!({}));
         Self { status, body }
@@ -94,7 +92,7 @@ impl ResponseValidator {
     pub fn assert_field_equals(&self, field: &str, expected: &str) -> &Self {
         let actual = self.body.get(field)
             .and_then(|v| v.as_str())
-            .expect(&format!("Field '{}' should be a string. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be a string. Body: {}", field, self.body));
         assert_eq!(
             actual, expected,
             "Field '{}' should be '{}', but got '{}'",
@@ -107,7 +105,7 @@ impl ResponseValidator {
     pub fn assert_field_equals_i64(&self, field: &str, expected: i64) -> &Self {
         let actual = self.body.get(field)
             .and_then(|v| v.as_i64())
-            .expect(&format!("Field '{}' should be a number. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be a number. Body: {}", field, self.body));
         assert_eq!(
             actual, expected,
             "Field '{}' should be {}, but got {}",
@@ -119,7 +117,7 @@ impl ResponseValidator {
     /// Assert a field is an array
     pub fn assert_field_is_array(&self, field: &str) -> &Self {
         assert!(
-            self.body.get(field).map_or(false, |v| v.is_array()),
+            self.body.get(field).is_some_and(|v| v.is_array()),
             "Field '{}' should be an array. Body: {}",
             field, self.body
         );
@@ -129,7 +127,7 @@ impl ResponseValidator {
     /// Assert a field is an object
     pub fn assert_field_is_object(&self, field: &str) -> &Self {
         assert!(
-            self.body.get(field).map_or(false, |v| v.is_object()),
+            self.body.get(field).is_some_and(|v| v.is_object()),
             "Field '{}' should be an object. Body: {}",
             field, self.body
         );
@@ -140,7 +138,7 @@ impl ResponseValidator {
     pub fn assert_array_min_length(&self, field: &str, min: usize) -> &Self {
         let array = self.body.get(field)
             .and_then(|v| v.as_array())
-            .expect(&format!("Field '{}' should be an array. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be an array. Body: {}", field, self.body));
         assert!(
             array.len() >= min,
             "Field '{}' should have at least {} items, but has {}. Body: {}",
@@ -153,7 +151,7 @@ impl ResponseValidator {
     pub fn assert_array_length(&self, field: &str, expected: usize) -> &Self {
         let array = self.body.get(field)
             .and_then(|v| v.as_array())
-            .expect(&format!("Field '{}' should be an array. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be an array. Body: {}", field, self.body));
         assert_eq!(
             array.len(), expected,
             "Field '{}' should have {} items, but has {}. Body: {}",
@@ -302,7 +300,7 @@ impl TestApp {
     pub async fn auth_get(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .get(&format!("http://localhost:{}{}", self.port, path))
+            .get(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
@@ -311,7 +309,7 @@ impl TestApp {
     pub async fn auth_post(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .post(&format!("http://localhost:{}{}", self.port, path))
+            .post(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
@@ -320,7 +318,7 @@ impl TestApp {
     pub async fn auth_patch(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .patch(&format!("http://localhost:{}{}", self.port, path))
+            .patch(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
@@ -329,25 +327,25 @@ impl TestApp {
     pub async fn auth_delete(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .delete(&format!("http://localhost:{}{}", self.port, path))
+            .delete(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
 
     pub fn get(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .get(&format!("http://localhost:{}{}", self.port, path))
+            .get(format!("http://localhost:{}{}", self.port, path))
     }
 
     pub fn post(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .post(&format!("http://localhost:{}{}", self.port, path))
+            .post(format!("http://localhost:{}{}", self.port, path))
     }
 
     /// Perform login via POST /api/v1/auth/login and return server-issued token
     pub async fn login_user(&self, email: &str, password: &str) -> Result<String, String> {
         let response = self.client
-            .post(&format!("http://localhost:{}/api/v1/auth/login", self.port))
+            .post(format!("http://localhost:{}/api/v1/auth/login", self.port))
             .json(&serde_json::json!({
                 "email": email,
                 "password": password
@@ -373,12 +371,12 @@ impl TestApp {
 
     pub fn patch(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .patch(&format!("http://localhost:{}{}", self.port, path))
+            .patch(format!("http://localhost:{}{}", self.port, path))
     }
 
     pub fn delete(&self, path: &str) -> reqwest::RequestBuilder {
         self.client
-            .delete(&format!("http://localhost:{}{}", self.port, path))
+            .delete(format!("http://localhost:{}{}", self.port, path))
     }
 
     pub async fn create_test_user(&self) -> TestUser {

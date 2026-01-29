@@ -383,7 +383,7 @@ impl ExportService {
 
         let output_path = temp_html_path.with_extension("pdf");
 
-        let output = Command::new(&weasyprint_path)
+        let output = Command::new(weasyprint_path)
             .arg(&temp_html_path)
             .arg(&output_path)
             .stdin(Stdio::null())
@@ -520,7 +520,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                         html.push_str("  <p>");
                         *in_paragraph = true;
                     } else {
-                        html.push_str(" ");
+                        html.push(' ');
                     }
                     html.push_str(&escape_html(s));
                 }

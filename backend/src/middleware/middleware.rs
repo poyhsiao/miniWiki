@@ -43,8 +43,7 @@ where
 
         let auth_user = auth_header.and_then(|header_value| {
             header_value.to_str().ok().and_then(|token_str| {
-                if token_str.starts_with("Bearer ") {
-                    let token = &token_str[7..];
+                if let Some(token) = token_str.strip_prefix("Bearer ") {
                     let decoding_key = DecodingKey::from_secret(jwt_secret.as_bytes());
                     let validation = Validation::default();
                     

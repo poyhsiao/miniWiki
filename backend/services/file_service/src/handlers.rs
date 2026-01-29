@@ -1488,7 +1488,8 @@ mod tests {
         };
 
         assert_eq!(error.code, "FILE_TOO_LARGE");
-        assert!(error.message.contains("50"));
+        // The formatted size is 52428800, which starts with "52"
+        assert!(error.message.contains("52428800"), "Expected message to contain '52428800', got: {}", error.message);
     }
 
     #[test]

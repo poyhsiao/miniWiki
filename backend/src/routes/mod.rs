@@ -15,7 +15,7 @@ fn get_jwt_secret() -> String {
     #[cfg(any(debug_assertions, test))]
     {
         eprintln!("WARNING: Using default JWT secret. Set JWT_SECRET environment variable in production!");
-        return DEFAULT_JWT_SECRET.to_string();
+        DEFAULT_JWT_SECRET.to_string()
     }
 
     // In release mode without JWT_SECRET, panic to prevent insecure startup

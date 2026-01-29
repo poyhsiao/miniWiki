@@ -1,5 +1,4 @@
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -11,18 +10,18 @@ use shared_models::entities::User;
 // Request/Response Models
 // ============================================================================
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct PasswordResetRequest {
     pub token: String,
     pub new_password: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct PasswordResetRequestRequest {
     pub email: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Deserialize)]
 pub struct ResendVerificationEmailRequest {
     pub email: String,
 }
@@ -37,12 +36,14 @@ pub async fn reset_password(
     repo: web::Data<AuthRepository>,
     _jwt_service: web::Data<crate::jwt::JwtService>,
 ) -> impl actix_web::Responder {
+    // Validate token format
     if let Err(e) = validate_token_format(&req.token) {
         return HttpResponse::BadRequest()
-            .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
+            .json(json!({ "error": "VALIDATION_ERROR", "message": e }));
     }
 
-    if let Err(e) = validate_password_strength(&req.new_password) {
+    // Validate password strength using shared security module
+    if let Err(e) = shared_security::validate_password_strength(&req.new_password) {
         return HttpResponse::BadRequest()
             .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
@@ -57,18 +58,18 @@ pub async fn reset_password(
                 AppError::ValidationError(msg) => HttpResponse::BadRequest()
                     .json(json!({ "error": "INVALID_TOKEN", "message": msg })),
                 _ => HttpResponse::InternalServerError()
-                    .json(json!({ "error": "INTERNAL_ERROR", "message": e.to_string() })),
+                    .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to validate reset token" })),
             };
         }
     };
 
-    // Hash new password
-    use crate::password::hash_password;
-    let new_password_hash = match hash_password(&req.new_password) {
+    // Hash new password using shared security module
+    let new_password_hash = match shared_security::hash_password(&req.new_password) {
         Ok(hash) => hash,
         Err(e) => {
+            tracing::error!("Failed to hash password: {}", e);
             return HttpResponse::InternalServerError()
-                .json(json!({ "error": "INTERNAL_ERROR", "message": e.to_string() }));
+                .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process password" }));
         }
     };
 
@@ -76,8 +77,9 @@ pub async fn reset_password(
     match update_user_password(reset_info.user_id, &new_password_hash, repo.clone()).await {
         Ok(_) => {},
         Err(e) => {
+            tracing::error!("Failed to update password: {}", e);
             return HttpResponse::InternalServerError()
-                .json(json!({ "error": "DATABASE_ERROR", "message": e.to_string() }));
+                .json(json!({ "error": "DATABASE_ERROR", "message": "Failed to update password" }));
         }
     }
 
@@ -112,32 +114,34 @@ pub async fn request_password_reset(
         }
     };
 
-    if let Err(e) = validate_email_format(email) {
+    // Validate email using shared security module
+    if let Err(e) = shared_security::validate_email(email) {
         return HttpResponse::BadRequest()
             .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
 
     // Check if user exists (but don't reveal if not found for security)
-    let _user = match find_user_by_email(email, repo.clone()).await {
+    let user = match find_user_by_email(email, repo.clone()).await {
         Ok(Some(u)) => u,
         Ok(None) => {
             // User doesn't exist, but return success for security
+            // This prevents email enumeration attacks
             return HttpResponse::Ok()
                 .json(json!({ "message": "If the email is registered, a reset link has been sent".to_string() }));
         }
         Err(e) => {
             tracing::error!("Failed to lookup user: {}", e);
             return HttpResponse::InternalServerError()
-                .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request".to_string() }));
+                .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request" }));
         }
     };
 
     // Generate and store password reset token
     let token = generate_reset_token();
-    if let Err(e) = store_reset_token(_user.id, &token, repo.clone()).await {
+    if let Err(e) = store_reset_token(user.id, &token, repo.clone()).await {
         tracing::error!("Failed to store reset token: {}", e);
         return HttpResponse::InternalServerError()
-            .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request".to_string() }));
+            .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request" }));
     }
 
     // TODO: Send email with reset link
@@ -167,7 +171,8 @@ pub async fn resend_verification_email(
         }
     };
 
-    if let Err(e) = validate_email_format(email) {
+    // Validate email using shared security module
+    if let Err(e) = shared_security::validate_email(email) {
         return HttpResponse::BadRequest()
             .json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
@@ -182,7 +187,7 @@ pub async fn resend_verification_email(
         Err(e) => {
             tracing::error!("Failed to lookup user: {}", e);
             return HttpResponse::InternalServerError()
-                .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request".to_string() }));
+                .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request" }));
         }
     };
 
@@ -196,7 +201,7 @@ pub async fn resend_verification_email(
     if let Err(e) = store_verification_token(user.id, &token, repo).await {
         tracing::error!("Failed to store verification token: {}", e);
         return HttpResponse::InternalServerError()
-            .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request".to_string() }));
+            .json(json!({ "error": "INTERNAL_ERROR", "message": "Failed to process request" }));
     }
 
     // TODO: Send email with verification link
@@ -220,27 +225,6 @@ fn validate_token_format(token: &str) -> Result<(), String> {
     }
     if !token.chars().all(|c| c.is_ascii_hexdigit()) {
         return Err("Token must contain only hexadecimal characters".to_string());
-    }
-    Ok(())
-}
-
-fn validate_email_format(email: &str) -> Result<(), String> {
-    // Basic email validation (should use proper email validator in production)
-    if !email.contains('@') || !email.contains('.') || email.len() < 5 || email.len() > 255 {
-        return Err("Invalid email format".to_string());
-    }
-    Ok(())
-}
-
-fn validate_password_strength(password: &str) -> Result<(), String> {
-    if password.len() < 8 {
-        return Err("Password must be at least 8 characters long".to_string());
-    }
-    if !password.chars().any(|c| c.is_uppercase()) {
-        return Err("Password must contain at least one uppercase letter".to_string());
-    }
-    if !password.chars().any(|c| c.is_numeric()) {
-        return Err("Password must contain at least one number".to_string());
     }
     Ok(())
 }
@@ -313,4 +297,140 @@ async fn store_verification_token(
 ) -> Result<(), AppError> {
     // TODO: Implement actual token storage in email_verifications table
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ========================================
+    // Token Validation Tests
+    // ========================================
+
+    #[test]
+    fn test_validate_token_format_valid() {
+        let valid_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+        assert!(validate_token_format(&valid_token).is_ok());
+    }
+
+    #[test]
+    fn test_validate_token_format_too_short() {
+        let short_token = "0123456789abcdef";
+        assert!(validate_token_format(&short_token).is_err());
+    }
+
+    #[test]
+    fn test_validate_token_format_too_long() {
+        let long_token = "0123456789abcdef".repeat(5);
+        assert!(validate_token_format(&long_token).is_err());
+    }
+
+    #[test]
+    fn test_validate_token_format_invalid_chars() {
+        let invalid_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg";
+        assert!(validate_token_format(&invalid_token).is_err());
+    }
+
+    #[test]
+    fn test_validate_token_format_non_hex() {
+        let invalid_token = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcXYZ";
+        assert!(validate_token_format(&invalid_token).is_err());
+    }
+
+    // ========================================
+    // Token Generation Tests
+    // ========================================
+
+    #[test]
+    fn test_generate_reset_token_length() {
+        let token = generate_reset_token();
+        assert_eq!(token.len(), 64);
+    }
+
+    #[test]
+    fn test_generate_reset_token_unique() {
+        let token1 = generate_reset_token();
+        let token2 = generate_reset_token();
+        assert_ne!(token1, token2);
+    }
+
+    #[test]
+    fn test_generate_reset_token_hex_only() {
+        let token = generate_reset_token();
+        assert!(token.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    #[test]
+    fn test_generate_verification_token_same_as_reset() {
+        let reset_token = generate_reset_token();
+        let verification_token = generate_verification_token();
+        // Tokens should be unique (generated at different times)
+        assert_ne!(reset_token, verification_token);
+    }
+
+    // ========================================
+    // Email Validation Integration Tests
+    // ========================================
+
+    #[test]
+    fn test_email_validation_valid_emails() {
+        let valid_emails = vec![
+            "user@example.com",
+            "user.name@example.com",
+            "user+tag@example.com",
+            "user_name@example.com",
+            "user-name@example.co.uk",
+        ];
+        for email in valid_emails {
+            assert!(shared_security::validate_email(email).is_ok(), "Email should be valid: {}", email);
+        }
+    }
+
+    #[test]
+    fn test_email_validation_invalid_emails() {
+        let invalid_emails = vec![
+            "",
+            "invalid",
+            "@example.com",
+            "user@",
+            "user@.com",
+            "user..name@example.com",
+            ".user@example.com",
+            "user.@example.com",
+        ];
+        for email in invalid_emails {
+            assert!(shared_security::validate_email(email).is_err(), "Email should be invalid: {}", email);
+        }
+    }
+
+    // ========================================
+    // Password Validation Integration Tests
+    // ========================================
+
+    #[test]
+    fn test_password_validation_valid_passwords() {
+        let valid_passwords = vec![
+            "TestPass123",
+            "MyPassword1",
+            "SecurePass2024",
+            "AnotherValid123",
+        ];
+        for password in valid_passwords {
+            assert!(shared_security::validate_password_strength(password).is_ok(), "Password should be valid: {}", password);
+        }
+    }
+
+    #[test]
+    fn test_password_validation_invalid_passwords() {
+        let invalid_passwords = vec![
+            "short",
+            "alllowercase",
+            "ALLUPPERCASE",
+            "NoDigits",
+            "NoDigitsButLong",
+        ];
+        for password in invalid_passwords {
+            assert!(shared_security::validate_password_strength(password).is_err(), "Password should be invalid: {}", password);
+        }
+    }
 }

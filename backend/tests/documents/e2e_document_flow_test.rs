@@ -26,7 +26,7 @@ async fn test_e2e_document_creation_flow() {
     // Create a new document using helper macro
     let create_response = app
         .client
-        .post(&format!(
+        .post(format!(
             "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
@@ -78,7 +78,7 @@ async fn test_e2e_document_retrieval_flow() {
     // Retrieve the document
     let get_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -118,7 +118,7 @@ async fn test_e2e_document_update_flow() {
     // Update document
     let update_response = app
         .client
-        .patch(&format!(
+        .patch(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -168,7 +168,7 @@ async fn test_e2e_document_deletion_flow() {
     // Delete the document
     let delete_response = app
         .client
-        .delete(&format!(
+        .delete(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -186,7 +186,7 @@ async fn test_e2e_document_deletion_flow() {
     // Verify document is deleted (should return 404)
     let get_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -221,7 +221,7 @@ async fn test_e2e_document_list_flow() {
     // List documents
     let list_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
@@ -272,7 +272,7 @@ async fn test_e2e_document_version_flow() {
     // List versions
     let list_versions_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}/versions",
             app.port, document.id
         ))
@@ -299,9 +299,9 @@ async fn test_e2e_document_export_flow() {
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
     // Export document as Markdown
-    let mut export_response = app
+    let export_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}/export?format=markdown",
             app.port, document.id
         ))
@@ -347,7 +347,7 @@ async fn test_e2e_document_search_flow() {
     // Search for the document
     let search_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/search?q=Test%20Document",
             app.port
         ))
@@ -377,7 +377,7 @@ async fn test_e2e_document_search_flow() {
     let found_doc = results_array.iter().any(|item| {
         let item_id = item.get("id").and_then(|id| id.as_str());
         let item_title = item.get("title").and_then(|t| t.as_str());
-        item_id == Some(doc.id.to_string().as_str()) || item_title.map_or(false, |t| t.contains("Test Document"))
+        item_id == Some(doc.id.to_string().as_str()) || item_title.is_some_and(|t| t.contains("Test Document"))
     });
 
     assert!(found_doc, "Created document should be found in search results");
@@ -399,7 +399,7 @@ async fn test_e2e_create_document_invalid_data() {
     // Try to create document with empty title
     let response = app
         .client
-        .post(&format!(
+        .post(format!(
             "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
@@ -428,7 +428,7 @@ async fn test_e2e_get_nonexistent_document() {
 
     let response = app
         .client
-        .get(&format!("http://localhost:{}/api/v1/documents/{}", app.port, fake_id))
+        .get(format!("http://localhost:{}/api/v1/documents/{}", app.port, fake_id))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", user_id_str)
         .send()
@@ -460,7 +460,7 @@ async fn test_e2e_unauthorized_document_access() {
     // Try to access user1's document with user2's credentials
     let response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -488,7 +488,7 @@ async fn test_e2e_create_document_without_auth() {
 
     let response = app
         .client
-        .post(&format!(
+        .post(format!(
             "http://localhost:{}/api/v1/space-docs/{}/documents",
             app.port, space.id
         ))
@@ -536,7 +536,7 @@ async fn test_e2e_concurrent_document_creation() {
 
             async move {
                 let response = client
-                    .post(&format!(
+                    .post(format!(
                         "http://localhost:{}/api/v1/space-docs/{}/documents",
                         port, space_id
                     ))
@@ -598,7 +598,7 @@ async fn test_e2e_concurrent_document_updates() {
 
             async move {
                 let response = client
-                    .patch(&format!("http://localhost:{}/api/v1/documents/{}", port, doc_id))
+                    .patch(format!("http://localhost:{}/api/v1/documents/{}", port, doc_id))
                     .header("Authorization", format!("Bearer {}", token))
                     .header("X-User-Id", user_id_str)
                     .json(&json!({
@@ -654,7 +654,7 @@ async fn test_e2e_rapid_concurrent_requests() {
 
             async move {
                 let response = client
-                    .get(&format!(
+                    .get(format!(
                         "http://localhost:{}/api/v1/space-docs/{}/documents",
                         port, space_id
                     ))

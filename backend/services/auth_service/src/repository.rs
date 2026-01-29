@@ -68,14 +68,14 @@ impl AuthRepository {
             "INSERT INTO refresh_tokens (id, user_id, token, expires_at, ip_address, user_agent, is_revoked, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
         )
-        .bind(&token.id)
-        .bind(&token.user_id)
+        .bind(token.id)
+        .bind(token.user_id)
         .bind(&token.token)
-        .bind(&token.expires_at)
+        .bind(token.expires_at)
         .bind(&token.ip_address)
         .bind(&token.user_agent)
-        .bind(&token.is_revoked)
-        .bind(&token.created_at)
+        .bind(token.is_revoked)
+        .bind(token.created_at)
         .execute(&self.pool)
         .await?;
         

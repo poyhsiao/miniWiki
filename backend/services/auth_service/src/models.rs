@@ -1,21 +1,30 @@
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-lazy_static::lazy_static! {
-    static ref PASSWORD_REGEX: regex::Regex = regex::Regex::new(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$").unwrap();
-}
-
-// Helper function to validate password against regex
+// Helper function to validate password without look-ahead regex
+// Rust's regex crate doesn't support look-ahead/look-behind
 fn validate_password(password: &str) -> Result<(), validator::ValidationError> {
-    if PASSWORD_REGEX.is_match(password) {
-        Ok(())
-    } else {
-        Err(
+    if password.len() < 8 || password.len() > 100 {
+        return Err(
+            validator::ValidationError::new("invalid_password").with_message(std::borrow::Cow::Borrowed(
+                "Password must be 8-100 characters long",
+            )),
+        );
+    }
+
+    let has_lowercase = password.chars().any(|c| c.is_lowercase());
+    let has_uppercase = password.chars().any(|c| c.is_uppercase());
+    let has_digit = password.chars().any(|c| c.is_ascii_digit());
+
+    if !has_lowercase || !has_uppercase || !has_digit {
+        return Err(
             validator::ValidationError::new("invalid_password").with_message(std::borrow::Cow::Borrowed(
                 "Password must contain at least one lowercase letter, one uppercase letter, and one digit",
             )),
-        )
+        );
     }
+
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
