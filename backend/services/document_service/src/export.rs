@@ -124,25 +124,31 @@ pub struct ExportService {
 impl ExportService {
     /// Create a new ExportService
     pub fn new(output_dir: PathBuf) -> Self {
-        // Check for weasyprint
-        let weasyprint_path = if Command::new("which")
+        let weasyprint_path = Command::new("which")
             .arg("weasyprint")
             .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-        {
-            Some(PathBuf::from("/usr/bin/weasyprint"))
-        } else {
-            // Try common locations
-            let locations = [
-                PathBuf::from("/usr/local/bin/weasyprint"),
-                PathBuf::from("/usr/bin/weasyprint"),
-                PathBuf::from("/opt/homebrew/bin/weasyprint"),
-            ];
-            locations.iter().find(|p| p.exists()).cloned()
-        };
+            .ok()
+            .and_then(|o| {
+                if o.status.success() {
+                    let path = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                    if path.is_empty() {
+                        None
+                    } else {
+                        Some(PathBuf::from(path))
+                    }
+                } else {
+                    None
+                }
+            })
+            .or_else(|| {
+                let locations = [
+                    PathBuf::from("/usr/local/bin/weasyprint"),
+                    PathBuf::from("/usr/bin/weasyprint"),
+                    PathBuf::from("/opt/homebrew/bin/weasyprint"),
+                ];
+                locations.iter().find(|p| p.exists()).cloned()
+            });
 
-        // Ensure output directory exists
         let _ = fs::create_dir_all(&output_dir);
 
         Self {
@@ -366,8 +372,13 @@ impl ExportService {
             },
         };
 
-        // Generate PDF using weasyprint
-        let temp_html_path = self.output_dir.join("temp_export.html");
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let temp_html_path = self
+            .output_dir
+            .join(format!("temp_export_{}_{}.html", std::process::id(), unique));
         fs::write(&temp_html_path, &html).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
 
         let output_path = temp_html_path.with_extension("pdf");
@@ -381,19 +392,20 @@ impl ExportService {
             .output()
             .map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
 
-        // Clean up temp HTML
         let _ = fs::remove_file(&temp_html_path);
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
+            let _ = fs::remove_file(&output_path);
             return Err(ExportError::PdfGenerationFailed(format!(
                 "weasyprint failed: {}",
                 error_msg
             )));
         }
 
-        // Return the actual PDF content as bytes
-        fs::read(&output_path).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))
+        let pdf_bytes = fs::read(&output_path).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
+        let _ = fs::remove_file(&output_path);
+        Ok(pdf_bytes)
     }
 
     /// Export as JSON (raw Yjs state)
