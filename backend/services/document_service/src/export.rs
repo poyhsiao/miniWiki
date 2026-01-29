@@ -275,7 +275,7 @@ impl ExportService {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>"#,
         );
-        output.push_str(title);
+        output.push_str(&escape_html(title));
         output.push_str(r#"</title>
     <style>
         :root {
@@ -335,7 +335,7 @@ impl ExportService {
         output.push_str("\n    </div>\n");
 
         // Title
-        output.push_str(&format!("    <h1>{}</h1>\n\n", title));
+        output.push_str(&format!("    <h1>{}</h1>\n\n", escape_html(title));
 
         // Content - convert Yjs JSON to HTML
         let html_content = Self::yjs_to_html(content);
@@ -390,7 +390,10 @@ impl ExportService {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
-            .map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
+            .map_err(|e| {
+                let _ = fs::remove_file(&temp_html_path);
+                ExportError::PdfGenerationFailed(e.to_string())
+            })?;
 
         let _ = fs::remove_file(&temp_html_path);
 
