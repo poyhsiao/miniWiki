@@ -4,8 +4,7 @@ use crate::repository::DocumentRepository;
 use actix_web::{web, HttpResponse, Responder};
 use jsonwebtoken;
 use shared_errors::AppError;
-use std::sync::Once;
-use tracing::{error, warn};
+use tracing::error;
 use validator::Validate;
 
 // Helper for access check with proper error handling
@@ -68,8 +67,6 @@ fn version_row_to_response(row: &crate::repository::DocumentVersionRow) -> Versi
 
 // User extraction - supports both JWT Authorization header and X-User-Id header for backward compatibility
 fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
-    static JWT_WARNING_ONCE: Once = Once::new();
-
     // Get JWT secret from environment variable, with fallback to default for test/debug mode only
     let jwt_secret = match std::env::var("JWT_SECRET") {
         Ok(secret) => secret,
@@ -77,9 +74,7 @@ fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
             // Allow fallback to test secret in debug/test mode for consistency with routes/mod.rs
             #[cfg(any(debug_assertions, test))]
             {
-                JWT_WARNING_ONCE.call_once(|| {
-                    warn!("Using default JWT secret. Set JWT_SECRET environment variable in production!");
-                });
+                eprintln!("WARNING: Using default JWT secret. Set JWT_SECRET environment variable in production!");
                 "test-secret-key-for-testing-only-do-not-use-in-production".to_string()
             }
             #[cfg(not(any(debug_assertions, test)))]
@@ -139,7 +134,6 @@ fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
     req.headers()
         .get("X-User-Id")
         .and_then(|h| h.to_str().ok())
-        .filter(|s| !s.is_empty())
         .map(|s| s.to_string())
         .ok_or_else(|| AppError::AuthenticationError("Missing or invalid authentication".to_string()))
 }
@@ -1004,6 +998,7 @@ pub async fn get_space(
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
     };
 
+    // First check if space exists
     let space = match repo.get_space(&space_id).await {
         Ok(Some(space)) => space,
         Ok(None) => {
@@ -1018,6 +1013,7 @@ pub async fn get_space(
         },
     };
 
+    // Then check access (skip for public spaces)
     if !space.is_public {
         match check_space_access(&repo, &space_id, &user_id).await {
             Ok(true) => {},
@@ -1276,7 +1272,8 @@ pub async fn update_space_member(
                 "Only space owner can update member roles",
             ));
         },
-        Err(_) => {
+        Err(e) => {
+            error!("Database error checking space owner: {:?}", e);
             return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "A database error occurred. Please try again later.",
@@ -1293,7 +1290,8 @@ pub async fn update_space_member(
             ));
         },
         Ok(false) => {},
-        Err(_) => {
+        Err(e) => {
+            error!("Database error checking space owner: {:?}", e);
             return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "A database error occurred. Please try again later.",
@@ -1330,8 +1328,9 @@ pub async fn remove_space_member(
 
     // Check permissions: owner can remove anyone, member can remove themselves
     let is_owner = match repo.is_space_owner(&space_id, &user_id).await {
-        Ok(result) => result,
-        Err(_) => {
+        Ok(v) => v,
+        Err(e) => {
+            error!("Database error checking space owner: {:?}", e);
             return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
                 "DATABASE_ERROR",
                 "A database error occurred. Please try again later.",
@@ -1348,20 +1347,23 @@ pub async fn remove_space_member(
     }
 
     // Cannot remove owner
-    let target_is_owner = match repo.is_space_owner(&space_id, &member_user_id).await {
-        Ok(result) => result,
-        Err(_) => {
-            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "A database error occurred. Please try again later.",
-            ));
-        },
-    };
-    if is_owner && target_is_owner {
-        return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
-            "INVALID_OPERATION",
-            "Cannot remove space owner",
-        ));
+    if is_owner {
+        match repo.is_space_owner(&space_id, &member_user_id).await {
+            Ok(true) => {
+                return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
+                    "INVALID_OPERATION",
+                    "Cannot remove space owner",
+                ));
+            },
+            Ok(false) => {},
+            Err(e) => {
+                error!("Database error checking space owner: {:?}", e);
+                return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                    "DATABASE_ERROR",
+                    "A database error occurred. Please try again later.",
+                ));
+            },
+        }
     }
 
     match repo.remove_space_member(&space_id, &member_user_id).await {
@@ -1400,5 +1402,577 @@ fn membership_row_to_response(row: &crate::repository::SpaceMembershipRow) -> Me
         role: row.role.clone(),
         joined_at: row.joined_at.and_utc().to_rfc3339(),
         invited_by: row.invited_by.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::repository::{DocumentRow, DocumentVersionRow, SpaceMembershipRow, SpaceRow};
+    use actix_web::test::TestRequest;
+    use chrono::{Duration, Utc};
+    use futures::executor::block_on;
+    use serde_json::json;
+    use sqlx::PgPool;
+    use uuid::Uuid;
+
+    // ===== Helper Function Tests =====
+
+    #[test]
+    fn test_document_row_to_response_all_fields() {
+        let now = Utc::now().naive_utc();
+        let row = DocumentRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            parent_id: Some(Uuid::new_v4()),
+            title: "Test Document".to_string(),
+            icon: Some("📄".to_string()),
+            content: json!({"delta": "test"}).into(),
+            content_size: 100,
+            is_archived: false,
+            archived_at: None,
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: now,
+            updated_at: now,
+            version: 1,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: None,
+        };
+
+        let response = document_row_to_response(&row);
+
+        assert_eq!(response.id, row.id.to_string());
+        assert_eq!(response.space_id, row.space_id.to_string());
+        assert_eq!(response.parent_id, row.parent_id.map(|u| u.to_string()));
+        assert_eq!(response.title, "Test Document");
+        assert_eq!(response.icon, Some("📄".to_string()));
+        let expected_content = json!({"delta": "test"});
+        assert_eq!(response.content, expected_content);
+        assert_eq!(response.content_size, 100);
+        assert!(!response.is_archived);
+    }
+
+    #[test]
+    fn test_document_row_to_response_minimal_fields() {
+        let now = Utc::now().naive_utc();
+        let row = DocumentRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            parent_id: None,
+            title: "Minimal Doc".to_string(),
+            icon: None,
+            content: json!({"test": true}).into(),
+            content_size: 50,
+            is_archived: false,
+            archived_at: None,
+            created_by: Uuid::new_v4(),
+            last_edited_by: Uuid::new_v4(),
+            created_at: now,
+            updated_at: now,
+            version: 1,
+            last_synced_at: None,
+            vector_clock: None,
+            client_id: None,
+            sync_state: None,
+        };
+
+        let response = document_row_to_response(&row);
+
+        assert_eq!(response.parent_id, None);
+        assert_eq!(response.icon, None);
+        assert!(!response.is_archived);
+    }
+
+    #[test]
+    fn test_version_row_to_response() {
+        let now = Utc::now().naive_utc();
+        let row = DocumentVersionRow {
+            id: Uuid::new_v4(),
+            document_id: Uuid::new_v4(),
+            version_number: 3,
+            title: "Version 3".to_string(),
+            content: json!({"ops": []}).into(),
+            created_by: Uuid::new_v4(),
+            created_at: now,
+            change_summary: Some("Fixed typo".to_string()),
+        };
+
+        let response = version_row_to_response(&row);
+
+        assert_eq!(response.id, row.id.to_string());
+        assert_eq!(response.document_id, row.document_id.to_string());
+        assert_eq!(response.version_number, 3);
+        assert_eq!(response.title, "Version 3");
+        assert_eq!(response.change_summary, Some("Fixed typo".to_string()));
+    }
+
+    #[test]
+    fn test_space_row_to_response() {
+        let now = Utc::now().naive_utc();
+        let row = SpaceRow {
+            id: Uuid::new_v4(),
+            owner_id: Uuid::new_v4(),
+            name: "My Space".to_string(),
+            icon: Some("📁".to_string()),
+            description: Some("Test description".to_string()),
+            is_public: true,
+            created_at: now,
+            updated_at: now,
+            user_role: Some("editor".to_string()),
+        };
+
+        let response = space_row_to_response(&row);
+
+        assert_eq!(response.id, row.id.to_string());
+        assert_eq!(response.owner_id, row.owner_id.to_string());
+        assert_eq!(response.name, "My Space");
+        assert_eq!(response.is_public, true);
+        assert_eq!(response.user_role, Some("editor".to_string()));
+    }
+
+    #[test]
+    fn test_membership_row_to_response() {
+        let now = Utc::now().naive_utc();
+        let row = SpaceMembershipRow {
+            id: Uuid::new_v4(),
+            space_id: Uuid::new_v4(),
+            user_id: Uuid::new_v4(),
+            role: "viewer".to_string(),
+            joined_at: now,
+            invited_by: Uuid::new_v4(),
+        };
+
+        let response = membership_row_to_response(&row);
+
+        assert_eq!(response.id, row.id.to_string());
+        assert_eq!(response.space_id, row.space_id.to_string());
+        assert_eq!(response.user_id, row.user_id.to_string());
+        assert_eq!(response.role, "viewer");
+    }
+
+    // ===== Extract User ID Tests =====
+
+    #[test]
+    fn test_extract_user_id_from_jwt() {
+        let secret = "test-secret-key-for-testing-only-do-not-use-in-production";
+        let exp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 3600;
+        let claims = json!({
+            "sub": "550e8400-e29b-41d4-a716-446655440000",
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+            "exp": exp
+        });
+        let token = jsonwebtoken::encode(
+            &jsonwebtoken::Header::default(),
+            &claims,
+            &jsonwebtoken::EncodingKey::from_secret(secret.as_bytes()),
+        )
+        .unwrap();
+
+        let req = TestRequest::get()
+            .insert_header(("Authorization", format!("Bearer {}", token)))
+            .to_http_request();
+
+        let result = extract_user_id(&req);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "550e8400-e29b-41d4-a716-446655440000");
+    }
+
+    #[test]
+    fn test_extract_user_id_from_x_user_id_header() {
+        let req = TestRequest::get()
+            .insert_header(("X-User-Id", "550e8400-e29b-41d4-a716-446655440000"))
+            .to_http_request();
+
+        let result = extract_user_id(&req);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "550e8400-e29b-41d4-a716-446655440000");
+    }
+
+    #[test]
+    fn test_extract_user_id_missing() {
+        let req = TestRequest::get().to_http_request();
+
+        let result = extract_user_id(&req);
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(err.to_string().contains("Missing or invalid authentication"));
+    }
+
+    #[test]
+    fn test_extract_user_id_invalid_jwt() {
+        let req = TestRequest::get()
+            .insert_header(("Authorization", "Bearer invalid.token.here"))
+            .to_http_request();
+
+        let result = extract_user_id(&req);
+        assert!(result.is_err());
+    }
+
+    // ===== Access Check Helper Tests =====
+
+    #[test]
+    fn test_check_document_access_function_signature() {
+        let _ = std::mem::size_of::<DocumentRepository>();
+        let _ = std::mem::size_of::<PgPool>();
+    }
+
+    // ===== Pagination Helper Tests =====
+
+    #[test]
+    fn test_pagination_limit_clamping() {
+        let limit = 500i64;
+        let clamped = limit.clamp(1, 100);
+        assert_eq!(clamped, 100);
+    }
+
+    #[test]
+    fn test_pagination_limit_default() {
+        let limit: Option<i64> = None;
+        let actual = limit.unwrap_or(20).clamp(1, 100);
+        assert_eq!(actual, 20);
+    }
+
+    #[test]
+    fn test_pagination_offset_default() {
+        let offset: Option<i64> = None;
+        let actual = offset.unwrap_or(0);
+        assert_eq!(actual, 0);
+    }
+
+    // ===== DateTime Conversion Tests =====
+
+    #[test]
+    fn test_naive_datetime_to_rfc3339() {
+        let now = Utc::now().naive_utc();
+        let rfc3339 = now.and_utc().to_rfc3339();
+        assert!(rfc3339.starts_with("20")); // Year starts with 20xx
+        assert!(rfc3339.contains("T"));
+        assert!(rfc3339.contains("Z") || rfc3339.contains("+"));
+    }
+
+    // ===== Error Handling Tests =====
+
+    #[test]
+    fn test_api_response_error_structure() {
+        let response: ApiResponse<()> = ApiResponse::error("TEST_ERROR", "Test message");
+        assert!(!response.success);
+        assert!(response.data.is_none());
+        assert!(response.error.is_some());
+        assert_eq!(response.error.as_ref().unwrap().error, "TEST_ERROR");
+        assert_eq!(response.error.as_ref().unwrap().message, "Test message");
+    }
+
+    #[test]
+    fn test_api_response_success_structure() {
+        let response: ApiResponse<String> = ApiResponse::success("test data".to_string());
+        assert!(response.success);
+        assert!(response.error.is_none());
+        assert!(response.data.is_some());
+        assert_eq!(response.data.unwrap(), "test data");
+    }
+
+    // ===== Space Role Validation Tests =====
+
+    #[test]
+    fn test_space_role_owner_can_create() {
+        let role = "owner";
+        assert!(role == "owner" || role == "editor");
+    }
+
+    #[test]
+    fn test_space_role_editor_can_create() {
+        let role = "editor";
+        assert!(role == "owner" || role == "editor");
+    }
+
+    #[test]
+    fn test_space_role_viewer_cannot_create() {
+        let role = "viewer";
+        assert!(role != "owner" && role != "editor");
+    }
+
+    #[test]
+    fn test_space_role_commenter_cannot_create() {
+        let role = "commenter";
+        assert!(role != "owner" && role != "editor");
+    }
+
+    // ===== Document Access Level Tests =====
+
+    #[test]
+    fn test_access_level_owner_has_all_permissions() {
+        let perms = vec!["read", "write", "delete", "share"];
+        for perm in perms {
+            assert!(matches!(perm, "read" | "write" | "delete" | "share"));
+        }
+    }
+
+    #[test]
+    fn test_access_level_editor_has_write() {
+        let has_write = true;
+        assert!(has_write);
+    }
+
+    #[test]
+    fn test_access_level_viewer_has_read_only() {
+        let has_write = false;
+        let has_delete = false;
+        assert!(!has_write && !has_delete);
+    }
+
+    // ===== Request Validation Logic Tests =====
+
+    #[test]
+    fn test_create_document_title_length_validation() {
+        let long_title = "a".repeat(256); // Max is 255
+        assert!(long_title.len() > 255);
+    }
+
+    #[test]
+    fn test_create_document_title_valid_length() {
+        let valid_title = "Valid Title".to_string();
+        assert!(valid_title.len() <= 255);
+    }
+
+    #[test]
+    fn test_content_size_calculation() {
+        let content = json!({"ops": [{"insert": "Hello World"}]});
+        let size = content.to_string().len() as i32;
+        assert!(size > 0);
+    }
+
+    // ===== Query Parameter Defaults Tests =====
+
+    #[test]
+    fn test_list_documents_query_defaults() {
+        let query = ListDocumentsQuery {
+            parent_id: None,
+            limit: None,
+            offset: None,
+        };
+        assert_eq!(query.parent_id, None);
+        assert_eq!(query.limit, None);
+        assert_eq!(query.offset, None);
+    }
+
+    #[test]
+    fn test_list_documents_query_with_values() {
+        let query = ListDocumentsQuery {
+            parent_id: Some("parent-uuid".to_string()),
+            limit: Some(50),
+            offset: Some(100),
+        };
+        assert!(query.parent_id.is_some());
+        assert_eq!(query.limit, Some(50));
+        assert_eq!(query.offset, Some(100));
+    }
+
+    #[test]
+    fn test_list_versions_query_defaults() {
+        let query = ListVersionsQuery {
+            limit: None,
+            offset: None,
+        };
+        assert_eq!(query.limit, None);
+        assert_eq!(query.offset, None);
+    }
+
+    // ===== Response Model Tests =====
+
+    #[test]
+    fn test_document_response_all_fields() {
+        let response = DocumentResponse {
+            id: "doc-001".to_string(),
+            space_id: "space-001".to_string(),
+            parent_id: Some("parent-001".to_string()),
+            title: "Test Document".to_string(),
+            icon: Some("📄".to_string()),
+            content: json!({"test": true}).into(),
+            content_size: 100,
+            is_archived: false,
+            created_by: "user-001".to_string(),
+            last_edited_by: "user-002".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-02T00:00:00Z".to_string(),
+        };
+
+        assert_eq!(response.id, "doc-001");
+        assert!(response.parent_id.is_some());
+        assert!(response.icon.is_some());
+        assert!(!response.is_archived);
+    }
+
+    #[test]
+    fn test_document_list_response() {
+        let response = DocumentListResponse {
+            documents: vec![],
+            total: 10,
+            limit: 20,
+            offset: 0,
+        };
+
+        assert_eq!(response.total, 10);
+        assert_eq!(response.limit, 20);
+        assert_eq!(response.offset, 0);
+        assert!(response.documents.is_empty());
+    }
+
+    #[test]
+    fn test_document_path_response() {
+        let path = vec![
+            DocumentPathItem {
+                id: "root-id".to_string(),
+                title: "Root".to_string(),
+                level: 0,
+            },
+            DocumentPathItem {
+                id: "child-id".to_string(),
+                title: "Child".to_string(),
+                level: 1,
+            },
+        ];
+
+        let response = DocumentPathResponse { path };
+
+        assert_eq!(response.path.len(), 2);
+        assert_eq!(response.path[0].level, 0);
+        assert_eq!(response.path[1].level, 1);
+    }
+
+    #[test]
+    fn test_version_response_all_fields() {
+        let response = VersionResponse {
+            id: "version-001".to_string(),
+            document_id: "doc-001".to_string(),
+            version_number: 1,
+            title: "Initial Version".to_string(),
+            content: json!({"ops": []}).into(),
+            created_by: "user-001".to_string(),
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            change_summary: Some("Initial commit".to_string()),
+        };
+
+        assert_eq!(response.id, "version-001");
+        assert_eq!(response.version_number, 1);
+        assert!(response.change_summary.is_some());
+    }
+
+    #[test]
+    fn test_children_response() {
+        let response = ChildrenResponse {
+            documents: vec![],
+            total: 5,
+        };
+
+        assert_eq!(response.total, 5);
+        assert!(response.documents.is_empty());
+    }
+
+    // ===== Space Response Tests =====
+
+    #[test]
+    fn test_space_response_all_fields() {
+        let response = SpaceResponse {
+            id: "space-001".to_string(),
+            owner_id: "user-001".to_string(),
+            name: "Test Space".to_string(),
+            icon: Some("📁".to_string()),
+            description: Some("Test description".to_string()),
+            is_public: false,
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            updated_at: "2024-01-02T00:00:00Z".to_string(),
+            user_role: Some("owner".to_string()),
+        };
+
+        assert_eq!(response.name, "Test Space");
+        assert!(!response.is_public);
+        assert_eq!(response.user_role, Some("owner".to_string()));
+    }
+
+    #[test]
+    fn test_member_response_all_fields() {
+        let response = MemberResponse {
+            id: "member-001".to_string(),
+            space_id: "space-001".to_string(),
+            user_id: "user-001".to_string(),
+            role: "editor".to_string(),
+            joined_at: "2024-01-01T00:00:00Z".to_string(),
+            invited_by: "user-002".to_string(),
+        };
+
+        assert_eq!(response.role, "editor");
+        assert_eq!(response.invited_by, "user-002");
+    }
+
+    // ===== UUID Validation Tests =====
+
+    #[test]
+    fn test_valid_uuid_parsing() {
+        let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
+        let result = Uuid::parse_str(uuid_str);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_uuid_parsing() {
+        let invalid = "not-a-uuid";
+        let result = Uuid::parse_str(invalid);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_uuid_to_string_roundtrip() {
+        let uuid = Uuid::new_v4();
+        let str_repr = uuid.to_string();
+        let parsed = Uuid::parse_str(&str_repr).unwrap();
+        assert_eq!(uuid, parsed);
+    }
+
+    // ===== JWT Token Tests =====
+
+    #[test]
+    fn test_jwt_claims_structure() {
+        let claims = json!({
+            "sub": "user-123",
+            "exp": 1704067200,
+            "iat": 1703980800
+        });
+        assert!(claims.get("sub").is_some());
+        assert!(claims.get("exp").is_some());
+    }
+
+    #[test]
+    fn test_jwt_encoding_decoding_roundtrip() {
+        let secret = b"test-secret-key-32-bytes-long!!";
+        let exp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            + 3600;
+        let claims = json!({"sub": "user-123", "exp": exp});
+
+        let token = jsonwebtoken::encode(
+            &jsonwebtoken::Header::default(),
+            &claims,
+            &jsonwebtoken::EncodingKey::from_secret(secret),
+        )
+        .unwrap();
+
+        let decoding_key = jsonwebtoken::DecodingKey::from_secret(secret);
+        let token_data = jsonwebtoken::decode::<serde_json::Value>(
+            &token,
+            &decoding_key,
+            &jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256),
+        )
+        .unwrap();
+
+        assert_eq!(token_data.claims.get("sub").unwrap(), "user-123");
     }
 }

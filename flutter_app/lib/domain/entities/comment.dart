@@ -1,10 +1,13 @@
+/// Sentinel class for copyWith to distinguish between "not provided" and "explicitly null"
+class _Unset {
+  const _Unset();
+}
+
 /// Comment entity representing a comment on a document
 ///
 /// This is a pure domain entity that represents a comment
 /// in the miniWiki Knowledge Management Platform.
 class Comment {
-  static final Object _unset = Object();
-
   /// Unique identifier for the comment
   final String id;
 
@@ -44,7 +47,10 @@ class Comment {
   const Comment({
     required this.id,
     required this.documentId,
-    required this.authorId, required this.authorName, required this.content, this.parentId,
+    required this.authorId,
+    required this.authorName,
+    required this.content,
+    this.parentId,
     this.authorAvatar,
     this.isResolved = false,
     this.resolvedBy,
@@ -52,6 +58,9 @@ class Comment {
     this.createdAt,
     this.updatedAt,
   });
+
+  // Sentinel value for copyWith to distinguish between "not provided" and "explicitly null"
+  static const _unset = _Unset();
 
   /// Creates a copy of the comment with updated fields
   Comment copyWith({
@@ -77,10 +86,26 @@ class Comment {
         authorAvatar: authorAvatar ?? this.authorAvatar,
         content: content ?? this.content,
         isResolved: isResolved ?? this.isResolved,
-        resolvedBy: identical(resolvedBy, _unset) ? this.resolvedBy : resolvedBy as String?,
-        resolvedAt: identical(resolvedAt, _unset) ? this.resolvedAt : resolvedAt as DateTime?,
+        resolvedBy: resolvedBy == _unset ? this.resolvedBy : (resolvedBy as String?),
+        resolvedAt: resolvedAt == _unset ? this.resolvedAt : (resolvedAt as DateTime?),
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+      );
+
+  /// Creates a copy of the comment with cleared resolution info
+  Comment clearResolutionInfo() => Comment(
+        id: id,
+        documentId: documentId,
+        parentId: parentId,
+        authorId: authorId,
+        authorName: authorName,
+        authorAvatar: authorAvatar,
+        content: content,
+        isResolved: false,
+        resolvedBy: null,
+        resolvedAt: null,
+        createdAt: createdAt,
+        updatedAt: updatedAt,
       );
 
   /// Helper method to safely parse DateTime from API
@@ -158,16 +183,6 @@ class Comment {
     if (identical(this, other)) return true;
     return other is Comment && other.id == id;
   }
-
-  /// Clears resolution information (for unresolveComment)
-  ///
-  /// Returns a new Comment with isResolved set to false
-  /// and resolvedBy/resolvedAt set to null.
-  Comment clearResolutionInfo() => copyWith(
-        isResolved: false,
-        resolvedBy: null,
-        resolvedAt: null,
-      );
 
   @override
   int get hashCode => id.hashCode;
