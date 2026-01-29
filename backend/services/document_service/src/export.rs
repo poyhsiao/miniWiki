@@ -403,7 +403,10 @@ impl ExportService {
             )));
         }
 
-        let pdf_bytes = fs::read(&output_path).map_err(|e| ExportError::PdfGenerationFailed(e.to_string()))?;
+        let pdf_bytes = fs::read(&output_path).map_err(|e| {
+            let _ = fs::remove_file(&output_path);
+            ExportError::PdfGenerationFailed(e.to_string())
+        })?;
         let _ = fs::remove_file(&output_path);
         Ok(pdf_bytes)
     }
