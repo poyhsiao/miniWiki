@@ -998,8 +998,23 @@ pub async fn get_space(
         Err(e) => return HttpResponse::Unauthorized().json(ApiResponse::<()>::error("UNAUTHORIZED", &e.to_string())),
     };
 
-    // Check access (public spaces accessible by anyone, private spaces require membership)
-    match repo.check_space_access(&space_id, &user_id).await {
+    // First check if space exists
+    let space = match repo.get_space(&space_id).await {
+        Ok(Some(space)) => space,
+        Ok(None) => {
+            return HttpResponse::NotFound().json(ApiResponse::<()>::error("SPACE_NOT_FOUND", "Space not found"))
+        },
+        Err(e) => {
+            error!("Database error getting space: {:?}", e);
+            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                "DATABASE_ERROR",
+                "A database error occurred. Please try again later.",
+            ));
+        },
+    };
+
+    // Then check access (public spaces accessible by anyone, private spaces require membership)
+    match check_space_access(&repo, &space_id, &user_id).await {
         Ok(true) => {},
         Ok(false) => {
             return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
@@ -1015,19 +1030,7 @@ pub async fn get_space(
         },
     }
 
-    match repo.get_space(&space_id).await {
-        Ok(Some(space)) => {
-            HttpResponse::Ok().json(ApiResponse::<SpaceResponse>::success(space_row_to_response(&space)))
-        },
-        Ok(None) => HttpResponse::NotFound().json(ApiResponse::<()>::error("SPACE_NOT_FOUND", "Space not found")),
-        Err(e) => {
-            error!("Database error getting space: {:?}", e);
-            HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "A database error occurred. Please try again later.",
-            ))
-        },
-    }
+    HttpResponse::Ok().json(ApiResponse::<SpaceResponse>::success(space_row_to_response(&space)))
 }
 
 pub async fn update_space(

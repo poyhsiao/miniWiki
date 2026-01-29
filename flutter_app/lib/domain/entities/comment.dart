@@ -1,3 +1,8 @@
+/// Sentinel class for copyWith to distinguish between "not provided" and "explicitly null"
+class _Unset {
+  const _Unset();
+}
+
 /// Comment entity representing a comment on a document
 ///
 /// This is a pure domain entity that represents a comment
@@ -54,6 +59,9 @@ class Comment {
     this.updatedAt,
   });
 
+  // Sentinel value for copyWith to distinguish between "not provided" and "explicitly null"
+  static const _unset = _Unset();
+
   /// Creates a copy of the comment with updated fields
   Comment copyWith({
     String? id,
@@ -64,8 +72,8 @@ class Comment {
     String? authorAvatar,
     String? content,
     bool? isResolved,
-    String? resolvedBy,
-    DateTime? resolvedAt,
+    Object? resolvedBy = _unset,
+    Object? resolvedAt = _unset,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) =>
@@ -78,8 +86,8 @@ class Comment {
         authorAvatar: authorAvatar ?? this.authorAvatar,
         content: content ?? this.content,
         isResolved: isResolved ?? this.isResolved,
-        resolvedBy: resolvedBy,
-        resolvedAt: resolvedAt,
+        resolvedBy: resolvedBy == _unset ? this.resolvedBy : (resolvedBy as String?),
+        resolvedAt: resolvedAt == _unset ? this.resolvedAt : (resolvedAt as DateTime?),
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
