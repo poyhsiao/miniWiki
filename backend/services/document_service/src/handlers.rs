@@ -1013,21 +1013,23 @@ pub async fn get_space(
         },
     };
 
-    // Then check access (public spaces accessible by anyone, private spaces require membership)
-    match check_space_access(&repo, &space_id, &user_id).await {
-        Ok(true) => {},
-        Ok(false) => {
-            return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
-                "ACCESS_DENIED",
-                "You don't have access to this space",
-            ));
-        },
-        Err(_) => {
-            return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
-                "DATABASE_ERROR",
-                "A database error occurred. Please try again later.",
-            ));
-        },
+    // Then check access (skip for public spaces)
+    if !space.is_public {
+        match check_space_access(&repo, &space_id, &user_id).await {
+            Ok(true) => {},
+            Ok(false) => {
+                return HttpResponse::Forbidden().json(ApiResponse::<()>::error(
+                    "ACCESS_DENIED",
+                    "You don't have access to this space",
+                ));
+            },
+            Err(_) => {
+                return HttpResponse::InternalServerError().json(ApiResponse::<()>::error(
+                    "DATABASE_ERROR",
+                    "A database error occurred. Please try again later.",
+                ));
+            },
+        }
     }
 
     HttpResponse::Ok().json(ApiResponse::<SpaceResponse>::success(space_row_to_response(&space)))
