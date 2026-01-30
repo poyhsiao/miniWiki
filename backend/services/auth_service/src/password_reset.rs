@@ -243,17 +243,17 @@ fn generate_verification_token() -> String {
 // ============================================================================
 
 async fn find_valid_reset_token(_token: &str, _repo: web::Data<AuthRepository>) -> Result<ResetTokenInfo, AppError> {
-    // TODO: Implement actual database query
-    Ok(ResetTokenInfo {
-        user_id: Uuid::new_v4(),
-        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
-    })
+    // TODO: Implement actual database query to verify reset token exists, is unused, and hasn't expired
+    Err(AppError::NotFoundError(
+        "Password reset functionality not yet implemented".to_string(),
+    ))
 }
 
 async fn mark_reset_token_used(_token: &str, _repo: web::Data<AuthRepository>) -> Result<(), AppError> {
-    // TODO: Implement actual database update
-    // This should update password_resets table setting used_at
-    Ok(())
+    // TODO: Implement actual database update to mark reset token as used
+    Err(AppError::NotFoundError(
+        "Password reset functionality not yet implemented".to_string(),
+    ))
 }
 
 async fn find_user_by_email(email: &str, repo: web::Data<AuthRepository>) -> Result<Option<User>, AppError> {
@@ -266,13 +266,17 @@ async fn update_user_password(
     _password_hash: &str,
     _repo: web::Data<AuthRepository>,
 ) -> Result<(), AppError> {
-    // TODO: Implement actual password update
-    Ok(())
+    // TODO: Implement actual password update in users table
+    Err(AppError::NotFoundError(
+        "Password reset functionality not yet implemented".to_string(),
+    ))
 }
 
 async fn store_reset_token(_user_id: Uuid, _token: &str, _repo: web::Data<AuthRepository>) -> Result<(), AppError> {
     // TODO: Implement actual token storage in password_resets table
-    Ok(())
+    Err(AppError::NotFoundError(
+        "Password reset functionality not yet implemented".to_string(),
+    ))
 }
 
 async fn store_verification_token(
@@ -281,7 +285,9 @@ async fn store_verification_token(
     _repo: web::Data<AuthRepository>,
 ) -> Result<(), AppError> {
     // TODO: Implement actual token storage in email_verifications table
-    Ok(())
+    Err(AppError::NotFoundError(
+        "Password reset functionality not yet implemented".to_string(),
+    ))
 }
 
 #[cfg(test)]
@@ -312,13 +318,15 @@ mod tests {
 
     #[test]
     fn test_validate_token_format_invalid_chars() {
-        let invalid_token = "test_token_with_invalid_char_g_0123456789abcdef0123456789abcdef0123";
+        // Exactly 64 chars with underscores (invalid character)
+        let invalid_token = "abcd_fgh_jklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ01";
         assert!(validate_token_format(&invalid_token).is_err());
     }
 
     #[test]
-    fn test_validate_token_format_non_hex() {
-        let invalid_token = "test_token_with_XYZ_0123456789abcdef0123456789abcdef0123";
+    fn test_validate_token_format_special_chars() {
+        // Exactly 64 chars with special characters (invalid)
+        let invalid_token = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQR!@#$%^&*()XY";
         assert!(validate_token_format(&invalid_token).is_err());
     }
 
