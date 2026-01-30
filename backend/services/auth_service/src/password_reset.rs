@@ -228,10 +228,6 @@ fn generate_verification_token() -> String {
     shared_security::generate_reset_token(64)
 }
 
-fn generate_verification_token() -> String {
-    generate_reset_token()
-}
-
 // ============================================================================
 // Database Operations (TODO: These should be in AuthRepository)
 // ============================================================================
@@ -282,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_validate_token_format_valid() {
-        let valid_token = "test_token_valid_0123456789abcdef0123456789abcdef0123456789abc";
+        let valid_token = shared_security::generate_reset_token(64);
         assert!(validate_token_format(&valid_token).is_ok());
     }
 

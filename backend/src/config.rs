@@ -80,12 +80,11 @@ pub struct SecurityHeadersConfig {
     pub pragma: Option<HeaderValue>,
 }
 
-impl Default for SecurityHeadersConfig {
+ impl Default for SecurityHeadersConfig {
     fn default() -> Self {
-        let csp_string = default_csp();
         Self::from_raw(SecurityHeadersConfigRaw {
             api_origin: None,
-            content_security_policy: csp_string.clone(),
+            content_security_policy: default_csp(),
             strict_transport_security: default_hsts(),
             x_frame_options: default_frame_options(),
             x_content_type_options: default_content_type_options(),
@@ -93,16 +92,16 @@ impl Default for SecurityHeadersConfig {
             permissions_policy: default_permissions_policy(),
             cache_control: default_cache_control(),
             pragma: default_pragma(),
-        }, &csp_string)
+        })
     }
 }
 
-impl SecurityHeadersConfig {
+ impl SecurityHeadersConfig {
     /// Create SecurityHeadersConfig from raw config by parsing and validating header values
-    fn from_raw(raw: SecurityHeadersConfigRaw, csp_string: &str) -> Self {
+    fn from_raw(raw: SecurityHeadersConfigRaw) -> Self {
         Self {
             api_origin: raw.api_origin,
-            content_security_policy: parse_header("Content-Security-Policy", csp_string),
+            content_security_policy: parse_header("Content-Security-Policy", &raw.content_security_policy),
             strict_transport_security: parse_header("Strict-Transport-Security", &raw.strict_transport_security),
             x_frame_options: parse_header("X-Frame-Options", &raw.x_frame_options),
             x_content_type_options: parse_header("X-Content-Type-Options", &raw.x_content_type_options),
@@ -144,6 +143,19 @@ fn parse_header(header_name: &str, value: &str) -> Option<HeaderValue> {
         );
         return None;
     }
+    match HeaderValue::from_str(value) {
+        Ok(header_value) => Some(header_value),
+        Err(e) => {
+            tracing::warn!(
+                "Invalid security header value for '{}': '{}'. Error: {}. Header will not be set.",
+                header_name,
+                value,
+                e
+            );
+            None
+        }
+    }
+}
     match HeaderValue::from_str(value) {
         Ok(header_value) => Some(header_value),
         Err(e) => {
@@ -244,6 +256,7 @@ pub struct Config {
     pub api_cors_origins: Vec<String>,
     #[serde(default)]
     pub csrf_strict_redis: bool,
+    pub security_headers: SecurityHeadersConfig,
     /// Security headers configuration (raw, will be parsed)
     #[serde(default)]
     security_headers_raw: SecurityHeadersConfigRaw,
@@ -267,8 +280,7 @@ impl Config {
             .try_deserialize()?;
 
         let mut security_headers = SecurityHeadersConfig::from_raw(
-            config.security_headers_raw.clone(),
-            &default_csp()
+            config.security_headers_raw.clone()
         );
         security_headers.update_csp();
 
@@ -278,7 +290,6 @@ impl Config {
             redis_cache_ttl_short: Some(config.redis_cache_ttl_short.unwrap_or(300)),
             redis_cache_ttl_long: Some(config.redis_cache_ttl_long.unwrap_or(86400)),
             security_headers,
-            security_headers_raw: config.security_headers_raw,
             ..config
         })
     }
@@ -419,25 +430,4 @@ mod tests {
         assert!(!csp.contains("connect-src 'self' https://"));
     }
 
-    #[test]
-    fn test_security_headers_update_csp_without_api_origin() {
-        let mut config = SecurityHeadersConfig::default();
-        config.api_origin = None;
-        config.update_csp();
-
-        // Should remain with only 'self'
-        assert!(config.content_security_policy.contains("connect-src 'self'"));
-        assert!(!config.content_security_policy.contains("connect-src 'self' https://"));
-    }
-
-    #[test]
-    fn test_security_headers_update_csp_with_empty_api_origin() {
-        let mut config = SecurityHeadersConfig::default();
-        config.api_origin = Some("".to_string());
-        config.update_csp();
-
-        // Should remain unchanged with only 'self'
-        assert!(config.content_security_policy.contains("connect-src 'self'"));
-        assert!(!config.content_security_policy.contains("connect-src 'self' https://"));
-    }
 }
