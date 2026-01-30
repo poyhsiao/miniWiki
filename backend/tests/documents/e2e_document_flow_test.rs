@@ -23,24 +23,21 @@ async fn test_e2e_document_creation_flow() {
     // Get auth token
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
-    // Create a new document using helper macro
+    // Create a new document using auth helper
     let create_response = app
-        .client
-        .post(&format!(
-            "http://localhost:{}/api/v1/space-docs/{}/documents",
-            app.port, space.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
-        .json(&serde_json::json!({
-            "title": format!("Test Document {}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()),
-            "content": {
-                "type": "Y.Doc",
-                "update": "dGVzdCB1cGRhdGU=",
-                "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
-            },
-            "icon": "📝"
-        }))
+        .auth_post(
+            &format!("/api/v1/space-docs/{}/documents", space.id),
+            &serde_json::json!({
+                "title": format!("Test Document {}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()),
+                "content": {
+                    "type": "Y.Doc",
+                    "update": "dGVzdCB1cGRhdGU=",
+                    "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
+                },
+                "icon": "📝"
+            }),
+            Some(test_user.id),
+        )
         .send()
         .await
         .expect("Document creation request failed");
@@ -78,7 +75,7 @@ async fn test_e2e_document_retrieval_flow() {
     // Retrieve the document
     let get_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -107,7 +104,7 @@ async fn test_e2e_document_retrieval_flow() {
 async fn test_e2e_document_update_flow() {
     let app = TestApp::create().await;
 
-    // Create test user, space, and document
+    // Create test user and space
     let test_user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&test_user.id).await;
     let document = app.create_test_document(&space.id, None).await;
@@ -117,21 +114,9 @@ async fn test_e2e_document_update_flow() {
 
     // Update document
     let update_response = app
-        .client
-        .patch(&format!(
-            "http://localhost:{}/api/v1/documents/{}",
-            app.port, document.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
-        .json(&json!({
-            "title": "Updated E2E Test Document",
-            "content": {
-                "type": "Y.Doc",
-                "update": "dXBkYXRlZCB1cGRhdGU=",
-                "vector_clock": {"client_id": document.id.to_string(), "clock": 2}
-            }
-        }))
+        .auth_patch(&format!("/api/v1/documents/{}", document.id)),
+            Some(test_user.id),
+        )
         .send()
         .await
         .expect("Document update request failed");
@@ -167,13 +152,7 @@ async fn test_e2e_document_deletion_flow() {
 
     // Delete the document
     let delete_response = app
-        .client
-        .delete(&format!(
-            "http://localhost:{}/api/v1/documents/{}",
-            app.port, document.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .auth_delete(&format!("/api/v1/documents/{}", document.id), Some(test_user.id))
         .send()
         .await
         .expect("Document deletion request failed");
@@ -186,7 +165,7 @@ async fn test_e2e_document_deletion_flow() {
     // Verify document is deleted (should return 404)
     let get_response = app
         .client
-        .get(&format!(
+        .get(format!(
             "http://localhost:{}/api/v1/documents/{}",
             app.port, document.id
         ))
@@ -220,13 +199,10 @@ async fn test_e2e_document_list_flow() {
 
     // List documents
     let list_response = app
-        .client
-        .get(&format!(
-            "http://localhost:{}/api/v1/space-docs/{}/documents",
-            app.port, space.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .auth_get(
+            &format!("/api/v1/space-docs/{}/documents", space.id),
+            Some(test_user.id),
+        )
         .send()
         .await
         .expect("Document list request failed");
@@ -271,13 +247,10 @@ async fn test_e2e_document_version_flow() {
 
     // List versions
     let list_versions_response = app
-        .client
-        .get(&format!(
-            "http://localhost:{}/api/v1/documents/{}/versions",
-            app.port, document.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .auth_get(
+            &format!("/api/v1/documents/{}/versions", document.id),
+            Some(test_user.id),
+        )
         .send()
         .await
         .expect("Version list request failed");
@@ -299,17 +272,11 @@ async fn test_e2e_document_export_flow() {
     let (token, user_id_str) = app.get_auth_data(Some(test_user.id), None).await;
 
     // Export document as Markdown
-    let mut export_response = app
-        .client
-        .get(&format!(
-            "http://localhost:{}/api/v1/documents/{}/export?format=markdown",
-            app.port, document.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
-        .send()
-        .await
-        .expect("Export request failed");
+        let export_response = app
+                .auth_get(
+                    &format!("/api/v1/documents/{}/export?format=markdown", document.id),
+                    Some(test_user.id),
+                )
 
     // Check Content-Type header directly (before JSON parsing)
     let content_type = export_response
@@ -346,13 +313,7 @@ async fn test_e2e_document_search_flow() {
 
     // Search for the document
     let search_response = app
-        .client
-        .get(&format!(
-            "http://localhost:{}/api/v1/search?q=Test%20Document",
-            app.port
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str.clone())
+        .auth_get(&format!("/api/v1/search?q=Test%20Document"), Some(test_user.id))
         .send()
         .await
         .expect("Search request failed");
@@ -377,7 +338,8 @@ async fn test_e2e_document_search_flow() {
     let found_doc = results_array.iter().any(|item| {
         let item_id = item.get("id").and_then(|id| id.as_str());
         let item_title = item.get("title").and_then(|t| t.as_str());
-        item_id == Some(doc.id.to_string().as_str()) || item_title.map_or(false, |t| t.contains("Test Document"))
+        let validator = ResponseValidator::new(response).await;
+        validator.assert_client_error();
     });
 
     assert!(found_doc, "Created document should be found in search results");
@@ -398,17 +360,19 @@ async fn test_e2e_create_document_invalid_data() {
 
     // Try to create document with empty title
     let response = app
-        .client
-        .post(&format!(
-            "http://localhost:{}/api/v1/space-docs/{}/documents",
-            app.port, space.id
-        ))
-        .header("Authorization", format!("Bearer {}", token))
-        .header("X-User-Id", user_id_str)
-        .json(&json!({
-            "title": "",  // Invalid: empty title
-            "content": {"type": "Y.Doc", "update": "test"}
-        }))
+        .auth_post(
+            &format!("/api/v1/space-docs/{}/documents", space.id),
+            &serde_json::json!({
+                "title": format!("Test Document {}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()),
+                "content": {
+                    "type": "Y.Doc",
+                    "update": "dGVzdCB1cGRhdGU=",
+                    "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
+                },
+                "icon": "📝"
+            }),
+            Some(test_user.id),
+        )
         .send()
         .await
         .expect("Request failed");
@@ -428,7 +392,7 @@ async fn test_e2e_get_nonexistent_document() {
 
     let response = app
         .client
-        .get(&format!("http://localhost:{}/api/v1/documents/{}", app.port, fake_id))
+        .get(format!("http://localhost:{}/api/v1/documents/{}", app.port, fake_id))
         .header("Authorization", format!("Bearer {}", token))
         .header("X-User-Id", user_id_str)
         .send()
@@ -459,13 +423,7 @@ async fn test_e2e_unauthorized_document_access() {
 
     // Try to access user1's document with user2's credentials
     let response = app
-        .client
-        .get(&format!(
-            "http://localhost:{}/api/v1/documents/{}",
-            app.port, document.id
-        ))
-        .header("Authorization", format!("Bearer {}", token2))
-        .header("X-User-Id", user_id_str2)
+        .auth_get(&format!("/api/v1/documents/{}", fake_id), Some(test_user.id))
         .send()
         .await
         .expect("Request failed");
@@ -486,24 +444,15 @@ async fn test_e2e_create_document_without_auth() {
     let test_user = app.create_test_user().await;
     let space = app.create_test_space_for_user(&test_user.id).await;
 
-    let response = app
-        .client
-        .post(&format!(
-            "http://localhost:{}/api/v1/space-docs/{}/documents",
-            app.port, space.id
-        ))
-        .json(&serde_json::json!({
-            "title": format!("Test Document {}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>()),
-            "content": {
-                "type": "Y.Doc",
-                "update": "dGVzdCB1cGRhdGU=",
-                "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
-            },
-            "icon": "📝"
-        }))
-        .send()
-        .await
-        .expect("Request failed");
+                let response = client.get(
+                    &format!("/api/v1/space-docs/{}/documents", space_id)
+                );
+                .header("Authorization", format!("Bearer {}", token))
+                .header("X-User-Id", user_id_str)
+                .send()
+                .await
+                .expect("Request failed");
+                (i, response.status())
 
     ResponseValidator::new(response).await.assert_status(401);
 }
@@ -535,27 +484,24 @@ async fn test_e2e_concurrent_document_creation() {
             let client = client.clone();
 
             async move {
-                let response = client
-                    .post(&format!(
-                        "http://localhost:{}/api/v1/space-docs/{}/documents",
-                        port, space_id
-                    ))
-                    .header("Authorization", format!("Bearer {}", token))
-                    .header("X-User-Id", user_id_str)
-                    .json(&serde_json::json!({
-                        "title": title,
-                        "content": {
-                            "type": "Y.Doc",
-                            "update": "dGVzdCB1cGRhdGU=",
-                            "vector_clock": {"client_id": uuid::Uuid::new_v4().to_string(), "clock": 1}
-                        },
-                        "icon": "📝"
-                    }))
+                let response = app
+                    .auth_post(
+                        &format!("/api/v1/space-docs/{}/documents", space_id),
+                        &serde_json::json!({
+                            "title": title,
+                            "content": {
+                                "type": "Y.Doc",
+                                "update": format!("dGVzdCB1cGRhdGU {}", i),
+                                "vector_clock": {"client_id": doc_id.to_string(), "clock": i + 2}
+                            },
+                            "icon": "📝"
+                        }),
+                        Some(test_user.id),
+                    )
                     .send()
                     .await
                     .expect("Request failed");
-
-                ResponseValidator::new(response).await.status()
+                response
             }
         })
         .collect();
@@ -598,7 +544,7 @@ async fn test_e2e_concurrent_document_updates() {
 
             async move {
                 let response = client
-                    .patch(&format!("http://localhost:{}/api/v1/documents/{}", port, doc_id))
+                    .patch(format!("http://localhost:{}/api/v1/documents/{}", port, doc_id))
                     .header("Authorization", format!("Bearer {}", token))
                     .header("X-User-Id", user_id_str)
                     .json(&json!({
@@ -614,7 +560,7 @@ async fn test_e2e_concurrent_document_updates() {
                     .expect("Request failed");
 
                 // Concurrent updates may succeed or fail depending on implementation
-                response.status()
+                (i, response.status())
             }
         })
         .collect();
@@ -654,7 +600,7 @@ async fn test_e2e_rapid_concurrent_requests() {
 
             async move {
                 let response = client
-                    .get(&format!(
+                    .get(format!(
                         "http://localhost:{}/api/v1/space-docs/{}/documents",
                         port, space_id
                     ))

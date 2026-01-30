@@ -230,7 +230,7 @@ impl CacheService {
         let mut data = self.fallback.data.write().await;
 
         // Use a simple prefix match if it's just a "prefix*" pattern
-        if pattern.ends_with('*') && !pattern[..pattern.len()-1].contains(|c| c == '*' || c == '?') {
+        if pattern.ends_with('*') && !pattern[..pattern.len()-1].contains(['*', '?']) {
             let prefix = &pattern[..pattern.len() - 1];
             data.retain(|k, _| !k.starts_with(prefix));
         } else {

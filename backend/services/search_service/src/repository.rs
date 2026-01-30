@@ -69,7 +69,7 @@ impl SearchRepositoryTrait for SearchRepository {
                 "#.to_string();
                 sqlx::query_as::<_, (i64,)>(&count_sql)
                     .bind(&query_pattern)
-                    .bind(&user_uuid)
+                    .bind(user_uuid)
                     .bind(sid)
                     .fetch_one(&*self.pool)
                     .await?
@@ -91,7 +91,7 @@ impl SearchRepositoryTrait for SearchRepository {
                 "#.to_string();
                 sqlx::query_as::<_, (i64,)>(&count_sql)
                     .bind(&query_pattern)
-                    .bind(&user_uuid)
+                    .bind(user_uuid)
                     .fetch_one(&*self.pool)
                     .await?
                     .0
@@ -136,7 +136,7 @@ impl SearchRepositoryTrait for SearchRepository {
                 "#.to_string();
                 sqlx::query_as(&search_sql)
                     .bind(&query_pattern)
-                    .bind(&user_uuid)
+                    .bind(user_uuid)
                     .bind(limit)
                     .bind(offset)
                     .bind(sid)
@@ -179,7 +179,7 @@ impl SearchRepositoryTrait for SearchRepository {
                 "#.to_string();
                 sqlx::query_as(&search_sql)
                     .bind(&query_pattern)
-                    .bind(&user_uuid)
+                    .bind(user_uuid)
                     .bind(limit)
                     .bind(offset)
                     .fetch_all(&*self.pool)
@@ -223,9 +223,7 @@ fn generate_snippet(content: &serde_json::Value, query: &str) -> String {
 
         // Find safe UTF-8 boundaries
         let safe_start = text[..start]
-            .char_indices()
-            .rev()
-            .next()
+            .char_indices().next_back()
             .map(|(i, c)| i + c.len_utf8())
             .unwrap_or(0);
 

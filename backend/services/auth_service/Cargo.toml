@@ -8,6 +8,7 @@ edition = "2021"
 shared_errors = { path = "../../shared/errors" }
 shared_models = { path = "../../shared/models" }
 shared_database = { path = "../../shared/database" }
+shared_security = { path = "../../shared/security" }
 
 # Async runtime
 tokio = { version = "1.35", features = ["full"] }

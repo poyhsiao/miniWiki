@@ -242,7 +242,7 @@ pub async fn post_sync_update(
 
             // For now, simulate successful merge
             let missing_updates = if let Some(client_sv) = &client_sv {
-                calculate_missing_updates(&client_sv, new_clock)
+                calculate_missing_updates(client_sv, new_clock)
             } else {
                 None
             };
@@ -340,7 +340,7 @@ pub async fn get_sync_status(
         (Ok(pending), Ok(last)) => {
             let last_sync_time = last.last_sync;
             HttpResponse::Ok().json(SyncStatusResponse {
-                pending_documents: pending.count.unwrap_or(0) as i64,
+                pending_documents: pending.count.unwrap_or(0),
                 last_sync_time,
                 documents_in_sync: 0, // Would track active syncs
                 failed_syncs: 0,      // Would track failed syncs from a queue

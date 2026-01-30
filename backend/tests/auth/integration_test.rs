@@ -7,7 +7,7 @@ mod auth_integration_test {
         repository::AuthRepository,
     };
     use auth_service::jwt::JwtConfig;
-    use sqlx::PgPool;
+    
     #[actix_web::test]
     async fn test_register_endpoint_returns_201() {
         let database_url = std::env::var("TEST_DATABASE_URL")

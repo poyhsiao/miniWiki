@@ -172,8 +172,8 @@ impl ConflictResolver {
     }
 
     /// Get the newer state between two state vectors
-    pub fn get_newer_state<'a, 'b>(
-        &'a self,
+    pub fn get_newer_state<'b>(
+        &self,
         sv1: &'b StateVector,
         sv2: &'b StateVector,
     ) -> (&'b StateVector, &'b StateVector) {

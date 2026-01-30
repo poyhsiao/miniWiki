@@ -1,12 +1,10 @@
-use sqlx::PgPool;
-use sqlx::Error as SqlxError;
-use uuid::Uuid;
-use reqwest;
-use auth_service::jwt::{JwtService, JwtConfig};
-use serde_json::Value;
-use serde_json;
+use auth_service::jwt::{JwtConfig, JwtService};
 use serde_json::json;
+use serde_json::Value;
+use sqlx::Error as SqlxError;
+use sqlx::PgPool;
 use std::future::Future;
+use uuid::Uuid;
 
 const TEST_JWT_SECRET: &str = "test-secret-key-for-testing-only-do-not-use-in-production";
 const TEST_PASSWORD_HASH: &str = "$2b$12$Ej0WLvZBVa6K51r5/occM.JDmozzkJr4QzzovXNjCzk8hLVjVm3Cy";
@@ -23,7 +21,7 @@ pub struct ResponseValidator {
 
 impl ResponseValidator {
     /// Create a new validator from a response
-    pub async fn new(mut response: reqwest::Response) -> Self {
+    pub async fn new(response: reqwest::Response) -> Self {
         let status = response.status();
         let body = response.json().await.unwrap_or_else(|_| json!({}));
         Self { status, body }
@@ -45,7 +43,8 @@ impl ResponseValidator {
         assert!(
             self.status.is_success(),
             "Expected success status (2xx), but got {}. Response body: {}",
-            self.status(), self.body
+            self.status(),
+            self.body
         );
         self
     }
@@ -55,7 +54,8 @@ impl ResponseValidator {
         assert!(
             self.status.is_client_error(),
             "Expected client error (4xx), but got {}. Response body: {}",
-            self.status(), self.body
+            self.status(),
+            self.body
         );
         self
     }
@@ -65,7 +65,8 @@ impl ResponseValidator {
         assert!(
             self.status.is_server_error(),
             "Expected server error (5xx), but got {}. Response body: {}",
-            self.status(), self.body
+            self.status(),
+            self.body
         );
         self
     }
@@ -75,7 +76,8 @@ impl ResponseValidator {
         assert!(
             self.body.get(field).is_some(),
             "Expected field '{}' to exist in response. Body: {}",
-            field, self.body
+            field,
+            self.body
         );
         self
     }
@@ -85,16 +87,19 @@ impl ResponseValidator {
         assert!(
             self.body.get(field).is_none(),
             "Expected field '{}' to NOT exist in response. Body: {}",
-            field, self.body
+            field,
+            self.body
         );
         self
     }
 
     /// Assert a field has a specific string value
     pub fn assert_field_equals(&self, field: &str, expected: &str) -> &Self {
-        let actual = self.body.get(field)
+        let actual = self
+            .body
+            .get(field)
             .and_then(|v| v.as_str())
-            .expect(&format!("Field '{}' should be a string. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be a string. Body: {}", field, self.body));
         assert_eq!(
             actual, expected,
             "Field '{}' should be '{}', but got '{}'",
@@ -105,9 +110,11 @@ impl ResponseValidator {
 
     /// Assert a field has a specific numeric value
     pub fn assert_field_equals_i64(&self, field: &str, expected: i64) -> &Self {
-        let actual = self.body.get(field)
+        let actual = self
+            .body
+            .get(field)
             .and_then(|v| v.as_i64())
-            .expect(&format!("Field '{}' should be a number. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be a number. Body: {}", field, self.body));
         assert_eq!(
             actual, expected,
             "Field '{}' should be {}, but got {}",
@@ -121,7 +128,8 @@ impl ResponseValidator {
         assert!(
             self.body.get(field).map_or(false, |v| v.is_array()),
             "Field '{}' should be an array. Body: {}",
-            field, self.body
+            field,
+            self.body
         );
         self
     }
@@ -131,56 +139,60 @@ impl ResponseValidator {
         assert!(
             self.body.get(field).map_or(false, |v| v.is_object()),
             "Field '{}' should be an object. Body: {}",
-            field, self.body
+            field,
+            self.body
         );
         self
     }
 
     /// Assert an array field has a minimum length
     pub fn assert_array_min_length(&self, field: &str, min: usize) -> &Self {
-        let array = self.body.get(field)
+        let array = self
+            .body
+            .get(field)
             .and_then(|v| v.as_array())
-            .expect(&format!("Field '{}' should be an array. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be an array. Body: {}", field, self.body));
         assert!(
             array.len() >= min,
             "Field '{}' should have at least {} items, but has {}. Body: {}",
-            field, min, array.len(), self.body
+            field,
+            min,
+            array.len(),
+            self.body
         );
         self
     }
 
     /// Assert an array field has an exact length
     pub fn assert_array_length(&self, field: &str, expected: usize) -> &Self {
-        let array = self.body.get(field)
+        let array = self
+            .body
+            .get(field)
             .and_then(|v| v.as_array())
-            .expect(&format!("Field '{}' should be an array. Body: {}", field, self.body));
+            .unwrap_or_else(|| panic!("Field '{}' should be an array. Body: {}", field, self.body));
         assert_eq!(
-            array.len(), expected,
+            array.len(),
+            expected,
             "Field '{}' should have {} items, but has {}. Body: {}",
-            field, expected, array.len(), self.body
+            field,
+            expected,
+            array.len(),
+            self.body
         );
         self
     }
 
     /// Assert the response contains a success flag
     pub fn assert_success_flag(&self) -> &Self {
-        let success = self.body.get("success")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-        assert!(
-            success,
-            "Expected 'success' to be true. Body: {}",
-            self.body
-        );
+        let success = self.body.get("success").and_then(|v| v.as_bool()).unwrap_or(false);
+        assert!(success, "Expected 'success' to be true. Body: {}", self.body);
         self
     }
 
     /// Assert the response contains an error
     pub fn assert_has_error(&self) -> &Self {
         assert!(
-            self.body.get("error").is_some() ||
-            self.body.get("message").is_some() ||
-            self.body.get("code").is_some(),
+            self.body.get("error").is_some() || self.body.get("message").is_some() || self.body.get("code").is_some(),
             "Expected error field in response. Body: {}",
             self.body
         );
@@ -212,11 +224,7 @@ where
 }
 
 /// Retry helper for flaky tests
-pub async fn retry_with_backoff<F, T, Fut>(
-    max_retries: u32,
-    initial_delay_ms: u64,
-    mut f: F,
-) -> Result<T, String>
+pub async fn retry_with_backoff<F, T, Fut>(max_retries: u32, initial_delay_ms: u64, mut f: F) -> Result<T, String>
 where
     F: FnMut() -> Fut,
     Fut: Future<Output = Result<T, String>>,
@@ -235,7 +243,7 @@ where
                 if delay > 10000 {
                     delay = 10000;
                 }
-            }
+            },
             Err(e) => return Err(format!("Failed after {} attempts: {}", attempt, e)),
         }
     }
@@ -268,17 +276,11 @@ impl TestApp {
             .await
             .expect("Failed to connect to test database");
 
-        let client = reqwest::Client::builder()
-            .build()
-            .expect("Failed to build reqwest client");
+        let client = reqwest::Client::builder().build().expect("Failed to build reqwest client");
 
         let port = 8080;
 
-        Self {
-            pool,
-            client,
-            port,
-        }
+        Self { pool, client, port }
     }
 
     /// Get auth data - returns (token, user_id). Creates user if not provided.
@@ -302,7 +304,7 @@ impl TestApp {
     pub async fn auth_get(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .get(&format!("http://localhost:{}{}", self.port, path))
+            .get(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
@@ -311,43 +313,52 @@ impl TestApp {
     pub async fn auth_post(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .post(&format!("http://localhost:{}{}", self.port, path))
+            .post(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
 
     /// Create a PATCH request with Authorization header and X-User-Id header
-    pub async fn auth_patch(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
+    pub async fn auth_patch(
+        &self,
+        path: &str,
+        user_id: Option<Uuid>,
+        email: Option<String>,
+    ) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .patch(&format!("http://localhost:{}{}", self.port, path))
+            .patch(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
 
     /// Create a DELETE request with Authorization header and X-User-Id header
-    pub async fn auth_delete(&self, path: &str, user_id: Option<Uuid>, email: Option<String>) -> reqwest::RequestBuilder {
+    pub async fn auth_delete(
+        &self,
+        path: &str,
+        user_id: Option<Uuid>,
+        email: Option<String>,
+    ) -> reqwest::RequestBuilder {
         let (token, user_id_str) = self.get_auth_data(user_id, email).await;
         self.client
-            .delete(&format!("http://localhost:{}{}", self.port, path))
+            .delete(format!("http://localhost:{}{}", self.port, path))
             .header("Authorization", format!("Bearer {}", token))
             .header("X-User-Id", user_id_str)
     }
 
     pub fn get(&self, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .get(&format!("http://localhost:{}{}", self.port, path))
+        self.client.get(format!("http://localhost:{}{}", self.port, path))
     }
 
     pub fn post(&self, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .post(&format!("http://localhost:{}{}", self.port, path))
+        self.client.post(format!("http://localhost:{}{}", self.port, path))
     }
 
     /// Perform login via POST /api/v1/auth/login and return server-issued token
     pub async fn login_user(&self, email: &str, password: &str) -> Result<String, String> {
-        let response = self.client
-            .post(&format!("http://localhost:{}/api/v1/auth/login", self.port))
+        let response = self
+            .client
+            .post(format!("http://localhost:{}/api/v1/auth/login", self.port))
             .json(&serde_json::json!({
                 "email": email,
                 "password": password
@@ -360,7 +371,8 @@ impl TestApp {
             return Err(format!("Login failed with status: {}", response.status()));
         }
 
-        let body: serde_json::Value = response.json()
+        let body: serde_json::Value = response
+            .json()
             .await
             .map_err(|e| format!("Failed to parse login response: {}", e))?;
 
@@ -372,19 +384,20 @@ impl TestApp {
     }
 
     pub fn patch(&self, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .patch(&format!("http://localhost:{}{}", self.port, path))
+        self.client.patch(format!("http://localhost:{}{}", self.port, path))
     }
 
     pub fn delete(&self, path: &str) -> reqwest::RequestBuilder {
-        self.client
-            .delete(&format!("http://localhost:{}{}", self.port, path))
+        self.client.delete(format!("http://localhost:{}{}", self.port, path))
     }
 
     pub async fn create_test_user(&self) -> TestUser {
         let id = Uuid::new_v4();
         let email = format!("test_{}@example.com", id.to_string().replace('-', ""));
-        let display_name = format!("Test User {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
+        let display_name = format!(
+            "Test User {}",
+            id.to_string().replace('-', "").chars().take(8).collect::<String>()
+        );
 
         sqlx::query(
             "INSERT INTO users (id, email, password_hash, display_name, is_active, is_email_verified, timezone, language) VALUES ($1, $2, $3, $4, true, false, 'UTC', 'en') ON CONFLICT (id) DO NOTHING"
@@ -397,15 +410,22 @@ impl TestApp {
         .await
         .expect("Failed to create test user");
 
-        TestUser { id, email, display_name }
+        TestUser {
+            id,
+            email,
+            display_name,
+        }
     }
 
     pub async fn create_test_space_for_user(&self, user_id: &Uuid) -> TestSpace {
         let id = Uuid::new_v4();
-        let name = format!("Test Space {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
+        let name = format!(
+            "Test Space {}",
+            id.to_string().replace('-', "").chars().take(8).collect::<String>()
+        );
 
         sqlx::query(
-            "INSERT INTO spaces (id, owner_id, name, is_public) VALUES ($1, $2, $3, false) ON CONFLICT (id) DO NOTHING"
+            "INSERT INTO spaces (id, owner_id, name, is_public) VALUES ($1, $2, $3, false) ON CONFLICT (id) DO NOTHING",
         )
         .bind(id)
         .bind(user_id)
@@ -424,12 +444,19 @@ impl TestApp {
         .await
         .expect("Failed to create space membership");
 
-        TestSpace { id, owner_id: *user_id, name }
+        TestSpace {
+            id,
+            owner_id: *user_id,
+            name,
+        }
     }
 
     pub async fn create_test_document(&self, space_id: &Uuid, parent_id: Option<&Uuid>) -> TestDocument {
         let id = Uuid::new_v4();
-        let title = format!("Test Document {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
+        let title = format!(
+            "Test Document {}",
+            id.to_string().replace('-', "").chars().take(8).collect::<String>()
+        );
 
         let content_value = serde_json::json!({
             "type": "Y.Doc",
@@ -440,13 +467,11 @@ impl TestApp {
             }
         });
 
-        let owner: (Uuid,) = sqlx::query_as(
-            "SELECT owner_id FROM spaces WHERE id = $1"
-        )
-        .bind(space_id)
-        .fetch_one(&self.pool)
-        .await
-        .expect("Failed to get space owner");
+        let owner: (Uuid,) = sqlx::query_as("SELECT owner_id FROM spaces WHERE id = $1")
+            .bind(space_id)
+            .fetch_one(&self.pool)
+            .await
+            .expect("Failed to get space owner");
 
         let content_size = content_value.to_string().len() as i32;
 
@@ -465,11 +490,20 @@ impl TestApp {
         .await
         .expect("Failed to create test document");
 
-        TestDocument { id, space_id: *space_id, title }
+        TestDocument {
+            id,
+            space_id: *space_id,
+            title,
+        }
     }
 
     /// Create a test document with custom title
-    pub async fn create_test_document_with_title(&self, space_id: &Uuid, parent_id: Option<&Uuid>, title: &str) -> TestDocument {
+    pub async fn create_test_document_with_title(
+        &self,
+        space_id: &Uuid,
+        parent_id: Option<&Uuid>,
+        title: &str,
+    ) -> TestDocument {
         let id = Uuid::new_v4();
 
         let content_value = serde_json::json!({
@@ -481,13 +515,11 @@ impl TestApp {
             }
         });
 
-        let owner: (Uuid,) = sqlx::query_as(
-            "SELECT owner_id FROM spaces WHERE id = $1"
-        )
-        .bind(space_id)
-        .fetch_one(&self.pool)
-        .await
-        .expect("Failed to get space owner");
+        let owner: (Uuid,) = sqlx::query_as("SELECT owner_id FROM spaces WHERE id = $1")
+            .bind(space_id)
+            .fetch_one(&self.pool)
+            .await
+            .expect("Failed to get space owner");
 
         let content_size = content_value.to_string().len() as i32;
 
@@ -506,18 +538,20 @@ impl TestApp {
         .await
         .expect("Failed to create test document");
 
-        TestDocument { id, space_id: *space_id, title: title.to_string() }
+        TestDocument {
+            id,
+            space_id: *space_id,
+            title: title.to_string(),
+        }
     }
 
     /// Create multiple test documents for pagination/listing tests
     pub async fn create_test_documents(&self, space_id: &Uuid, count: u32) -> Vec<TestDocument> {
         let mut documents = Vec::new();
         for i in 0..count {
-            let doc = self.create_test_document_with_title(
-                space_id,
-                None,
-                &format!("Test Document {}", i),
-            ).await;
+            let doc = self
+                .create_test_document_with_title(space_id, None, &format!("Test Document {}", i))
+                .await;
             documents.push(doc);
         }
         documents
@@ -554,14 +588,19 @@ impl TestApp {
         .await
         .expect("Failed to create document version");
 
-        TestVersion { id, document_id: *document_id }
+        TestVersion {
+            id,
+            document_id: *document_id,
+        }
     }
 
     pub async fn cleanup(&self) {
-        sqlx::query("DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE title LIKE 'Test%')")
-            .execute(&self.pool)
-            .await
-            .expect("Cleanup failed");
+        sqlx::query(
+            "DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE title LIKE 'Test%')",
+        )
+        .execute(&self.pool)
+        .await
+        .expect("Cleanup failed");
         sqlx::query("DELETE FROM documents WHERE title LIKE 'Test%'")
             .execute(&self.pool)
             .await
@@ -581,11 +620,13 @@ impl TestApp {
     }
 
     pub async fn cleanup_test_user(&self, user_id: &Uuid) {
-        sqlx::query("DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE created_by = $1)")
-            .bind(user_id)
-            .execute(&self.pool)
-            .await
-            .expect("Cleanup failed");
+        sqlx::query(
+            "DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE created_by = $1)",
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .expect("Cleanup failed");
         sqlx::query("DELETE FROM documents WHERE created_by = $1")
             .bind(user_id)
             .execute(&self.pool)
@@ -662,7 +703,10 @@ pub async fn test_app() -> TestApp {
 pub async fn create_test_user(app: &TestApp) -> Result<TestUser, SqlxError> {
     let id = Uuid::new_v4();
     let email = format!("test_{}@example.com", id.to_string().replace('-', ""));
-    let display_name = format!("Test User {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
+    let display_name = format!(
+        "Test User {}",
+        id.to_string().replace('-', "").chars().take(8).collect::<String>()
+    );
 
     sqlx::query(
         "INSERT INTO users (id, email, password_hash, display_name, is_active, is_email_verified, timezone, language) VALUES ($1, $2, $3, $4, true, false, 'UTC', 'en') ON CONFLICT (id) DO NOTHING"
@@ -674,15 +718,22 @@ pub async fn create_test_user(app: &TestApp) -> Result<TestUser, SqlxError> {
     .execute(&app.pool)
     .await?;
 
-    Ok(TestUser { id, email, display_name })
+    Ok(TestUser {
+        id,
+        email,
+        display_name,
+    })
 }
 
 pub async fn create_test_space(app: &TestApp, owner_id: &Uuid) -> Result<TestSpace, SqlxError> {
     let id = Uuid::new_v4();
-    let name = format!("Test Space {}", id.to_string().replace('-', "").chars().take(8).collect::<String>());
+    let name = format!(
+        "Test Space {}",
+        id.to_string().replace('-', "").chars().take(8).collect::<String>()
+    );
 
     sqlx::query(
-        "INSERT INTO spaces (id, owner_id, name, is_public) VALUES ($1, $2, $3, false) ON CONFLICT (id) DO NOTHING"
+        "INSERT INTO spaces (id, owner_id, name, is_public) VALUES ($1, $2, $3, false) ON CONFLICT (id) DO NOTHING",
     )
     .bind(id)
     .bind(owner_id)
@@ -699,10 +750,19 @@ pub async fn create_test_space(app: &TestApp, owner_id: &Uuid) -> Result<TestSpa
     .execute(&app.pool)
     .await?;
 
-    Ok(TestSpace { id, owner_id: *owner_id, name })
+    Ok(TestSpace {
+        id,
+        owner_id: *owner_id,
+        name,
+    })
 }
 
-pub async fn create_test_document(app: &TestApp, space_id: &Uuid, parent_id: Option<&Uuid>, title: &str) -> Result<TestDocument, SqlxError> {
+pub async fn create_test_document(
+    app: &TestApp,
+    space_id: &Uuid,
+    parent_id: Option<&Uuid>,
+    title: &str,
+) -> Result<TestDocument, SqlxError> {
     let id = Uuid::new_v4();
     let doc_title = title.to_string();
 
@@ -715,13 +775,11 @@ pub async fn create_test_document(app: &TestApp, space_id: &Uuid, parent_id: Opt
         }
     });
 
-    let owner: (Uuid,) = sqlx::query_as(
-        "SELECT owner_id FROM spaces WHERE id = $1"
-    )
-    .bind(space_id)
-    .fetch_optional(&app.pool)
-    .await?
-    .ok_or_else(|| SqlxError::RowNotFound)?;
+    let owner: (Uuid,) = sqlx::query_as("SELECT owner_id FROM spaces WHERE id = $1")
+        .bind(space_id)
+        .fetch_optional(&app.pool)
+        .await?
+        .ok_or_else(|| SqlxError::RowNotFound)?;
 
     let content_size = content_value.to_string().len() as i32;
 
@@ -739,13 +797,19 @@ pub async fn create_test_document(app: &TestApp, space_id: &Uuid, parent_id: Opt
     .execute(&app.pool)
     .await?;
 
-    Ok(TestDocument { id, space_id: *space_id, title: doc_title })
+    Ok(TestDocument {
+        id,
+        space_id: *space_id,
+        title: doc_title,
+    })
 }
 
 pub async fn cleanup_test_data(app: &TestApp) -> Result<(), SqlxError> {
-    sqlx::query("DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE title LIKE 'Test%')")
-        .execute(&app.pool)
-        .await?;
+    sqlx::query(
+        "DELETE FROM document_versions WHERE document_id IN (SELECT id FROM documents WHERE title LIKE 'Test%')",
+    )
+    .execute(&app.pool)
+    .await?;
     sqlx::query("DELETE FROM documents WHERE title LIKE 'Test%'")
         .execute(&app.pool)
         .await?;

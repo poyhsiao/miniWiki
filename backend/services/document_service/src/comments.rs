@@ -693,7 +693,7 @@ pub async fn create_comment(
     let document_id = document_id.into_inner();
 
     // Validate request
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -788,7 +788,7 @@ pub async fn update_comment(
     let comment_id = comment_id.into_inner();
 
     // Validate request
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),

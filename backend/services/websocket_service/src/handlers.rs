@@ -87,17 +87,17 @@ impl DocumentSyncManager {
 
     pub async fn get_or_create_sync_state(&self, document_id: Uuid) -> Arc<Mutex<DocumentSyncState>> {
         let mut states = self.states.lock().await;
-        if !states.contains_key(&document_id) {
-            states.insert(document_id, Arc::new(Mutex::new(DocumentSyncState::default())));
-        }
+        states
+            .entry(document_id)
+            .or_insert_with(|| Arc::new(Mutex::new(DocumentSyncState::default())));
         Arc::clone(states.get(&document_id).unwrap())
     }
 
     pub async fn get_broadcast_sender(&self, document_id: Uuid) -> Arc<DocumentBroadcastSender> {
         let mut senders = self.broadcast_senders.lock().await;
-        if !senders.contains_key(&document_id) {
-            senders.insert(document_id, Arc::new(DocumentBroadcastSender::new(document_id)));
-        }
+        senders
+            .entry(document_id)
+            .or_insert_with(|| Arc::new(DocumentBroadcastSender::new(document_id)));
         Arc::clone(senders.get(&document_id).unwrap())
     }
 
@@ -344,30 +344,6 @@ pub fn broadcast_to_document(
     }
 }
 
-/// Broadcast awareness update to all clients in a document
-pub fn broadcast_awareness_update(
-    document_id: Uuid,
-    user_id: Uuid,
-    display_name: String,
-    color: String,
-    cursor: Option<CursorPosition>,
-) {
-    let presence = UserPresence {
-        user_id,
-        display_name,
-        color,
-        cursor,
-        last_active: Utc::now(),
-    };
-
-    let message = ServerMessage {
-        type_: MessageType::UserJoin,
-        document_id,
-        payload: json!(presence),
-        timestamp: Utc::now(),
-    };
-}
-
 /// Broadcast user leave event to all clients in a document
 pub fn broadcast_user_leave(document_id: Uuid, user_id: Uuid) {
     let message = ServerMessage {
@@ -560,14 +536,14 @@ mod tests {
     #[test]
     fn test_cursor_position() {
         let cursor = CursorPosition {
-            x: 100,
-            y: 200,
+            x: 100.0,
+            y: 200.0,
             selection_start: Some(50),
             selection_end: Some(75),
         };
 
-        assert_eq!(cursor.x, 100);
-        assert_eq!(cursor.y, 200);
+        assert_eq!(cursor.x, 100.0);
+        assert_eq!(cursor.y, 200.0);
         assert_eq!(cursor.selection_start, Some(50));
         assert_eq!(cursor.selection_end, Some(75));
     }
@@ -575,8 +551,8 @@ mod tests {
     #[test]
     fn test_cursor_position_no_selection() {
         let cursor = CursorPosition {
-            x: 50,
-            y: 100,
+            x: 50.0,
+            y: 100.0,
             selection_start: None,
             selection_end: None,
         };

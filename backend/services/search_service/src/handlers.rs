@@ -23,7 +23,7 @@ pub async fn search_documents(
     let start_time = std::time::Instant::now();
 
     // Validate request
-    if let Err(validation_errors) = (&*query).validate() {
+    if let Err(validation_errors) = (*query).validate() {
         return HttpResponse::BadRequest()
             .json(ApiResponse::<()>::error("VALIDATION_ERROR", &format!("Validation failed: {:?}", validation_errors)));
     }

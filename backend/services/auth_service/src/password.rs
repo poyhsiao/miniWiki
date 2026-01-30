@@ -1,57 +1,73 @@
-use bcrypt::{hash, verify, DEFAULT_COST};
-use rand::Rng;
+//! Password utilities for auth_service
+//!
+//! This module re-exports password utilities from shared_security for backward compatibility.
 
-pub fn hash_password(password: &str) -> Result<String, PasswordError> {
-    hash(password, DEFAULT_COST).map_err(|e| PasswordError::HashError(e.to_string()))
-}
+pub use shared_security::{
+    generate_reset_token, generate_url_safe_token, hash_password, hash_password_with_cost, validate_password_strength,
+    validate_password_strength_with_requirements, verify_password, PasswordError, PasswordRequirements,
+    PasswordValidationError,
+};
 
-pub fn verify_password(password: &str, hash: &str) -> Result<bool, PasswordError> {
-    verify(password, hash).map_err(|e| PasswordError::VerifyError(e.to_string()))
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-pub fn validate_password_strength(password: &str) -> Result<(), PasswordError> {
-    let mut errors = Vec::new();
-    
-    if password.len() < 8 {
-        errors.push("Password must be at least 8 characters");
-    }
-    
-    if !password.chars().any(|c| c.is_uppercase()) {
-        errors.push("Password must contain at least one uppercase letter");
-    }
-    
-    if !password.chars().any(|c| c.is_lowercase()) {
-        errors.push("Password must contain at least one lowercase letter");
-    }
-    
-    if !password.chars().any(|c| c.is_digit(10)) {
-        errors.push("Password must contain at least one number");
-    }
-    
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(PasswordError::WeakPassword(errors.join(", ")))
-    }
-}
+    #[test]
+    fn test_hash_and_verify_password() {
+        let password = "TestPassword123!";
+        let hash = hash_password(password).unwrap();
 
-pub fn generate_reset_token(length: usize) -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let mut rng = rand::thread_rng();
-    (0..length)
-        .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
-            CHARSET[idx] as char
-        })
-        .collect()
-}
+        // Verify correct password
+        assert!(verify_password(password, &hash).unwrap());
 
-#[derive(Debug, thiserror::Error, serde::Serialize)]
-pub enum PasswordError {
-    #[error("Password hashing error: {0}")]
-    HashError(String),
-    #[error("Password verification error: {0}")]
-    VerifyError(String),
-    #[error("Password does not meet requirements: {0}")]
-    WeakPassword(String),
+        // Verify wrong password
+        assert!(!verify_password("WrongPassword", &hash).unwrap());
+    }
+
+    #[test]
+    fn test_validate_password_strength_valid() {
+        let password = "TestPass123";
+        assert!(validate_password_strength(password).is_ok());
+    }
+
+    #[test]
+    fn test_validate_password_strength_too_short() {
+        let password = "Test1";
+        assert!(validate_password_strength(password).is_err());
+    }
+
+    #[test]
+    fn test_validate_password_strength_no_uppercase() {
+        let password = "testpass123";
+        assert!(validate_password_strength(password).is_err());
+    }
+
+    #[test]
+    fn test_validate_password_strength_no_lowercase() {
+        let password = "TESTPASS123";
+        assert!(validate_password_strength(password).is_err());
+    }
+
+    #[test]
+    fn test_validate_password_strength_no_digit() {
+        let password = "TestPassword";
+        assert!(validate_password_strength(password).is_err());
+    }
+
+    #[test]
+    fn test_generate_reset_token() {
+        let token = generate_reset_token(32);
+        assert_eq!(token.len(), 32);
+        assert!(token.chars().all(|c| c.is_alphanumeric()));
+    }
+
+    #[test]
+    fn test_password_error_messages() {
+        // Test error display
+        let error = PasswordError::HashError("test error".to_string());
+        assert_eq!(format!("{}", error), "Password hashing error: test error");
+
+        let error = PasswordError::WeakPassword("too short".to_string());
+        assert_eq!(format!("{}", error), "Password does not meet requirements: too short");
+    }
 }

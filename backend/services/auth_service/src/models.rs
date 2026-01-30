@@ -1,20 +1,25 @@
 use serde::{Deserialize, Serialize};
+use shared_security::PasswordRequirements;
 use validator::Validate;
 
-lazy_static::lazy_static! {
-    static ref PASSWORD_REGEX: regex::Regex = regex::Regex::new(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$").unwrap();
-}
-
-// Helper function to validate password against regex
+// Helper function to validate password using shared security module
+// This delegates to shared_security for centralized password validation
 fn validate_password(password: &str) -> Result<(), validator::ValidationError> {
-    if PASSWORD_REGEX.is_match(password) {
-        Ok(())
-    } else {
-        Err(
-            validator::ValidationError::new("invalid_password").with_message(std::borrow::Cow::Borrowed(
-                "Password must contain at least one lowercase letter, one uppercase letter, and one digit",
-            )),
-        )
+    let requirements = PasswordRequirements {
+        min_length: 8,
+        max_length: 100,
+        require_uppercase: true,
+        require_lowercase: true,
+        require_digit: true,
+        require_special_char: false,
+    };
+
+    match shared_security::validate_password_strength_with_requirements(password, &requirements) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            Err(validator::ValidationError::new("invalid_password")
+                .with_message(std::borrow::Cow::Owned(e.to_string())))
+        },
     }
 }
 

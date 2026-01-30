@@ -148,7 +148,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(csrf_store.clone()))
             .wrap(actix_middleware::Logger::default())
             .wrap(ErrorHandler)
-            .wrap(SecurityHeaders)
+            .wrap(SecurityHeaders::new())
             .wrap(CsrfMiddleware::new(csrf_config.clone(), csrf_store.clone()))
             .wrap(cors)
             .configure(routes::config)

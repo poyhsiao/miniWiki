@@ -335,7 +335,9 @@ impl ExportService {
         output.push_str("\n    </div>\n");
 
         // Title
-        output.push_str(&format!("    <h1>{}</h1>\n\n", escape_html(title));
+        
+let title_escaped = escape_html(title);
+        output.push_str(&format!("    <h1>{}</h1>\n\n", title_escaped));
 
         // Content - convert Yjs JSON to HTML
         let html_content = Self::yjs_to_html(content);
@@ -383,7 +385,7 @@ impl ExportService {
 
         let output_path = temp_html_path.with_extension("pdf");
 
-        let output = Command::new(&weasyprint_path)
+        let output = Command::new(weasyprint_path)
             .arg(&temp_html_path)
             .arg(&output_path)
             .stdin(Stdio::null())
@@ -520,7 +522,7 @@ fn process_html_item(item: &serde_json::Value, html: &mut String, in_paragraph: 
                         html.push_str("  <p>");
                         *in_paragraph = true;
                     } else {
-                        html.push_str(" ");
+                        html.push(' ');
                     }
                     html.push_str(&escape_html(s));
                 }

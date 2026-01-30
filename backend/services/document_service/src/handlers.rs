@@ -87,8 +87,7 @@ fn extract_user_id(req: &actix_web::HttpRequest) -> Result<String, AppError> {
     // First try JWT Authorization header (preferred method)
     if let Some(auth_header) = req.headers().get("authorization") {
         if let Ok(token_str) = auth_header.to_str() {
-            if token_str.starts_with("Bearer ") {
-                let token = &token_str[7..];
+            if let Some(token) = token_str.strip_prefix("Bearer ") {
                 let decoding_key = jsonwebtoken::DecodingKey::from_secret(jwt_secret.as_bytes());
                 // Explicitly enforce HS256 algorithm for security
                 let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
@@ -148,7 +147,7 @@ pub async fn create_document(
     let space_id = space_id.into_inner();
 
     // Validate request
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -284,7 +283,7 @@ pub async fn update_document(
 ) -> impl Responder {
     let document_id = document_id.into_inner();
 
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -423,7 +422,7 @@ pub async fn list_documents(
     match repo.list_in_space(&space_id, query.parent_id.as_deref(), limit, offset).await {
         Ok((documents, total)) => {
             HttpResponse::Ok().json(ApiResponse::<DocumentListResponse>::success(DocumentListResponse {
-                documents: documents.iter().map(|d| document_row_to_response(d)).collect(),
+                documents: documents.iter().map(document_row_to_response).collect(),
                 total,
                 limit,
                 offset,
@@ -471,7 +470,7 @@ pub async fn get_document_children(
 
     match repo.get_children(&document_id).await {
         Ok((children, total)) => HttpResponse::Ok().json(ApiResponse::<ChildrenResponse>::success(ChildrenResponse {
-            documents: children.iter().map(|d| document_row_to_response(d)).collect(),
+            documents: children.iter().map(document_row_to_response).collect(),
             total,
         })),
         Err(e) => {
@@ -544,7 +543,7 @@ pub async fn create_version(
 ) -> impl Responder {
     let document_id = document_id.into_inner();
 
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -638,7 +637,7 @@ pub async fn list_versions(
     match repo.list_versions(&document_id, limit, offset).await {
         Ok((versions, total)) => {
             HttpResponse::Ok().json(ApiResponse::<VersionListResponse>::success(VersionListResponse {
-                versions: versions.iter().map(|v| version_row_to_response(v)).collect(),
+                versions: versions.iter().map(version_row_to_response).collect(),
                 total,
                 limit,
                 offset,
@@ -953,7 +952,7 @@ pub async fn create_space(
     repo: web::Data<DocumentRepository>,
     http_req: actix_web::HttpRequest,
 ) -> impl Responder {
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -1043,7 +1042,7 @@ pub async fn update_space(
 ) -> impl Responder {
     let space_id = space_id.into_inner();
 
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -1194,7 +1193,7 @@ pub async fn add_space_member(
 ) -> impl Responder {
     let space_id = space_id.into_inner();
 
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),
@@ -1251,7 +1250,7 @@ pub async fn update_space_member(
 ) -> impl Responder {
     let (space_id, member_user_id) = path.into_inner();
 
-    if let Err(validation_errors) = (&*req).validate() {
+    if let Err(validation_errors) = (*req).validate() {
         return HttpResponse::BadRequest().json(ApiResponse::<()>::error(
             "VALIDATION_ERROR",
             &format!("Validation failed: {:?}", validation_errors),

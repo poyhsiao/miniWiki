@@ -168,12 +168,12 @@ impl SessionStore {
 
         document_sessions
             .entry(document_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(session_id);
 
         user_sessions
             .entry(user_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(session_id);
     }
 

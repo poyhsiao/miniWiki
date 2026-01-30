@@ -1,5 +1,6 @@
 use super::error_types::AppError;
 
+#[derive(Debug, PartialEq, Clone)]
 pub enum ErrorCode {
     DatabaseError,
     ValidationError,
@@ -44,5 +45,40 @@ impl From<&AppError> for ErrorCode {
             AppError::ConfigurationError(_) => ErrorCode::ConfigurationError,
             AppError::ExternalServiceError(_) => ErrorCode::ExternalServiceError,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error_types::AppError;
+
+    #[test]
+    fn test_error_code_display() {
+        assert_eq!(ErrorCode::DatabaseError.to_string(), "DATABASE_ERROR");
+        assert_eq!(ErrorCode::ValidationError.to_string(), "VALIDATION_ERROR");
+        assert_eq!(ErrorCode::AuthenticationError.to_string(), "AUTHENTICATION_ERROR");
+        assert_eq!(ErrorCode::AuthorizationError.to_string(), "AUTHORIZATION_ERROR");
+        assert_eq!(ErrorCode::NotFoundError.to_string(), "NOT_FOUND");
+        assert_eq!(ErrorCode::ConflictError.to_string(), "CONFLICT");
+        assert_eq!(ErrorCode::RateLimitError.to_string(), "RATE_LIMIT_EXCEEDED");
+        assert_eq!(ErrorCode::InternalError.to_string(), "INTERNAL_ERROR");
+        assert_eq!(ErrorCode::ConfigurationError.to_string(), "CONFIGURATION_ERROR");
+        assert_eq!(ErrorCode::ExternalServiceError.to_string(), "EXTERNAL_SERVICE_ERROR");
+    }
+
+    #[test]
+    fn test_error_code_from_app_error() {
+        let error = AppError::ValidationError("test".to_string());
+        let code = ErrorCode::from(&error);
+        assert_eq!(code, ErrorCode::ValidationError);
+
+        let error = AppError::NotFoundError("test".to_string());
+        let code = ErrorCode::from(&error);
+        assert_eq!(code, ErrorCode::NotFoundError);
+
+        let error = AppError::AuthenticationError("test".to_string());
+        let code = ErrorCode::from(&error);
+        assert_eq!(code, ErrorCode::AuthenticationError);
     }
 }

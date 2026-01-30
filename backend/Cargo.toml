@@ -11,6 +11,7 @@ members = [
     "shared/models",
     "shared/errors",
     "shared/cache",
+    "shared/security",
     "tests"
 ]
 resolver = "2"
@@ -138,6 +139,7 @@ mime = "0.3"
 shared_errors = { path = "./shared/errors" }
 shared_models = { path = "./shared/models" }
 shared_database = { path = "./shared/database" }
+shared_security = { path = "./shared/security" }
 lazy_static = "1.4"
 
 [dev-dependencies]

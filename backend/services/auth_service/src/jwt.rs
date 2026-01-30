@@ -1,5 +1,5 @@
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, DecodingKey, EncodingKey};
 use chrono::{Duration, Utc};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -54,12 +54,7 @@ impl JwtService {
         Self { config }
     }
 
-    pub fn generate_access_token(
-        &self,
-        user_id: &str,
-        email: &str,
-        role: &str,
-    ) -> Result<String, JwtError> {
+    pub fn generate_access_token(&self, user_id: &str, email: &str, role: &str) -> Result<String, JwtError> {
         let now = Utc::now();
         let expiry = now + Duration::seconds(self.config.access_expiry);
 
@@ -77,7 +72,8 @@ impl JwtService {
             &Header::new(Algorithm::HS256),
             &claims,
             &EncodingKey::from_secret(self.config.secret.as_bytes()),
-        ).map_err(|e| JwtError::GenerationError(e.to_string()))
+        )
+        .map_err(|e| JwtError::GenerationError(e.to_string()))
     }
 
     pub fn generate_refresh_token(&self, user_id: &str) -> Result<String, JwtError> {
@@ -99,19 +95,16 @@ impl JwtService {
             &Header::new(Algorithm::HS256),
             &claims,
             &EncodingKey::from_secret(self.config.secret.as_bytes()),
-        ).map_err(|e| JwtError::GenerationError(e.to_string()))
+        )
+        .map_err(|e| JwtError::GenerationError(e.to_string()))
     }
 
     pub fn validate_token(&self, token: &str) -> Result<Claims, JwtError> {
         let decoding_key = DecodingKey::from_secret(self.config.secret.as_bytes());
-        
-        decode::<Claims>(
-            token,
-            &decoding_key,
-            &Validation::new(Algorithm::HS256),
-        )
-        .map(|data| data.claims)
-        .map_err(|e| JwtError::ValidationError(e.to_string()))
+
+        decode::<Claims>(token, &decoding_key, &Validation::new(Algorithm::HS256))
+            .map(|data| data.claims)
+            .map_err(|e| JwtError::ValidationError(e.to_string()))
     }
 
     pub fn extract_token_from_header(auth_header: &str) -> Option<&str> {

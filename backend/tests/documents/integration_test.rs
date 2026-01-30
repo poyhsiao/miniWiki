@@ -68,7 +68,7 @@ async fn test_t095_document_crud_with_postgresql() {
     assert!(list_response.status().is_success(), "List should succeed");
     let list_data: serde_json::Value = list_response.json().await.expect("Parse list response");
     let documents = list_data["data"]["documents"].as_array().unwrap();
-    assert!(documents.len() >= 1);
+    assert!(!documents.is_empty());
 
     let delete_response = app
         .delete(&format!("/api/v1/documents/{}", document_id))
