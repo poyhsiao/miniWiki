@@ -25,28 +25,9 @@ async fn confirm_email_verification(
         );
     }
 
-    if !token.chars().all(|c| c.is_ascii_hexdigit()) {
+    if !token.chars().all(|c| c.is_alphanumeric()) {
         return HttpResponse::BadRequest().json(
-            json!({ "error": "VALIDATION_ERROR", "message": "Invalid token format. Token must be hexadecimal" }),
-        );
-    }
-    let token = match req.get("token") {
-        Some(t) => t.as_str().unwrap_or_default(),
-        None => {
-            return HttpResponse::BadRequest()
-                .json(json!({ "error": "VALIDATION_ERROR", "message": "Token is required" }));
-        },
-    };
-
-    if token.len() != 64 {
-        return HttpResponse::BadRequest().json(
-            json!({ "error": "VALIDATION_ERROR", "message": "Invalid token format. Token must be 64 characters" }),
-        );
-    }
-
-    if !token.chars().all(|c| c.is_ascii_hexdigit()) {
-        return HttpResponse::BadRequest().json(
-            json!({ "error": "VALIDATION_ERROR", "message": "Invalid token format. Token must be hexadecimal" }),
+            json!({ "error": "VALIDATION_ERROR", "message": "Invalid token format. Token must be alphanumeric" }),
         );
     }
 

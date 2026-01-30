@@ -193,8 +193,9 @@ pub async fn resend_verification_email(
     };
 
     if user.is_email_verified {
-        return HttpResponse::BadRequest()
-            .json(json!({ "error": "ALREADY_VERIFIED", "message": "Email is already verified".to_string() }));
+        // Don't reveal verification status to prevent enumeration attacks
+        return HttpResponse::Ok()
+            .json(json!({ "message": "If email is registered, a verification email has been sent".to_string() }));
     }
 
     // Generate and store new verification token using shared security module
