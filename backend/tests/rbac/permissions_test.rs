@@ -227,13 +227,14 @@ mod tests {
             ActionType::EditDocument,
             ActionType::DeleteDocument,
             ActionType::ViewDocument,
-            ActionType::CreateSpace,
-            ActionType::EditSpace,
-            ActionType::DeleteSpace,
-            ActionType::CreateFile,
-            ActionType::DeleteFile,
-            ActionType::ManageMembers,
-            ActionType::ManageRoles,
+            ActionType::Comment,
+            ActionType::Share,
+            ActionType::InviteMember,
+            ActionType::RemoveMember,
+            ActionType::ViewMembers,
+            ActionType::ExportDocument,
+            ActionType::ViewVersionHistory,
+            ActionType::RestoreVersion,
         ];
 
         for action in actions {

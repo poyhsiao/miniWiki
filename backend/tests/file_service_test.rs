@@ -128,7 +128,7 @@ mod file_service_test {
         let file_size = 51 * 1024 * 1024 + 1;
         let max_size = 50 * 1024 * 1024;
         let result = file_service::storage::S3Storage::validate_file_size(file_size, max_size);
-        
+
         assert!(result.is_err());
         assert!(matches!(result.unwrap_err(), StorageError::FileTooLarge(_, _)));
     }
@@ -140,7 +140,7 @@ mod file_service_test {
         let file_size = 10 * 1024 * 1024;
         let max_size = 50 * 1024 * 1024;
         let result = file_service::storage::S3Storage::validate_file_size(file_size, max_size);
-        
+
         assert!(result.is_ok());
     }
 
@@ -180,7 +180,7 @@ mod file_service_test {
 
         let time_diff = session.expires_at - session.created_at;
         let expected_diff_hours = 24;
-        let actual_diff_hours = time_diff.num_hours().unwrap() as f64;
+        let actual_diff_hours = time_diff.num_hours() as f64;
 
         assert!((actual_diff_hours - expected_diff_hours as f64).abs() < 0.1);
     }
@@ -217,7 +217,7 @@ mod file_service_test {
 
     #[test]
     fn test_file_detail_serialization() {
-        use file_service::models::{FileDetail, File, UploaderInfo};
+        use file_service::models::{File, FileDetail, UploaderInfo};
         use uuid::Uuid;
 
         let uploader_info = UploaderInfo {
@@ -247,7 +247,10 @@ mod file_service_test {
         let deserialized: FileDetail = serde_json::from_str(&serialized).expect("Failed to deserialize");
 
         assert_eq!(file_detail.file.id, deserialized.file.id);
-        assert_eq!(file_detail.uploaded_by.display_name, deserialized.uploaded_by.display_name);
+        assert_eq!(
+            file_detail.uploaded_by.display_name,
+            deserialized.uploaded_by.display_name
+        );
     }
 
     #[test]
@@ -273,11 +276,11 @@ mod file_service_test {
         let deserialized2: FileListQuery = serde_json::from_str(&serialized2).expect("Failed to deserialize");
 
         assert_eq!(query1.document_id, deserialized1.document_id);
-        assert!(deserialized1.limit, Some(100u64));
-        assert!(deserialized1.offset, None);
-        assert!(deserialized2.document_id, None);
-        assert!(deserialized2.limit, None);
-        assert!(deserialized2.offset, None);
+        assert_eq!(deserialized1.limit, Some(100u64));
+        assert_eq!(deserialized1.offset, None);
+        assert_eq!(deserialized2.document_id, None);
+        assert_eq!(deserialized2.limit, None);
+        assert_eq!(deserialized2.offset, None);
     }
 
     #[test]
@@ -332,8 +335,8 @@ mod file_service_test {
 
     #[test]
     fn test_presigned_url_response() {
-        use file_service::models::PresignedUrlResponse;
         use chrono::Utc;
+        use file_service::models::PresignedUrlResponse;
 
         let response = PresignedUrlResponse {
             url: "https://test.com/upload".to_string(),
@@ -459,7 +462,8 @@ mod file_service_test {
         };
 
         let serialized = serde_json::to_string(&request).expect("Failed to serialize");
-        let deserialized: CompleteChunkedUploadRequest = serde_json::from_str(&serialized).expect("Failed to deserialize");
+        let deserialized: CompleteChunkedUploadRequest =
+            serde_json::from_str(&serialized).expect("Failed to deserialize");
 
         assert_eq!(request.total_size, deserialized.total_size);
         assert_eq!(request.checksum, deserialized.checksum);
@@ -485,15 +489,9 @@ mod file_service_test {
         use file_service::models::BulkDeleteRequest;
         use uuid::Uuid;
 
-        let file_ids = vec![
-            uuid::new_v4(),
-            uuid::new_v4(),
-            uuid::new_v4(),
-        ];
+        let file_ids = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
 
-        let request = BulkDeleteRequest {
-            file_ids: file_ids,
-        };
+        let request = BulkDeleteRequest { file_ids: file_ids };
 
         let serialized = serde_json::to_string(&request).expect("Failed to serialize");
         let deserialized: BulkDeleteRequest = serde_json::from_str(&serialized).expect("Failed to deserialize");
@@ -503,7 +501,7 @@ mod file_service_test {
 
     #[test]
     fn test_failed_delete_item() {
-        use file_service::models::{FailedDelete, ErrorResponse};
+        use file_service::models::{ErrorResponse, FailedDelete};
         use uuid::Uuid;
 
         let failed_item = FailedDelete {
@@ -517,161 +515,4 @@ mod file_service_test {
         assert_eq!(failed_item.file_id, deserialized.file_id);
         assert_eq!(failed_item.reason, deserialized.reason);
     }
-}
-
-    #[test]
-    fn test_chunked_upload_session_complete() {
-        let session = file_service::storage::ChunkedUploadSession {
-            upload_id: uuid::Uuid::new_v4(),
-            file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
-            chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 10,
-            total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
-        };
-
-        assert_eq!(session.uploaded_chunks, session.total_chunks);
-    }
-
-
-    #[test]
-    fn test_storage_validate_file_size_exceeds_limit() {
-        // Given: File size exceeds 50MB limit
-        // When: S3Storage::validate_file_size is called
-        // Then: Should return Err(StorageError::FileTooLarge)
-        use file_service::storage::StorageError;
-
-        let file_size = 51 * 1024 * 1024 + 1; // 50MB + 1 byte
-        let max_size = 50 * 1024 * 1024;
-        let result = file_service::storage::S3Storage::validate_file_size(file_size, max_size);
-        
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), StorageError::FileTooLarge(_, _)));
-    }
-
-    #[test]
-    fn test_storage_validate_file_size_within_limit() {
-        // Given: File size within 50MB limit
-        // When: S3Storage::validate_file_size is called
-        // Then: Should return Ok(())
-        use file_service::storage::StorageError;
-
-        let file_size = 10 * 1024 * 1024; // 10MB
-        let max_size = 50 * 1024 * 1024;
-        let result = file_service::storage::S3Storage::validate_file_size(file_size, max_size);
-        
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_chunked_upload_session_all_fields_set() {
-        // Given: ChunkedUploadSession with all fields populated
-        // When: Fields are accessed
-        // Then: All fields should have values
-        let session = file_service::storage::ChunkedUploadSession {
-            upload_id: uuid::Uuid::new_v4(),
-            file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
-            chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 3,
-            total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(2),
-        };
-
-        assert!(!session.upload_id.is_nil());
-        assert!(!session.file_name.is_empty());
-        assert_eq!(session.file_size, 1024 * 1024 * 1024);
-        assert_eq!(session.chunk_size, 5 * 1024 * 1024);
-        assert_eq!(session.uploaded_chunks, 3);
-        assert_eq!(session.total_chunks, 10);
-        assert!(session.expires_at > session.created_at);
-    }
-
-    #[test]
-    fn test_chunked_upload_session_expires_calculation() {
-        // Given: ChunkedUploadSession created now, expires in 24 hours
-        // When: Fields are accessed
-        // Then: Expires at should be approximately 24 hours from created_at
-        let session = file_service::storage::ChunkedUploadSession {
-            upload_id: uuid::Uuid::new_v4(),
-            file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
-            chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 5,
-            total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
-        };
-
-        let time_diff = session.expires_at - session.created_at;
-        let expected_diff_hours = 24;
-        let actual_diff_hours = time_diff.num_hours().unwrap() as f64;
-
-        assert!((actual_diff_hours - expected_diff_hours as f64).abs() < 0.1); // Allow 1 hour tolerance
-    }
-
-    #[test]
-    fn test_chunked_upload_session_progression() {
-        // Given: ChunkedUploadSession with uploaded_chunks < total_chunks
-        // When: Progress is checked
-        // Then: Should reflect partial upload progress
-        let session = file_service::storage::ChunkedUploadSession {
-            upload_id: uuid::Uuid::new_v4(),
-            file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
-            chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 5,
-            total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
-        };
-
-        assert!(session.uploaded_chunks < session.total_chunks);
-        assert!(session.uploaded_chunks > 0);
-    }
-
-    #[test]
-    fn test_chunked_upload_session_complete() {
-        let session = file_service::storage::ChunkedUploadSession {
-            upload_id: uuid::Uuid::new_v4(),
-            file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
-            chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 10,
-            total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
-        };
-
-        assert_eq!(session.uploaded_chunks, session.total_chunks);
-    }
-
-
-    #[test]
-    fn test_chunked_upload_session_fields() {
-        // Given: A ChunkedUploadSession
-        // When: Fields are accessed
-        // Then: All fields should be correct and initialized
-        let session = ChunkedUploadSession {
-            upload_id: uuid::Uuid::new_v4(),
-            file_name: "document.pdf".to_string(),
-            file_size: 10485760,  // 10MB
-            chunk_size: 1048576,  // 1MB
-            uploaded_chunks: 5,
-            total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now(),
-        };
-
-        assert_eq!(session.upload_id, uuid::Uuid::new_v4());
-        assert_eq!(session.file_name, "document.pdf");
-        assert_eq!(session.file_size, 10485760);
-        assert_eq!(session.chunk_size, 1048576);
-        assert_eq!(session.uploaded_chunks, 5);
-        assert_eq!(session.total_chunks, 10);
-    }
-}
 }
