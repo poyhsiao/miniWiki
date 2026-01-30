@@ -232,6 +232,7 @@ fn validate_token_format(token: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[allow(dead_code)]
 fn generate_verification_token() -> String {
     shared_security::generate_reset_token(64)
 }
