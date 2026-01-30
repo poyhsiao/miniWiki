@@ -326,7 +326,7 @@ mod tests {
     #[test]
     fn test_validate_token_format_special_chars() {
         // Exactly 64 chars with special characters (invalid)
-        let invalid_token = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQR!@#$%^&*()XY";
+        let invalid_token = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOP!@#$%^&*()XY";
         assert!(validate_token_format(&invalid_token).is_err());
     }
 
