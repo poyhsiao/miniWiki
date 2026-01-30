@@ -90,20 +90,11 @@ pub enum Permission {
 impl Permission {
     pub fn allowed_roles(&self) -> Vec<Role> {
         match self {
-            Permission::ViewDocuments => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-                Role::Viewer,
-            ],
+            Permission::ViewDocuments => vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer],
             Permission::CreateDocuments => vec![Role::Owner, Role::Editor],
             Permission::EditDocuments => vec![Role::Owner, Role::Editor],
             Permission::DeleteDocuments => vec![Role::Owner],
-            Permission::Comment => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-            ],
+            Permission::Comment => vec![Role::Owner, Role::Editor, Role::Commenter],
             Permission::Share => vec![Role::Owner, Role::Editor],
             Permission::ManageMembers => vec![Role::Owner, Role::Editor],
             Permission::ManageRoles => vec![Role::Owner],
@@ -188,44 +179,20 @@ pub enum ActionType {
 impl ActionType {
     pub fn allowed_roles(&self) -> Vec<Role> {
         match self {
-            ActionType::ViewDocument => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-                Role::Viewer,
-            ],
+            ActionType::ViewDocument => vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer],
             ActionType::CreateDocument => vec![Role::Owner, Role::Editor],
             ActionType::EditDocument => vec![Role::Owner, Role::Editor],
             ActionType::DeleteDocument => vec![Role::Owner],
-            ActionType::Comment => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-            ],
+            ActionType::Comment => vec![Role::Owner, Role::Editor, Role::Commenter],
             ActionType::Share => vec![Role::Owner, Role::Editor],
             ActionType::ManageMembers => vec![Role::Owner, Role::Editor],
             ActionType::ManageRoles => vec![Role::Owner],
             ActionType::DeleteSpace => vec![Role::Owner],
             ActionType::InviteMember => vec![Role::Owner, Role::Editor],
             ActionType::RemoveMember => vec![Role::Owner, Role::Editor],
-            ActionType::ViewMembers => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-                Role::Viewer,
-            ],
-            ActionType::ExportDocument => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-                Role::Viewer,
-            ],
-            ActionType::ViewVersionHistory => vec![
-                Role::Owner,
-                Role::Editor,
-                Role::Commenter,
-                Role::Viewer,
-            ],
+            ActionType::ViewMembers => vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer],
+            ActionType::ExportDocument => vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer],
+            ActionType::ViewVersionHistory => vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer],
             ActionType::RestoreVersion => vec![Role::Owner, Role::Editor],
         }
     }
@@ -280,10 +247,7 @@ impl RbacConfig {
                 Permission::Share,
                 Permission::ManageMembers,
             ],
-            Role::Commenter => vec![
-                Permission::ViewDocuments,
-                Permission::Comment,
-            ],
+            Role::Commenter => vec![Permission::ViewDocuments, Permission::Comment],
             Role::Viewer => vec![Permission::ViewDocuments],
         }
     }
@@ -303,13 +267,8 @@ impl RbacConfig {
     }
 
     pub fn get_assignable_roles(assigner_role: &Role) -> Vec<Role> {
-        vec![
-            Role::Owner,
-            Role::Editor,
-            Role::Commenter,
-            Role::Viewer,
-        ]
-        .into_iter()
+        vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer]
+            .into_iter()
             .filter(|role| assigner_role.can_assign_role(role))
             .collect()
     }
@@ -358,11 +317,7 @@ mod tests {
     #[test]
     fn test_action_permissions() {
         assert!(ActionType::ViewDocument.allowed_roles().contains(&Role::Viewer));
-        assert!(ActionType::DeleteDocument
-            .allowed_roles()
-            .contains(&Role::Owner));
-        assert!(!ActionType::DeleteDocument
-            .allowed_roles()
-            .contains(&Role::Editor));
+        assert!(ActionType::DeleteDocument.allowed_roles().contains(&Role::Owner));
+        assert!(!ActionType::DeleteDocument.allowed_roles().contains(&Role::Editor));
     }
 }

@@ -3,16 +3,9 @@
 //! This module re-exports password utilities from shared_security for backward compatibility.
 
 pub use shared_security::{
-    hash_password,
-    verify_password,
-    validate_password_strength,
-    generate_reset_token,
-    PasswordError,
-    PasswordRequirements,
+    generate_reset_token, generate_url_safe_token, hash_password, hash_password_with_cost, validate_password_strength,
+    validate_password_strength_with_requirements, verify_password, PasswordError, PasswordRequirements,
     PasswordValidationError,
-    hash_password_with_cost,
-    validate_password_strength_with_requirements,
-    generate_url_safe_token,
 };
 
 #[cfg(test)]

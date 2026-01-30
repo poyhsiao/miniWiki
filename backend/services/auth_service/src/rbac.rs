@@ -1,10 +1,10 @@
-use actix_web::{HttpRequest, HttpResponse, ResponseError};
 use actix_web::http::StatusCode;
-use thiserror::Error;
+use actix_web::{HttpRequest, HttpResponse, ResponseError};
 use lazy_static::lazy_static;
+use thiserror::Error;
 
 use crate::jwt::Claims;
-use crate::permissions::{Role, Permission, ActionType};
+use crate::permissions::{ActionType, Permission, Role};
 
 lazy_static! {
     static ref JWT_SECRET: String = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
@@ -33,20 +33,14 @@ impl ResponseError for Error {
 
     fn error_response(&self) -> HttpResponse {
         match self {
-            Error::Unauthorized(_) => {
-                HttpResponse::build(StatusCode::UNAUTHORIZED).body("Unauthorized")
-            }
-            Error::Forbidden(_) => {
-                HttpResponse::build(StatusCode::FORBIDDEN).body("Forbidden")
-            }
+            Error::Unauthorized(_) => HttpResponse::build(StatusCode::UNAUTHORIZED).body("Unauthorized"),
+            Error::Forbidden(_) => HttpResponse::build(StatusCode::FORBIDDEN).body("Forbidden"),
             Error::InternalServerError(_) => {
                 HttpResponse::build(StatusCode::INTERNAL_SERVER_ERROR).body("Internal server error")
-            }
+            },
         }
     }
 }
-
-
 
 /// RBAC middleware for checking user permissions
 ///
@@ -76,12 +70,9 @@ impl RbacMiddleware {
 
         if let Some(token_str) = auth_header {
             let validation = jsonwebtoken::Validation::new(jsonwebtoken::Algorithm::HS256);
-            let token_data: jsonwebtoken::TokenData<Claims> = jsonwebtoken::decode(
-                token_str,
-                &JWT_DECODING_KEY,
-                &validation,
-            )
-            .map_err(|e| Error::Unauthorized(format!("Invalid token: {}", e)))?;
+            let token_data: jsonwebtoken::TokenData<Claims> =
+                jsonwebtoken::decode(token_str, &JWT_DECODING_KEY, &validation)
+                    .map_err(|e| Error::Unauthorized(format!("Invalid token: {}", e)))?;
 
             Ok(token_data.claims)
         } else {
@@ -116,7 +107,7 @@ impl RbacMiddleware {
     ///
     /// This would typically check space_memberships table
     /// For now, we'll implement a simple check
-    /// 
+    ///
     /// IMPORTANT: This is a stub implementation that always returns false
     /// to enforce authorization until actual DB-backed membership checking is implemented.
     /// Once space_memberships table is available, this should query it
@@ -130,33 +121,30 @@ impl RbacMiddleware {
     }
 }
 
- /// Actix-web guard for permission checking
- ///
- /// Usage: 
- /// ```rust,ignore
- /// use actix_web::{get, web};
- /// use crate::rbac::{RbacMiddleware, check_permission};
- /// use crate::permissions::ActionType;
- ///
- /// #[get("/documents/{id}")]
- /// async fn get_document(
- ///     req: web::HttpRequest,
- ///     data: web::Path<(String,)>,
- /// ) -> Result<HttpResponse, Error> {
- ///     check_permission(&req, ActionType::ViewDocument)?;
- ///     // ... rest of handler
- /// }
- /// ```
- pub fn check_permission(
-     req: &HttpRequest,
-     action: ActionType,
- ) -> Result<(), Error> {
+/// Actix-web guard for permission checking
+///
+/// Usage:
+/// ```rust,ignore
+/// use actix_web::{get, web};
+/// use crate::rbac::{RbacMiddleware, check_permission};
+/// use crate::permissions::ActionType;
+///
+/// #[get("/documents/{id}")]
+/// async fn get_document(
+///     req: web::HttpRequest,
+///     data: web::Path<(String,)>,
+/// ) -> Result<HttpResponse, Error> {
+///     check_permission(&req, ActionType::ViewDocument)?;
+///     // ... rest of handler
+/// }
+/// ```
+pub fn check_permission(req: &HttpRequest, action: ActionType) -> Result<(), Error> {
     // Extract and validate claims
     let claims = RbacMiddleware::extract_claims(req)?;
-    
+
     // Check if user can perform the action
     let role = RbacMiddleware::extract_role(&claims)
-            .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
+        .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
 
     if !RbacMiddleware::can_perform_action(&role, &action) {
         return Err(Error::Forbidden(format!(
@@ -169,31 +157,28 @@ impl RbacMiddleware {
 }
 
 /// Actix-web guard for role-based access control
-    ///
-    /// Usage:
-    /// ```rust,ignore
-    /// use actix_web::{get, web, HttpResponse};
-    /// use crate::rbac::check_role;
-    /// use crate::permissions::Role;
-    ///
-    /// #[get("/admin")]
-    /// async fn admin_only(
-    ///     req: web::HttpRequest,
-    /// ) -> Result<HttpResponse, Error> {
-    ///     check_role(&req, Role::Owner)?;
-    ///     // ... rest of handler
-    /// }
-    /// ```
-pub fn check_role(
-    req: &HttpRequest,
-    required_role: Role,
-) -> Result<(), Error> {
+///
+/// Usage:
+/// ```rust,ignore
+/// use actix_web::{get, web, HttpResponse};
+/// use crate::rbac::check_role;
+/// use crate::permissions::Role;
+///
+/// #[get("/admin")]
+/// async fn admin_only(
+///     req: web::HttpRequest,
+/// ) -> Result<HttpResponse, Error> {
+///     check_role(&req, Role::Owner)?;
+///     // ... rest of handler
+/// }
+/// ```
+pub fn check_role(req: &HttpRequest, required_role: Role) -> Result<(), Error> {
     // Extract and validate claims
     let claims = RbacMiddleware::extract_claims(req)?;
-    
+
     // Check user's role
     let role_str = RbacMiddleware::extract_role(&claims)
-            .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
+        .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
 
     if let Some(user_role) = Role::from_str(&role_str) {
         if user_role.level() < required_role.level() {
@@ -203,9 +188,7 @@ pub fn check_role(
             )));
         }
     } else {
-        return Err(Error::InternalServerError(
-            "Invalid role format in token".to_string(),
-        ));
+        return Err(Error::InternalServerError("Invalid role format in token".to_string()));
     }
 
     Ok(())
@@ -226,10 +209,9 @@ pub fn get_user_id(req: &HttpRequest) -> Result<String, Error> {
 pub fn get_user_role(req: &HttpRequest) -> Result<Role, Error> {
     let claims = get_claims(req)?;
     let role_str = RbacMiddleware::extract_role(&claims)
-            .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
+        .ok_or_else(|| Error::InternalServerError("Role not found in claims".to_string()))?;
 
-            Role::from_str(&role_str)
-                .ok_or_else(|| Error::InternalServerError(format!("Invalid role: {}", role_str)))
+    Role::from_str(&role_str).ok_or_else(|| Error::InternalServerError(format!("Invalid role: {}", role_str)))
 }
 
 #[cfg(test)]
@@ -247,11 +229,8 @@ mod tests {
     #[test]
     fn test_can_perform_action() {
         // Owner can delete
-        assert!(RbacMiddleware::can_perform_action(
-            "owner",
-            &ActionType::DeleteDocument,
-        ));
-        
+        assert!(RbacMiddleware::can_perform_action("owner", &ActionType::DeleteDocument,));
+
         // Viewer cannot delete
         assert!(!RbacMiddleware::can_perform_action(
             "viewer",

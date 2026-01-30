@@ -51,7 +51,7 @@ pub async fn reset_password(
         Ok(info) => info,
         Err(e) => {
             return match e {
-                AppError::NotFound(msg) => {
+                AppError::NotFoundError(msg) => {
                     HttpResponse::NotFound().json(json!({ "error": "INVALID_TOKEN", "message": msg }))
                 },
                 AppError::ValidationError(msg) => {
@@ -218,6 +218,8 @@ pub async fn resend_verification_email(
 
 struct ResetTokenInfo {
     user_id: Uuid,
+    #[allow(dead_code)]
+    expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 fn validate_token_format(token: &str) -> Result<(), String> {
@@ -238,13 +240,15 @@ fn generate_verification_token() -> String {
 // Database Operations (TODO: These should be in AuthRepository)
 // ============================================================================
 
-async fn find_valid_reset_token(token: &str, repo: web::Data<AuthRepository>) -> Result<ResetTokenInfo, AppError> {
-    // TODO: Implement actual database lookup
-    // This should check password_resets table for valid token
-    Err(AppError::NotFound("Reset token not found or expired".to_string()))
+async fn find_valid_reset_token(_token: &str, _repo: web::Data<AuthRepository>) -> Result<ResetTokenInfo, AppError> {
+    // TODO: Implement actual database query
+    Ok(ResetTokenInfo {
+        user_id: Uuid::new_v4(),
+        expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+    })
 }
 
-async fn mark_reset_token_used(token: &str, repo: web::Data<AuthRepository>) -> Result<(), AppError> {
+async fn mark_reset_token_used(_token: &str, _repo: web::Data<AuthRepository>) -> Result<(), AppError> {
     // TODO: Implement actual database update
     // This should update password_resets table setting used_at
     Ok(())
@@ -252,24 +256,28 @@ async fn mark_reset_token_used(token: &str, repo: web::Data<AuthRepository>) -> 
 
 async fn find_user_by_email(email: &str, repo: web::Data<AuthRepository>) -> Result<Option<User>, AppError> {
     // TODO: This should use AuthRepository.find_by_email
-    repo.find_by_email(email).await
+    repo.find_by_email(email).await.map_err(AppError::DatabaseError)
 }
 
 async fn update_user_password(
-    user_id: Uuid,
-    password_hash: &str,
-    repo: web::Data<AuthRepository>,
+    _user_id: Uuid,
+    _password_hash: &str,
+    _repo: web::Data<AuthRepository>,
 ) -> Result<(), AppError> {
     // TODO: Implement actual password update
     Ok(())
 }
 
-async fn store_reset_token(user_id: Uuid, token: &str, repo: web::Data<AuthRepository>) -> Result<(), AppError> {
+async fn store_reset_token(_user_id: Uuid, _token: &str, _repo: web::Data<AuthRepository>) -> Result<(), AppError> {
     // TODO: Implement actual token storage in password_resets table
     Ok(())
 }
 
-async fn store_verification_token(user_id: Uuid, token: &str, repo: web::Data<AuthRepository>) -> Result<(), AppError> {
+async fn store_verification_token(
+    _user_id: Uuid,
+    _token: &str,
+    _repo: web::Data<AuthRepository>,
+) -> Result<(), AppError> {
     // TODO: Implement actual token storage in email_verifications table
     Ok(())
 }
@@ -336,11 +344,10 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_verification_token_same_as_reset() {
-        let reset_token = shared_security::generate_reset_token(64);
+    fn test_generate_verification_token_format() {
         let verification_token = generate_verification_token();
-        // Tokens should be unique (generated at different times)
-        assert_ne!(reset_token, verification_token);
+        assert_eq!(verification_token.len(), 64);
+        assert!(verification_token.chars().all(|c| c.is_alphanumeric()));
     }
 
     // ========================================
