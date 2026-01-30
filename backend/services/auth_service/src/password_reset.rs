@@ -144,7 +144,8 @@ pub async fn request_password_reset(
 
     // TODO: Send email with reset link
     // For now, just log the token (in production, this should send an email)
-    tracing::info!("Password reset token generated for {}: {}", email, token);
+    tracing::info!("Password reset token generated for {}", email);
+    tracing::debug!("Password reset token: {}", token);
 
     HttpResponse::Ok().json(json!({ "message": "If the email is registered, a reset link has been sent".to_string() }))
 }
@@ -173,12 +174,16 @@ pub async fn resend_verification_email(
         return HttpResponse::BadRequest().json(json!({ "error": "VALIDATION_ERROR", "message": e.to_string() }));
     }
 
-    // Check if user exists
+    // Check if user exists (but don't reveal if not found for security)
+    // This prevents email enumeration attacks, matching behavior of request_password_reset
     let user = match find_user_by_email(email, repo.clone()).await {
         Ok(Some(u)) => u,
         Ok(None) => {
-            return HttpResponse::NotFound()
-                .json(json!({ "error": "USER_NOT_FOUND", "message": "No user found with this email".to_string() }));
+            // User doesn't exist, but return success for security
+            // This prevents email enumeration attacks
+            return HttpResponse::Ok().json(
+                json!({ "message": "If the email is registered, a verification email has been sent".to_string() }),
+            );
         },
         Err(e) => {
             tracing::error!("Failed to lookup user: {}", e);
@@ -201,7 +206,8 @@ pub async fn resend_verification_email(
     }
 
     // TODO: Send email with verification link
-    tracing::info!("Verification token resent for {}: {}", email, token);
+    tracing::info!("Verification token resent for {}", email);
+    tracing::debug!("Verification token: {}", token);
 
     HttpResponse::Ok().json(json!({ "message": "Verification email sent successfully".to_string() }))
 }
