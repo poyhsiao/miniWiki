@@ -10,7 +10,7 @@ use shared_models::entities::User;
 // Request/Response Models
 // ============================================================================
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(serde::Deserialize)]
 pub struct PasswordResetRequest {
     pub token: String,
     pub new_password: String,
@@ -87,7 +87,9 @@ pub async fn reset_password(
     match mark_reset_token_used(&req.token, repo).await {
         Ok(_) => {},
         Err(e) => {
-            tracing::warn!("Failed to mark reset token as used: {}", e);
+            tracing::error!("Failed to mark reset token as used: {}", e);
+            return HttpResponse::InternalServerError()
+                .json(json!({ "error": "DATABASE_ERROR", "message": "Failed to finalize reset" }));
         },
     }
 

@@ -9,7 +9,6 @@ bcrypt = "0.18.0"
 rand = "0.9.2"
 thiserror = "2.0.18"
 serde = { version = "1.0.228", features = ["derive"] }
-tokio-test = "0.4.5"
 
 [dev-dependencies]
-tokio-test = "0.4"
+tokio-test = "0.4.5"
