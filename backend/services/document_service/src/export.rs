@@ -275,9 +275,9 @@ impl ExportService {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>"#,
         );
-        output.push_str(&escape_html(title));
-        output.push_str(r#"</title>
-    <style>
+        output.push_str("</title>");
+        output.push_str(
+            r#"    <style>
         :root {
             --primary-color: #2563eb;
             --text-color: #1f2937;
@@ -310,7 +310,8 @@ impl ExportService {
     </style>
 </head>
 <body>
-"#);
+"#,
+        );
 
         // Metadata
         output.push_str("    <div class=\"metadata\">\n");
@@ -335,8 +336,7 @@ impl ExportService {
         output.push_str("\n    </div>\n");
 
         // Title
-        
-let title_escaped = escape_html(title);
+        let title_escaped = escape_html(title);
         output.push_str(&format!("    <h1>{}</h1>\n\n", title_escaped));
 
         // Content - convert Yjs JSON to HTML
