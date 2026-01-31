@@ -171,23 +171,30 @@ fn test_add_member_request() {
 }
 
 #[test]
-fn test_add_member_request_invalid_role() {
-    let request = AddMemberRequest {
-        user_id: Uuid::new_v4().to_string(),
-        role: "superadmin".to_string(), // Invalid role value should fail
-    };
-
-    assert!(request.validate().is_err()); // Invalid role fails
-}
-
-#[test]
-fn test_add_member_request_empty_role() {
-    let request = AddMemberRequest {
+fn test_add_member_request_role_boundaries() {
+    // Empty role should fail (min length = 1)
+    let empty_request = AddMemberRequest {
         user_id: Uuid::new_v4().to_string(),
         role: "".to_string(),
     };
+    assert!(empty_request.validate().is_err(), "Empty role should fail");
 
-    assert!(request.validate().is_err()); // Empty role fails
+    // Role longer than 50 chars should fail (max length = 50)
+    let long_request = AddMemberRequest {
+        user_id: Uuid::new_v4().to_string(),
+        role: "a".repeat(51),
+    };
+    assert!(
+        long_request.validate().is_err(),
+        "Role longer than 50 chars should fail"
+    );
+
+    // Valid-length role should pass (validator only checks length, not specific values)
+    let valid_request = AddMemberRequest {
+        user_id: Uuid::new_v4().to_string(),
+        role: "editor".to_string(),
+    };
+    assert!(valid_request.validate().is_ok(), "Valid-length role should pass");
 }
 
 #[test]
