@@ -64,20 +64,25 @@ mod file_service_test {
     fn test_chunked_upload_session_display() {
         use std::fmt;
 
+        let now = chrono::Utc::now();
         let session = ChunkedUploadSession {
             upload_id: uuid::Uuid::new_v4(),
+            space_id: uuid::Uuid::new_v4(),
+            document_id: None,
             file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024,      // 1MB
+            content_type: "application/pdf".to_string(),
+            total_size: 1024 * 1024,     // 1MB
             chunk_size: 5 * 1024 * 1024, // 5MB
-            uploaded_chunks: 3,
+            uploaded_chunks: vec![],
             total_chunks: 20,
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(1),
+            created_at: now,
+            expires_at: now + chrono::Duration::hours(1),
         };
 
         let display = format!("{}", session);
         assert!(display.contains("test.pdf"));
         assert!(display.contains("1MB"));
-        assert!(display.contains("3/20"));
+        assert!(display.contains("0/20"));
     }
 
     // ========================================
