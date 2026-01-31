@@ -89,14 +89,14 @@ mod websocket_service_test {
 
         manager.register_connection(&session);
 
-        // Mark as active by recording activity
+        // Record global message statistics
         manager.record_message_sent(100);
 
-        // Check active state via stats
+        // Verify connection is registered via global stats
         let stats = manager.get_stats();
         assert_eq!(stats.active_connections, 1);
 
-        // Session should still be active with 30 minute timeout
+        // Session should be active (it was just created, so last_activity is recent)
         assert!(manager.is_session_active(&session, 1800));
     }
 
