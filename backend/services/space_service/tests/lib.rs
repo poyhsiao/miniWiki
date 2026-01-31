@@ -241,33 +241,26 @@ fn test_space_error_database() {
 
 #[test]
 fn test_space_repository_new_exists() {
-    use space_service::repository::SpaceRepository;
-
-    // This test verifies the SpaceRepository::new constructor exists
-    // by checking the function signature compiles
-    fn verify_constructor_exists(_repo: SpaceRepository) {}
-    let _ = verify_constructor_exists;
+    // Verify SpaceRepository::new constructor exists
+    let _ = SpaceRepository::new;
 }
 
 #[test]
 fn test_space_repository_list_by_user_exists() {
-    // Verify the method signature exists
-    fn verify_method_exists(_repo: &SpaceRepository, _pool: &sqlx::PgPool, _user_id: Uuid) {}
-    let _ = verify_method_exists;
+    // Verify SpaceRepository::list_by_user method exists
+    let _ = SpaceRepository::list_by_user;
 }
 
 #[test]
 fn test_space_repository_create_exists() {
-    // Verify the method signature exists
-    fn verify_method_exists(_repo: &SpaceRepository) {}
-    let _ = verify_method_exists;
+    // Verify SpaceRepository::create method exists
+    let _ = SpaceRepository::create;
 }
 
 #[test]
 fn test_space_repository_find_by_id_exists() {
-    // Verify the method signature exists
-    fn verify_method_exists(_repo: &SpaceRepository) {}
-    let _ = verify_method_exists;
+    // Verify SpaceRepository::find_by_id method exists
+    let _ = SpaceRepository::find_by_id;
 }
 
 // ========================================
@@ -483,9 +476,15 @@ fn test_role_string_values() {
 
     for role in invalid_roles {
         let request = UpdateMemberRequest { role: role.to_string() };
-        // Note: the validator only checks length, not specific values
+        // Note: validator only checks length, not specific values
         if role.is_empty() {
             assert!(request.validate().is_err(), "Empty role should be invalid");
+        } else {
+            assert!(
+                request.validate().is_ok(),
+                "Non-empty role '{}' currently passes length-only validation",
+                role
+            );
         }
     }
 }
