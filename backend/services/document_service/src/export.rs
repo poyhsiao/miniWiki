@@ -266,6 +266,8 @@ impl ExportService {
     ) -> Result<String, ExportError> {
         let mut output = String::new();
 
+        let title_escaped = escape_html(title);
+
         // HTML header with embedded CSS
         output.push_str(
             r#"<!DOCTYPE html>
@@ -275,6 +277,7 @@ impl ExportService {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>"#,
         );
+        output.push_str(&title_escaped);
         output.push_str("</title>");
         output.push_str(
             r#"    <style>

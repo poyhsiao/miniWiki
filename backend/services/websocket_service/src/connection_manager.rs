@@ -6,11 +6,11 @@
 //! - Message broadcasting to connections
 //! - Statistics tracking
 
+use crate::{WebSocketSession, SESSION_STORE};
+use chrono::Utc;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use uuid::Uuid;
-use chrono::Utc;
-use crate::{WebSocketSession, SESSION_STORE};
 
 /// Connection statistics
 #[derive(Debug, Clone, Default)]
@@ -87,8 +87,8 @@ pub static CONNECTION_MANAGER: once_cell::sync::Lazy<ConnectionManager> =
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{Duration, Instant};
     use chrono::Utc;
+    use std::time::{Duration, Instant};
 
     // Test: ConnectionStats initialization
     #[test]

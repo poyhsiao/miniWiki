@@ -1,13 +1,12 @@
 //! Integration tests for websocket_service
 
-use uuid::Uuid;
 use serde_json::json;
+use uuid::Uuid;
 
 use websocket_service::{
-    CursorPosition, UserPresence, WebSocketMessage, WebSocketMessageType,
-    WebSocketSession, SessionStore, DocumentAwareness,
-    MessageType, ClientMessage, ServerMessage, SyncMessage, AwarenessMessage,
-    UserState, ConnectionInfo, ErrorResponse, DocumentState,
+    AwarenessMessage, ClientMessage, ConnectionInfo, CursorPosition, DocumentAwareness, DocumentState, ErrorResponse,
+    MessageType, ServerMessage, SessionStore, SyncMessage, UserPresence, UserState, WebSocketMessage,
+    WebSocketMessageType, WebSocketSession,
 };
 
 // ========================================
@@ -135,7 +134,7 @@ fn test_websocket_message_types() {
         WebSocketMessageType::Pong,
     ] {
         let message = WebSocketMessage::new(mt, Uuid::new_v4(), Uuid::new_v4(), json!({}));
-        assert!(matches!(message.type_, mt));
+        assert_eq!(message.type_, mt);
     }
 }
 
@@ -201,7 +200,12 @@ fn test_session_store_get_document_sessions() {
     let store = SessionStore::new();
     let document_id = Uuid::new_v4();
     for i in 0..3 {
-        store.add_session(WebSocketSession::new(document_id, Uuid::new_v4(), format!("U{}", i), "#FFF".to_string()));
+        store.add_session(WebSocketSession::new(
+            document_id,
+            Uuid::new_v4(),
+            format!("U{}", i),
+            "#FFF".to_string(),
+        ));
     }
     let sessions = store.get_document_sessions(document_id);
     assert_eq!(sessions.len(), 3);
@@ -260,7 +264,12 @@ fn test_document_awareness_update_cursor() {
         last_active: chrono::Utc::now(),
     };
     awareness.add_user(user);
-    let cursor = CursorPosition { x: 100.0, y: 200.0, selection_start: None, selection_end: None };
+    let cursor = CursorPosition {
+        x: 100.0,
+        y: 200.0,
+        selection_start: None,
+        selection_end: None,
+    };
     awareness.update_cursor(user_id, cursor);
     assert!(awareness.users.get(&user_id).unwrap().cursor.is_some());
 }
@@ -356,9 +365,15 @@ fn test_error_response_variants() {
 #[test]
 fn test_message_type_variants() {
     for mt in [
-        MessageType::Sync, MessageType::Awareness, MessageType::Cursor,
-        MessageType::DocumentUpdate, MessageType::UserJoin, MessageType::UserLeave,
-        MessageType::Ping, MessageType::Pong, MessageType::Error,
+        MessageType::Sync,
+        MessageType::Awareness,
+        MessageType::Cursor,
+        MessageType::DocumentUpdate,
+        MessageType::UserJoin,
+        MessageType::UserLeave,
+        MessageType::Ping,
+        MessageType::Pong,
+        MessageType::Error,
     ] {
         let _ = mt;
     }
@@ -392,11 +407,20 @@ fn test_server_message_creation() {
 
 #[test]
 fn test_sync_message_variants() {
-    let sync1 = SyncMessage { state_vector: Some(vec![1, 2, 3]), update: None };
+    let sync1 = SyncMessage {
+        state_vector: Some(vec![1, 2, 3]),
+        update: None,
+    };
     assert!(sync1.state_vector.is_some());
-    let sync2 = SyncMessage { state_vector: None, update: Some(vec![4, 5, 6]) };
+    let sync2 = SyncMessage {
+        state_vector: None,
+        update: Some(vec![4, 5, 6]),
+    };
     assert!(sync2.update.is_some());
-    let sync3 = SyncMessage { state_vector: Some(vec![1]), update: Some(vec![2]) };
+    let sync3 = SyncMessage {
+        state_vector: Some(vec![1]),
+        update: Some(vec![2]),
+    };
     assert!(sync3.state_vector.is_some() && sync3.update.is_some());
 }
 

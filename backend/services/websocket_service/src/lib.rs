@@ -1,20 +1,20 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
+pub mod actor;
+pub mod connection_manager;
 pub mod handlers;
 pub mod models;
 pub mod presence;
-pub mod connection_manager;
-pub mod actor;
 pub mod redis_pubsub;
 
+pub use actor::*;
 pub use handlers::*;
 pub use models::*;
 pub use presence::*;
-pub use actor::*;
 pub use redis_pubsub::*;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -46,7 +46,7 @@ impl Default for UserPresence {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WebSocketMessageType {
     Sync,
     Awareness,
@@ -68,12 +68,7 @@ pub struct WebSocketMessage {
 }
 
 impl WebSocketMessage {
-    pub fn new(
-        type_: WebSocketMessageType,
-        document_id: Uuid,
-        user_id: Uuid,
-        payload: serde_json::Value,
-    ) -> Self {
+    pub fn new(type_: WebSocketMessageType, document_id: Uuid, user_id: Uuid, payload: serde_json::Value) -> Self {
         Self {
             type_,
             document_id,
@@ -166,15 +161,9 @@ impl SessionStore {
 
         sessions.insert(session_id, Arc::new(Mutex::new(session)));
 
-        document_sessions
-            .entry(document_id)
-            .or_default()
-            .push(session_id);
+        document_sessions.entry(document_id).or_default().push(session_id);
 
-        user_sessions
-            .entry(user_id)
-            .or_default()
-            .push(session_id);
+        user_sessions.entry(user_id).or_default().push(session_id);
     }
 
     pub fn remove_session(&self, session_id: Uuid) {
@@ -207,10 +196,7 @@ impl SessionStore {
         let document_sessions = self.document_sessions.lock().unwrap();
 
         if let Some(session_ids) = document_sessions.get(&document_id) {
-            session_ids
-                .iter()
-                .filter_map(|id| sessions.get(id).cloned())
-                .collect()
+            session_ids.iter().filter_map(|id| sessions.get(id).cloned()).collect()
         } else {
             Vec::new()
         }
@@ -221,15 +207,11 @@ impl SessionStore {
         let user_sessions = self.user_sessions.lock().unwrap();
 
         if let Some(session_ids) = user_sessions.get(&user_id) {
-            session_ids
-                .iter()
-                .filter_map(|id| sessions.get(id).cloned())
-                .collect()
+            session_ids.iter().filter_map(|id| sessions.get(id).cloned()).collect()
         } else {
             Vec::new()
         }
     }
 }
 
-pub static SESSION_STORE: once_cell::sync::Lazy<SessionStore> =
-    once_cell::sync::Lazy::new(SessionStore::new);
+pub static SESSION_STORE: once_cell::sync::Lazy<SessionStore> = once_cell::sync::Lazy::new(SessionStore::new);
