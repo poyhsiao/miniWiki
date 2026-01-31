@@ -121,8 +121,24 @@ mod tests {
     }
 
     #[test]
-    fn test_role_from_string() {
-        // Test valid role strings
+    fn test_role_from_str() {
+        // Test valid role strings using Role::from_str
+        assert_eq!(Role::from_str("owner"), Some(Role::Owner));
+        assert_eq!(Role::from_str("editor"), Some(Role::Editor));
+        assert_eq!(Role::from_str("commenter"), Some(Role::Commenter));
+        assert_eq!(Role::from_str("viewer"), Some(Role::Viewer));
+
+        // Test invalid role string
+        assert_eq!(Role::from_str("invalid_role"), None);
+
+        // Test case insensitivity
+        assert_eq!(Role::from_str("OWNER"), Some(Role::Owner));
+        assert_eq!(Role::from_str("Owner"), Some(Role::Owner));
+    }
+
+    #[test]
+    fn test_role_json_deserialization() {
+        // Test JSON deserialization
         assert_eq!(serde_json::from_str::<Role>("\"owner\"").unwrap(), Role::Owner);
         assert_eq!(serde_json::from_str::<Role>("\"editor\"").unwrap(), Role::Editor);
         assert_eq!(serde_json::from_str::<Role>("\"commenter\"").unwrap(), Role::Commenter);
@@ -229,6 +245,9 @@ mod tests {
             ActionType::ViewDocument,
             ActionType::Comment,
             ActionType::Share,
+            ActionType::ManageMembers,
+            ActionType::ManageRoles,
+            ActionType::DeleteSpace,
             ActionType::InviteMember,
             ActionType::RemoveMember,
             ActionType::ViewMembers,

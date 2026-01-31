@@ -72,7 +72,7 @@ fn test_create_space_request_empty_name() {
         is_public: false,
     };
 
-    assert!(request.validate().is_err()); // Empty role fails
+    assert!(request.validate().is_err()); // Empty name fails
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn test_create_space_request_name_too_long() {
         is_public: false,
     };
 
-    assert!(request.validate().is_err()); // Empty role fails
+    assert!(request.validate().is_err()); // Name too long fails
 }
 
 #[test]
@@ -96,7 +96,7 @@ fn test_create_space_request_icon_too_long() {
         is_public: false,
     };
 
-    assert!(request.validate().is_err()); // Empty role fails
+    assert!(request.validate().is_err()); // Icon too long fails
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn test_space_membership() {
 #[test]
 fn test_space_membership_roles() {
     let joined_at = chrono::DateTime::from_timestamp(0, 0).unwrap().naive_utc();
-    
+
     for role in ["owner", "admin", "editor", "viewer"] {
         let membership = SpaceMembership {
             id: Uuid::new_v4(),
@@ -174,10 +174,10 @@ fn test_add_member_request() {
 fn test_add_member_request_invalid_role() {
     let request = AddMemberRequest {
         user_id: Uuid::new_v4().to_string(),
-        role: "".to_string(), // Empty role should fail
+        role: "superadmin".to_string(), // Invalid role value should fail
     };
 
-    assert!(request.validate().is_err()); // Empty role fails
+    assert!(request.validate().is_err()); // Invalid role fails
 }
 
 #[test]
@@ -202,9 +202,7 @@ fn test_update_member_request() {
 #[test]
 fn test_update_member_request_valid_roles() {
     for role in ["admin", "editor", "viewer"] {
-        let request = UpdateMemberRequest {
-            role: role.to_string(),
-        };
+        let request = UpdateMemberRequest { role: role.to_string() };
         assert!(request.validate().is_ok());
     }
 }
@@ -278,24 +276,28 @@ fn test_space_repository_find_by_id_exists() {
 
 #[test]
 fn test_extract_user_id_from_valid_jwt() {
-    use jsonwebtoken::{encode, Header, EncodingKey};
-    
+    use jsonwebtoken::{encode, EncodingKey, Header};
+
     let secret = "test-secret-key-for-testing-only-do-not-use-in-production";
     let user_id = Uuid::new_v4().to_string();
-    
+
     let claims = json!({
         "sub": user_id,
         "iat": chrono::Utc::now().timestamp(),
         "exp": chrono::Utc::now().timestamp() + 3600
     });
-    
-    let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-        .expect("Failed to encode token");
-    
+
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .expect("Failed to encode token");
+
     // Verify token can be decoded
     let decoding_key = jsonwebtoken::DecodingKey::from_secret(secret.as_bytes());
     let validation = jsonwebtoken::Validation::default();
-    
+
     let decoded = jsonwebtoken::decode::<serde_json::Value>(&token, &decoding_key, &validation);
     assert!(decoded.is_ok());
     assert_eq!(decoded.unwrap().claims.get("sub").unwrap().as_str().unwrap(), user_id);
@@ -303,26 +305,34 @@ fn test_extract_user_id_from_valid_jwt() {
 
 #[test]
 fn test_jwt_encoding_decoding() {
-    use jsonwebtoken::{encode, decode, Header, EncodingKey, DecodingKey, Validation};
-    
+    use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+
     let secret = "test-secret-key-for-testing-only-do-not-use-in-production";
-    
+
     let claims = json!({
         "sub": "550e8400-e29b-41d4-a716-446655440000",
         "iat": chrono::Utc::now().timestamp(),
         "exp": chrono::Utc::now().timestamp() + 3600
     });
-    
-    let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-        .expect("Failed to encode");
-    
+
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .expect("Failed to encode");
+
     let decoded = decode::<serde_json::Value>(
         &token,
         &DecodingKey::from_secret(secret.as_bytes()),
-        &Validation::default()
-    ).expect("Failed to decode");
-    
-    assert_eq!(decoded.claims.get("sub").unwrap().as_str().unwrap(), "550e8400-e29b-41d4-a716-446655440000");
+        &Validation::default(),
+    )
+    .expect("Failed to decode");
+
+    assert_eq!(
+        decoded.claims.get("sub").unwrap().as_str().unwrap(),
+        "550e8400-e29b-41d4-a716-446655440000"
+    );
 }
 
 // ========================================
@@ -412,7 +422,7 @@ fn test_create_space_request_description_too_long() {
         is_public: false,
     };
 
-    assert!(request.validate().is_err()); // Empty role fails
+    assert!(request.validate().is_err()); // Description too long fails
 }
 
 #[test]
@@ -450,7 +460,7 @@ fn test_space_name_boundary_values() {
             description: None,
             is_public: false,
         };
-        
+
         if len <= 200 {
             // Should be valid
             assert!(request.validate().is_ok(), "Name length {} should be valid", len);
@@ -465,18 +475,14 @@ fn test_space_name_boundary_values() {
 fn test_role_string_values() {
     let valid_roles = ["owner", "admin", "editor", "viewer"];
     let invalid_roles = ["superuser", "moderator", "", "root"];
-    
+
     for role in valid_roles {
-        let request = UpdateMemberRequest {
-            role: role.to_string(),
-        };
+        let request = UpdateMemberRequest { role: role.to_string() };
         assert!(request.validate().is_ok(), "Role '{}' should be valid", role);
     }
-    
+
     for role in invalid_roles {
-        let request = UpdateMemberRequest {
-            role: role.to_string(),
-        };
+        let request = UpdateMemberRequest { role: role.to_string() };
         // Note: the validator only checks length, not specific values
         if role.is_empty() {
             assert!(request.validate().is_err(), "Empty role should be invalid");

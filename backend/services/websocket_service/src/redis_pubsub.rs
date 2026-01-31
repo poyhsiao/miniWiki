@@ -172,6 +172,7 @@ impl RedisPubSubManager {
             format!("{}join:{}", REDIS_CHANNEL_PREFIX, document_id),
             format!("{}leave:{}", REDIS_CHANNEL_PREFIX, document_id),
             format!("{}cursor:{}", REDIS_CHANNEL_PREFIX, document_id),
+            format!("{}doc:{}", REDIS_CHANNEL_PREFIX, document_id),
         ];
 
         for channel in channels {

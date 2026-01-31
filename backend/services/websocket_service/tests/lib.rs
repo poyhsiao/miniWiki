@@ -133,7 +133,7 @@ fn test_websocket_message_types() {
         WebSocketMessageType::Ping,
         WebSocketMessageType::Pong,
     ] {
-        let message = WebSocketMessage::new(mt, Uuid::new_v4(), Uuid::new_v4(), json!({}));
+        let message = WebSocketMessage::new(mt.clone(), Uuid::new_v4(), Uuid::new_v4(), json!({}));
         assert_eq!(message.type_, mt);
     }
 }

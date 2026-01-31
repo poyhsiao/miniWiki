@@ -339,7 +339,6 @@ impl ExportService {
         output.push_str("\n    </div>\n");
 
         // Title
-        let title_escaped = escape_html(title);
         output.push_str(&format!("    <h1>{}</h1>\n\n", title_escaped));
 
         // Content - convert Yjs JSON to HTML

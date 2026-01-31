@@ -88,7 +88,7 @@ pub static CONNECTION_MANAGER: once_cell::sync::Lazy<ConnectionManager> =
 mod tests {
     use super::*;
     use chrono::Utc;
-    use std::time::{Duration, Instant};
+    use std::time::Duration;
 
     // Test: ConnectionStats initialization
     #[test]
