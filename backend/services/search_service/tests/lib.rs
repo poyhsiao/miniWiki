@@ -144,6 +144,8 @@ fn test_extract_user_id_valid() {
 
 #[test]
 fn test_search_query_validation_empty_query() {
+    use validator::Validate;
+
     let query = SearchQuery {
         q: "".to_string(),
         space_id: None,
@@ -151,7 +153,11 @@ fn test_search_query_validation_empty_query() {
         offset: None,
     };
     // Empty query should fail validation (min length = 1)
-    assert!(query.q.len() < 1); // Empty fails validation
+    let result = query.validate();
+    assert!(result.is_err(), "Empty query string should fail validation");
+
+    let errors = result.unwrap_err();
+    assert!(!errors.is_empty(), "Validation errors should not be empty");
 }
 
 #[test]
@@ -190,9 +196,9 @@ fn test_search_result_row_creation() {
 
 #[test]
 fn test_search_repository_new_exists() {
+    use search_service::repository::SearchRepository;
     use sqlx::PgPool;
     use std::sync::Arc;
-    use search_service::repository::SearchRepository;
 
     // This test verifies the SearchRepository::new constructor exists
     // by checking the function signature compiles
@@ -233,18 +239,22 @@ fn test_search_index_manager_new_exists() {
 // Handler Integration Tests
 // ========================================
 
-#[actix_rt::test]
-async fn test_search_handler_validation_error() {
-    // This would test the handler with invalid query
-    // Requires setting up Actix test app
-    // For now, we verify the validation logic exists
+#[test]
+fn test_search_query_validation_max_length() {
+    use validator::Validate;
+
     let query = SearchQuery {
-        q: "a".repeat(501), // Exceeds max length
+        q: "a".repeat(501), // Exceeds max length (500)
         space_id: None,
         limit: None,
         offset: None,
     };
-    assert!(query.q.len() > 500); // Should fail validation
+    // Query exceeding max length should fail validation
+    let result = query.validate();
+    assert!(result.is_err(), "Query exceeding max length should fail validation");
+
+    let errors = result.unwrap_err();
+    assert!(!errors.is_empty(), "Validation errors should not be empty");
 }
 
 #[actix_rt::test]
