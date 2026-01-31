@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use auth_service::permissions::{Role, Permission, ActionType};
+    use auth_service::permissions::{ActionType, Permission, Role};
 
     #[test]
     fn test_role_levels() {
@@ -94,22 +94,14 @@ mod tests {
     #[test]
     fn test_action_permissions() {
         // Owner can delete documents
-        assert!(ActionType::DeleteDocument
-            .allowed_roles()
-            .contains(&Role::Owner));
+        assert!(ActionType::DeleteDocument.allowed_roles().contains(&Role::Owner));
         // Editor cannot delete documents
-        assert!(!ActionType::DeleteDocument
-            .allowed_roles()
-            .contains(&Role::Editor));
+        assert!(!ActionType::DeleteDocument.allowed_roles().contains(&Role::Editor));
 
         // Viewer can view documents
-        assert!(ActionType::ViewDocument
-            .allowed_roles()
-            .contains(&Role::Viewer));
+        assert!(ActionType::ViewDocument.allowed_roles().contains(&Role::Viewer));
         // Viewer cannot delete documents
-        assert!(!ActionType::DeleteDocument
-            .allowed_roles()
-            .contains(&Role::Viewer));
+        assert!(!ActionType::DeleteDocument.allowed_roles().contains(&Role::Viewer));
     }
 
     #[test]
@@ -119,46 +111,38 @@ mod tests {
             Permission::from_string("view_documents"),
             Some(Permission::ViewDocuments)
         );
-        assert_eq!(
-            Permission::from_string("view"),
-            Some(Permission::ViewDocuments)
-        );
-        assert_eq!(
-            Permission::from_string("edit"),
-            Some(Permission::EditDocuments)
-        );
-        assert_eq!(
-            Permission::from_string("delete"),
-            Some(Permission::DeleteDocuments)
-        );
-        assert_eq!(
-            Permission::from_string("comment"),
-            Some(Permission::Comment)
-        );
+        assert_eq!(Permission::from_string("view"), Some(Permission::ViewDocuments));
+        assert_eq!(Permission::from_string("edit"), Some(Permission::EditDocuments));
+        assert_eq!(Permission::from_string("delete"), Some(Permission::DeleteDocuments));
+        assert_eq!(Permission::from_string("comment"), Some(Permission::Comment));
 
         // Test invalid permission string
         assert_eq!(Permission::from_string("invalid_permission"), None);
     }
 
     #[test]
-    fn test_role_from_string() {
-        // Test valid role strings
-        assert_eq!(
-            serde_json::from_str::<Role>("\"owner\"").unwrap(),
-            Role::Owner
-        );
-        assert_eq!(
-            serde_json::from_str::<Role>("\"editor\"").unwrap(),
-            Role::Editor
-        );
-        assert_eq!(
-            serde_json::from_str::<Role>("\"commenter\"").unwrap(),
-            Role::Commenter
-        );
-        assert_eq!(
-            serde_json::from_str::<Role>("\"viewer\"").unwrap(),
-            Role::Viewer
-        );
+    fn test_role_from_str() {
+        // Test valid role strings using Role::from_str
+        assert_eq!(Role::from_str("owner"), Some(Role::Owner));
+        assert_eq!(Role::from_str("editor"), Some(Role::Editor));
+        assert_eq!(Role::from_str("commenter"), Some(Role::Commenter));
+        assert_eq!(Role::from_str("viewer"), Some(Role::Viewer));
+
+        // Test invalid role string
+        assert_eq!(Role::from_str("invalid_role"), None);
+
+        // Test case insensitivity
+        assert_eq!(Role::from_str("OWNER"), Some(Role::Owner));
+        assert_eq!(Role::from_str("Owner"), Some(Role::Owner));
+    }
+
+    #[test]
+    fn test_role_json_deserialization() {
+        // Test JSON deserialization
+        assert_eq!(serde_json::from_str::<Role>("\"owner\"").unwrap(), Role::Owner);
+        assert_eq!(serde_json::from_str::<Role>("\"editor\"").unwrap(), Role::Editor);
+        assert_eq!(serde_json::from_str::<Role>("\"commenter\"").unwrap(), Role::Commenter);
+        assert_eq!(serde_json::from_str::<Role>("\"viewer\"").unwrap(), Role::Viewer);
 
         // Test invalid role string
         assert!(serde_json::from_str::<Role>("\"invalid_role\"").is_err());
@@ -182,5 +166,100 @@ mod tests {
         let view_actions = ActionType::ViewDocument.required_permissions();
         assert!(view_actions.contains(&Permission::ViewDocuments));
         assert_eq!(view_actions.len(), 1);
+    }
+
+    #[test]
+    fn test_role_equality() {
+        assert_eq!(Role::Owner, Role::Owner);
+        assert_ne!(Role::Owner, Role::Editor);
+        assert_ne!(Role::Editor, Role::Commenter);
+        assert_ne!(Role::Commenter, Role::Viewer);
+    }
+
+    #[test]
+    fn test_permission_equality() {
+        assert_eq!(Permission::ViewDocuments, Permission::ViewDocuments);
+        assert_eq!(Permission::EditDocuments, Permission::EditDocuments);
+        assert_ne!(Permission::ViewDocuments, Permission::EditDocuments);
+    }
+
+    #[test]
+    fn test_action_type_required_permissions_non_empty() {
+        let actions = ActionType::DeleteSpace.required_permissions();
+        assert!(!actions.is_empty());
+        assert!(actions.contains(&Permission::DeleteSpace));
+    }
+
+    #[test]
+    fn test_permission_display() {
+        let perm = Permission::ViewDocuments;
+        let display = format!("{}", perm);
+        assert!(display.contains("ViewDocuments") || display.contains("view_documents"));
+    }
+
+    #[test]
+    fn test_action_type_display() {
+        let action = ActionType::CreateDocument;
+        let display = format!("{}", action);
+        assert!(display.contains("CreateDocument") || display.contains("create_document"));
+    }
+
+    #[test]
+    fn test_role_serialization_with_all_variants() {
+        let roles = vec![Role::Owner, Role::Editor, Role::Commenter, Role::Viewer];
+
+        for role in roles {
+            let serialized = serde_json::to_string(&role).expect("Failed to serialize");
+            let deserialized = serde_json::from_str::<Role>(&serialized).expect("Failed to deserialize");
+            assert_eq!(role, deserialized);
+        }
+    }
+
+    #[test]
+    fn test_permission_serialization_all_permissions() {
+        let permissions = vec![
+            Permission::ViewDocuments,
+            Permission::EditDocuments,
+            Permission::DeleteDocuments,
+            Permission::CreateDocuments,
+            Permission::Comment,
+            Permission::Share,
+            Permission::ManageMembers,
+            Permission::ManageRoles,
+            Permission::DeleteSpace,
+        ];
+
+        for perm in permissions {
+            let serialized = serde_json::to_string(&perm).expect("Failed to serialize");
+            let deserialized = serde_json::from_str::<Permission>(&serialized).expect("Failed to deserialize");
+            assert_eq!(perm, deserialized);
+        }
+    }
+
+    #[test]
+    fn test_action_type_serialization_all_actions() {
+        let actions = vec![
+            ActionType::CreateDocument,
+            ActionType::EditDocument,
+            ActionType::DeleteDocument,
+            ActionType::ViewDocument,
+            ActionType::Comment,
+            ActionType::Share,
+            ActionType::ManageMembers,
+            ActionType::ManageRoles,
+            ActionType::DeleteSpace,
+            ActionType::InviteMember,
+            ActionType::RemoveMember,
+            ActionType::ViewMembers,
+            ActionType::ExportDocument,
+            ActionType::ViewVersionHistory,
+            ActionType::RestoreVersion,
+        ];
+
+        for action in actions {
+            let serialized = serde_json::to_string(&action).expect("Failed to serialize");
+            let deserialized = serde_json::from_str::<ActionType>(&serialized).expect("Failed to deserialize");
+            assert_eq!(action, deserialized);
+        }
     }
 }

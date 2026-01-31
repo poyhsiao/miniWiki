@@ -228,6 +228,7 @@ Cargo.lock
 *.so
 *.a
 *.o
+*.d
 *.exe
 *.exe~
 *.dll

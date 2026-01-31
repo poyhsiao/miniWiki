@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use crate::CursorPosition;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
-use crate::CursorPosition;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PresenceEntry {
@@ -16,12 +16,7 @@ pub struct PresenceEntry {
 }
 
 impl PresenceEntry {
-    pub fn new(
-        user_id: Uuid,
-        display_name: String,
-        color: String,
-        document_id: Uuid,
-    ) -> Self {
+    pub fn new(user_id: Uuid, display_name: String, color: String, document_id: Uuid) -> Self {
         Self {
             user_id,
             display_name,
@@ -92,8 +87,7 @@ impl PresenceStore {
     }
 }
 
-pub static PRESENCE_STORE: once_cell::sync::Lazy<PresenceStore> =
-    once_cell::sync::Lazy::new(PresenceStore::new);
+pub static PRESENCE_STORE: once_cell::sync::Lazy<PresenceStore> = once_cell::sync::Lazy::new(PresenceStore::new);
 
 #[cfg(test)]
 mod tests {
@@ -120,12 +114,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let document_id = Uuid::new_v4();
 
-        let entry = PresenceEntry::new(
-            user_id,
-            "Test User".to_string(),
-            "#FF0000".to_string(),
-            document_id,
-        );
+        let entry = PresenceEntry::new(user_id, "Test User".to_string(), "#FF0000".to_string(), document_id);
 
         store.set_presence(entry.clone());
 

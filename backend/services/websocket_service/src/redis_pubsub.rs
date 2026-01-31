@@ -4,14 +4,14 @@
 //! across multiple backend instances. This is essential for real-time
 //! collaboration when the backend is horizontally scaled.
 
+use redis::{AsyncCommands, Client as RedisClient};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
-use redis::{AsyncCommands, Client as RedisClient};
+use tracing::{error, info};
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use tracing::{info, error};
 
-use crate::{PRESENCE_STORE, CursorPosition};
+use crate::{CursorPosition, PRESENCE_STORE};
 
 /// Channel prefix for Redis pub/sub
 const REDIS_CHANNEL_PREFIX: &str = "miniwiki:ws:";
@@ -27,8 +27,7 @@ pub struct RedisConfig {
 impl Default for RedisConfig {
     fn default() -> Self {
         Self {
-            url: std::env::var("REDIS_URL")
-                .unwrap_or_else(|_| "redis://localhost:6379".to_string()),
+            url: std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://localhost:6379".to_string()),
             password: std::env::var("REDIS_PASSWORD").ok(),
             db: std::env::var("REDIS_DB")
                 .unwrap_or_else(|_| "0".to_string())
@@ -57,10 +56,7 @@ pub enum RedisMessage {
         color: String,
     },
     /// Notify other instances that a user left
-    UserLeave {
-        document_id: Uuid,
-        user_id: Uuid,
-    },
+    UserLeave { document_id: Uuid, user_id: Uuid },
     /// Broadcast document update to all instances
     DocumentUpdate {
         document_id: Uuid,
@@ -86,16 +82,13 @@ impl RedisMessage {
 
     pub fn channel(&self) -> String {
         match self {
-            RedisMessage::PresenceUpdate { document_id, .. } =>
-                format!("{}presence:{}", REDIS_CHANNEL_PREFIX, document_id),
-            RedisMessage::UserJoin { document_id, .. } =>
-                format!("{}join:{}", REDIS_CHANNEL_PREFIX, document_id),
-            RedisMessage::UserLeave { document_id, .. } =>
-                format!("{}leave:{}", REDIS_CHANNEL_PREFIX, document_id),
-            RedisMessage::DocumentUpdate { document_id, .. } =>
-                format!("{}doc:{}", REDIS_CHANNEL_PREFIX, document_id),
-            RedisMessage::CursorUpdate { document_id, .. } =>
-                format!("{}cursor:{}", REDIS_CHANNEL_PREFIX, document_id),
+            RedisMessage::PresenceUpdate { document_id, .. } => {
+                format!("{}presence:{}", REDIS_CHANNEL_PREFIX, document_id)
+            },
+            RedisMessage::UserJoin { document_id, .. } => format!("{}join:{}", REDIS_CHANNEL_PREFIX, document_id),
+            RedisMessage::UserLeave { document_id, .. } => format!("{}leave:{}", REDIS_CHANNEL_PREFIX, document_id),
+            RedisMessage::DocumentUpdate { document_id, .. } => format!("{}doc:{}", REDIS_CHANNEL_PREFIX, document_id),
+            RedisMessage::CursorUpdate { document_id, .. } => format!("{}cursor:{}", REDIS_CHANNEL_PREFIX, document_id),
         }
     }
 }
@@ -144,7 +137,7 @@ impl RedisPubSubManager {
             Ok(conn) => {
                 *guard = Some(conn.clone());
                 Ok(conn)
-            }
+            },
             Err(e) => Err(e),
         }
     }
@@ -160,10 +153,7 @@ impl RedisPubSubManager {
         guard.as_ref().unwrap().subscribe()
     }
 
-    async fn subscribe_to_channel(
-        &self,
-        channel: &str,
-    ) -> Result<(), redis::RedisError> {
+    async fn subscribe_to_channel(&self, channel: &str) -> Result<(), redis::RedisError> {
         let mut subscribed = self.subscribed_channels.lock().await;
 
         if subscribed.contains(&channel.to_string()) {
@@ -182,6 +172,7 @@ impl RedisPubSubManager {
             format!("{}join:{}", REDIS_CHANNEL_PREFIX, document_id),
             format!("{}leave:{}", REDIS_CHANNEL_PREFIX, document_id),
             format!("{}cursor:{}", REDIS_CHANNEL_PREFIX, document_id),
+            format!("{}doc:{}", REDIS_CHANNEL_PREFIX, document_id),
         ];
 
         for channel in channels {
@@ -202,7 +193,7 @@ impl RedisPubSubManager {
                     "Failed to serialize message",
                     e.to_string(),
                 )));
-            }
+            },
         };
 
         // Get the cached connection or reconnect
@@ -226,13 +217,7 @@ impl RedisPubSubManager {
         Ok(())
     }
 
-    pub async fn broadcast_user_join(
-        &self,
-        document_id: Uuid,
-        user_id: Uuid,
-        display_name: String,
-        color: String,
-    ) {
+    pub async fn broadcast_user_join(&self, document_id: Uuid, user_id: Uuid, display_name: String, color: String) {
         let message = RedisMessage::UserJoin {
             document_id,
             user_id,
@@ -245,27 +230,15 @@ impl RedisPubSubManager {
         }
     }
 
-    pub async fn broadcast_user_leave(
-        &self,
-        document_id: Uuid,
-        user_id: Uuid,
-    ) {
-        let message = RedisMessage::UserLeave {
-            document_id,
-            user_id,
-        };
+    pub async fn broadcast_user_leave(&self, document_id: Uuid, user_id: Uuid) {
+        let message = RedisMessage::UserLeave { document_id, user_id };
 
         if let Err(e) = self.publish(&message).await {
             error!("Failed to broadcast user leave: {}", e);
         }
     }
 
-    pub async fn broadcast_cursor_update(
-        &self,
-        document_id: Uuid,
-        user_id: Uuid,
-        cursor: CursorPosition,
-    ) {
+    pub async fn broadcast_cursor_update(&self, document_id: Uuid, user_id: Uuid, cursor: CursorPosition) {
         let message = RedisMessage::CursorUpdate {
             document_id,
             user_id,
@@ -277,12 +250,7 @@ impl RedisPubSubManager {
         }
     }
 
-    pub async fn broadcast_document_update(
-        &self,
-        document_id: Uuid,
-        user_id: Uuid,
-        update: Vec<u8>,
-    ) {
+    pub async fn broadcast_document_update(&self, document_id: Uuid, user_id: Uuid, update: Vec<u8>) {
         let message = RedisMessage::DocumentUpdate {
             document_id,
             user_id,
@@ -296,34 +264,46 @@ impl RedisPubSubManager {
 
     pub async fn handle_redis_message(&self, message: RedisMessage) {
         match message {
-            RedisMessage::UserJoin { document_id, user_id, display_name, color } => {
-                let entry = crate::presence::PresenceEntry::new(
-                    user_id,
-                    display_name,
-                    color,
-                    document_id,
-                );
+            RedisMessage::UserJoin {
+                document_id,
+                user_id,
+                display_name,
+                color,
+            } => {
+                let entry = crate::presence::PresenceEntry::new(user_id, display_name, color, document_id);
                 PRESENCE_STORE.set_presence(entry);
-            }
-            RedisMessage::UserLeave { document_id: _, user_id } => {
+            },
+            RedisMessage::UserLeave {
+                document_id: _,
+                user_id,
+            } => {
                 PRESENCE_STORE.remove_presence(user_id);
-            }
-            RedisMessage::CursorUpdate { document_id: _, user_id, cursor } => {
+            },
+            RedisMessage::CursorUpdate {
+                document_id: _,
+                user_id,
+                cursor,
+            } => {
                 PRESENCE_STORE.update_cursor(user_id, cursor);
-            }
-            RedisMessage::PresenceUpdate { document_id, user_id, display_name, color, cursor } => {
-                let mut entry = crate::presence::PresenceEntry::new(
-                    user_id,
-                    display_name,
-                    color,
-                    document_id,
-                );
+            },
+            RedisMessage::PresenceUpdate {
+                document_id,
+                user_id,
+                display_name,
+                color,
+                cursor,
+            } => {
+                let mut entry = crate::presence::PresenceEntry::new(user_id, display_name, color, document_id);
                 entry.cursor = cursor;
                 PRESENCE_STORE.set_presence(entry);
-            }
-            RedisMessage::DocumentUpdate { document_id: _, user_id: _, update: _ } => {
+            },
+            RedisMessage::DocumentUpdate {
+                document_id: _,
+                user_id: _,
+                update: _,
+            } => {
                 // Document update handling would trigger sync with connected clients
-            }
+            },
         }
     }
 }
@@ -381,7 +361,12 @@ mod tests {
         let cursor_msg = RedisMessage::CursorUpdate {
             document_id: doc_id,
             user_id,
-            cursor: CursorPosition { x: 100.0, y: 200.0, selection_start: None, selection_end: None },
+            cursor: CursorPosition {
+                x: 100.0,
+                y: 200.0,
+                selection_start: None,
+                selection_end: None,
+            },
         };
         assert!(cursor_msg.channel().contains(&doc_id.to_string()));
     }
@@ -402,12 +387,17 @@ mod tests {
         let decoded = RedisMessage::from_json(&json).expect("Failed to deserialize");
 
         match decoded {
-            RedisMessage::UserJoin { document_id: decoded_doc_id, user_id: decoded_user_id, display_name: decoded_display_name, color: decoded_color } => {
+            RedisMessage::UserJoin {
+                document_id: decoded_doc_id,
+                user_id: decoded_user_id,
+                display_name: decoded_display_name,
+                color: decoded_color,
+            } => {
                 assert_eq!(decoded_doc_id, doc_id);
                 assert_eq!(decoded_user_id, user_id);
                 assert_eq!(decoded_display_name, "Test User");
                 assert_eq!(decoded_color, "#FF0000");
-            }
+            },
             _ => panic!("Wrong message type"),
         }
     }
