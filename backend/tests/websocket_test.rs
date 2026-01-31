@@ -3,6 +3,7 @@ mod websocket_service_test {
     use uuid::Uuid;
     use websocket_service::connection_manager::ConnectionManager;
     use websocket_service::presence::PresenceEntry;
+    use websocket_service::WebSocketSession;
 
     #[test]
     fn test_presence_entry_creation() {
@@ -21,91 +22,107 @@ mod websocket_service_test {
 
     #[test]
     fn test_connection_manager_add_user() {
-        use std::time::Duration;
-        use std::time::Instant;
+        use chrono::Duration;
+        use chrono::Utc;
 
-        let mut manager = ConnectionManager::new();
+        let manager = ConnectionManager::new();
         let user_id = Uuid::new_v4();
-        let now = Instant::now();
+        let document_id = Uuid::new_v4();
 
-        manager.add_user(user_id);
+        let session = WebSocketSession::new(document_id, user_id, "Test User".to_string(), "#FF0000".to_string());
 
-        assert!(manager.get_user(user_id).is_some());
+        manager.register_connection(&session);
 
-        // After 5 minutes, connection should be considered stale
-        assert!(manager.is_connection_stale(user_id, Duration::from_secs(300)));
-        assert!(!manager.is_connection_stale(user_id, Duration::from_secs(240)));
+        let stats = manager.get_stats();
+        assert_eq!(stats.active_connections, 1);
+
+        // Check session is active with 5 minute timeout
+        assert!(manager.is_session_active(&session, 300));
+        assert!(manager.is_session_active(&session, 240));
     }
 
     #[test]
     fn test_connection_manager_remove_user() {
-        use std::time::Duration;
-
-        let mut manager = ConnectionManager::new();
+        let manager = ConnectionManager::new();
         let user_id = Uuid::new_v4();
+        let document_id = Uuid::new_v4();
 
-        manager.add_user(user_id);
-        assert!(manager.get_user(user_id).is_some());
+        let session = WebSocketSession::new(document_id, user_id, "Test User".to_string(), "#FF0000".to_string());
 
-        manager.remove_user(&user_id);
-        assert!(manager.get_user(user_id).is_none());
+        manager.register_connection(&session);
+        let stats = manager.get_stats();
+        assert_eq!(stats.active_connections, 1);
+
+        manager.unregister_connection(session.id);
+        let stats = manager.get_stats();
+        assert_eq!(stats.active_connections, 0);
     }
 
     #[test]
     fn test_connection_manager_multiple_users() {
-        let user_ids = vec![Uuid::new_v4(), Uuid::new_v4(), Uuid::new_v4()];
+        let document_id = Uuid::new_v4();
 
         let mut manager = ConnectionManager::new();
-        for user_id in &user_ids {
-            manager.add_user(user_id.clone());
+        for i in 0..3 {
+            let session = WebSocketSession::new(
+                document_id,
+                Uuid::new_v4(),
+                format!("User {}", i),
+                "#FF0000".to_string(),
+            );
+            manager.register_connection(&session);
         }
 
-        assert_eq!(manager.connection_count(), 3);
+        let stats = manager.get_stats();
+        assert_eq!(stats.active_connections, 3);
     }
 
     #[test]
     fn test_connection_manager_user_cleanup() {
-        use std::time::Duration;
-        use std::time::Instant;
+        use chrono::Utc;
 
-        let mut manager = ConnectionManager::new();
+        let manager = ConnectionManager::new();
         let user_id = Uuid::new_v4();
-        let now = Instant::now();
+        let document_id = Uuid::new_v4();
 
-        manager.add_user(user_id);
+        let session = WebSocketSession::new(document_id, user_id, "Test User".to_string(), "#FF0000".to_string());
 
-        // Mark as active
-        let activity = manager.update_user_activity(user_id, now);
-        assert!(activity.is_some());
+        manager.register_connection(&session);
 
-        // Check active state
-        let connections = manager.get_active_connections(&user_id);
-        assert_eq!(connections.len(), 1);
+        // Mark as active by recording activity
+        manager.record_message_sent(100);
 
-        // After cleanup (30 minutes), should be removed
-        let stale_time = now + Duration::from_secs(1800);
-        assert!(manager.is_connection_stale(user_id, stale_time));
+        // Check active state via stats
+        let stats = manager.get_stats();
+        assert_eq!(stats.active_connections, 1);
+
+        // Session should still be active with 30 minute timeout
+        assert!(manager.is_session_active(&session, 1800));
     }
 
     #[test]
     fn test_connection_manager_stale_connections() {
-        use std::time::Duration;
-        use std::time::Instant;
+        use chrono::{Duration, Utc};
 
-        let mut manager = ConnectionManager::new();
+        let manager = ConnectionManager::new();
         let user_id = Uuid::new_v4();
-        let old_time = Instant::now() - Duration::from_secs(3600);
-        let now = Instant::now();
+        let document_id = Uuid::new_v4();
 
-        manager.add_user(user_id);
-        manager.update_user_activity(user_id, old_time);
+        let session = WebSocketSession::new(document_id, user_id, "Test User".to_string(), "#FF0000".to_string());
 
-        // Should not be stale after 5 minutes
-        let recent = now - Duration::from_secs(300);
-        assert!(!manager.is_connection_stale(user_id, recent));
+        // Register session
+        manager.register_connection(&session);
 
-        // Should be stale after 15 minutes
-        let stale = now - Duration::from_secs(900);
-        assert!(manager.is_connection_stale(user_id, stale));
+        // Create a session with old activity (1 hour ago)
+        let old_session = WebSocketSession {
+            last_activity: Utc::now() - Duration::seconds(3600),
+            ..session.clone()
+        };
+
+        // Recent session should be active after 5 minutes
+        assert!(manager.is_session_active(&session, 300));
+
+        // Old session should NOT be active after 15 minutes
+        assert!(!manager.is_session_active(&old_session, 900));
     }
 }
