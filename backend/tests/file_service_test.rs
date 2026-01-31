@@ -11,7 +11,9 @@ mod file_service_test {
         let mut headers = HeaderMap::new();
         headers.insert(
             actix_web::http::header::CONTENT_TYPE,
-            "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZ0+",
+            "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZ0+"
+                .parse()
+                .unwrap(),
         );
 
         let boundary = extract_boundary(&headers);
@@ -32,7 +34,10 @@ mod file_service_test {
     fn test_extract_boundary_invalid_content_type() {
         use actix_web::http::header::HeaderMap;
         let mut headers = HeaderMap::new();
-        headers.insert(actix_web::http::header::CONTENT_TYPE, "application/json");
+        headers.insert(
+            actix_web::http::header::CONTENT_TYPE,
+            "application/json".parse().unwrap(),
+        );
 
         let boundary = extract_boundary(&headers);
         assert!(boundary.is_none());
@@ -151,36 +156,46 @@ mod file_service_test {
 
     #[test]
     fn test_chunked_upload_session_all_fields_set() {
+        let now = chrono::Utc::now();
         let session = file_service::storage::ChunkedUploadSession {
             upload_id: uuid::Uuid::new_v4(),
+            space_id: uuid::Uuid::new_v4(),
+            document_id: None,
             file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
+            content_type: "application/pdf".to_string(),
+            total_size: 1024 * 1024 * 1024,
             chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 3,
+            uploaded_chunks: vec![0, 1, 2],
             total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(2),
+            created_at: now,
+            expires_at: now + chrono::Duration::hours(2),
         };
 
         assert!(!session.upload_id.is_nil());
+        assert!(!session.space_id.is_nil());
         assert!(!session.file_name.is_empty());
-        assert_eq!(session.file_size, 1024 * 1024 * 1024);
+        assert!(!session.content_type.is_empty());
+        assert_eq!(session.total_size, 1024 * 1024 * 1024);
         assert_eq!(session.chunk_size, 5 * 1024 * 1024);
-        assert_eq!(session.uploaded_chunks, 3);
+        assert_eq!(session.uploaded_chunks.len(), 3);
         assert_eq!(session.total_chunks, 10);
     }
 
     #[test]
     fn test_chunked_upload_session_expires_calculation() {
+        let now = chrono::Utc::now();
         let session = file_service::storage::ChunkedUploadSession {
             upload_id: uuid::Uuid::new_v4(),
+            space_id: uuid::Uuid::new_v4(),
+            document_id: None,
             file_name: "test.pdf".to_string(),
-            file_size: 1024 * 1024 * 1024,
+            content_type: "application/pdf".to_string(),
+            total_size: 1024 * 1024 * 1024,
             chunk_size: 5 * 1024 * 1024,
-            uploaded_chunks: 3,
+            uploaded_chunks: vec![0, 1, 2],
             total_chunks: 10,
-            created_at: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::hours(24),
+            created_at: now,
+            expires_at: now + chrono::Duration::hours(24),
         };
 
         let time_diff = session.expires_at - session.created_at;
@@ -432,9 +447,9 @@ mod file_service_test {
         let deserialized: InitChunkedUploadRequest = serde_json::from_str(&serialized).expect("Failed to deserialize");
 
         assert_eq!(request.space_id, deserialized.space_id);
-        assert!(request.total_size, Some(10485760u64));
-        assert!(request.chunk_size, Some(5242880u64));
-        assert!(request.expires_in, Some(7200u32));
+        assert_eq!(request.total_size, Some(10485760u64));
+        assert_eq!(request.chunk_size, Some(5242880u64));
+        assert_eq!(request.expires_in, Some(7200u32));
     }
 
     #[test]
