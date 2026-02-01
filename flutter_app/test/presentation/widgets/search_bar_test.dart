@@ -213,6 +213,7 @@ void main() {
     testWidgets('uses external controller when provided',
         (WidgetTester tester) async {
       final controller = TextEditingController();
+      addTearDown(controller.dispose);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -227,8 +228,6 @@ void main() {
       await tester.pump();
 
       expect(find.text('external text'), findsOneWidget);
-
-      controller.dispose();
     });
 
     testWidgets('disposes internal controller', (WidgetTester tester) async {
