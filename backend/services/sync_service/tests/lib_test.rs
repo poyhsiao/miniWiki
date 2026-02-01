@@ -3,242 +3,236 @@
 //! This module contains tests for:
 //! - StateVector operations
 //! - Conflict resolution
-//! - Sync state management
 
-use std::collections::HashMap;
-use sync_service::conflict_resolver::{ConflictResolver, ConflictType, ResolutionStrategy};
-use sync_service::state_vector::{Clock, HlcTimestamp, StateVector, VectorClock};
+use sync_service::conflict_resolver::{ConflictResolution, ConflictResolutionStrategy, ConflictResolver};
+use sync_service::state_vector::{ClientId, Clock, StateVector};
 
 // Test StateVector basic operations
 #[test]
 fn test_state_vector_new() {
     let sv = StateVector::new();
-    assert!(sv.clocks.is_empty());
+    assert!(sv.is_empty());
 }
 
 #[test]
-fn test_state_vector_with_initial_peer() {
+fn test_state_vector_with_initial_client() {
     let mut sv = StateVector::new();
-    sv.update("peer-1".to_string(), 0);
-    assert_eq!(sv.get("peer-1"), Some(&0));
+    sv.set(1, 0);
+    assert_eq!(sv.get(1), Some(&0));
 }
 
 #[test]
-fn test_state_vector_update() {
+fn test_state_vector_set() {
     let mut sv = StateVector::new();
-    sv.update("peer-1".to_string(), 5);
-    assert_eq!(sv.get("peer-1"), Some(&5));
+    sv.set(1, 5);
+    assert_eq!(sv.get(1), Some(&5));
 }
 
 #[test]
-fn test_state_vector_update_incremental() {
+fn test_state_vector_increment() {
     let mut sv = StateVector::new();
-    sv.update("peer-1".to_string(), 1);
-    sv.update("peer-1".to_string(), 2);
-    sv.update("peer-1".to_string(), 3);
-    assert_eq!(sv.get("peer-1"), Some(&3));
+    sv.increment(1);
+    sv.increment(1);
+    sv.increment(1);
+    assert_eq!(sv.get(1), Some(&3));
 }
 
 #[test]
-fn test_state_vector_update_multiple_peers() {
+fn test_state_vector_update_multiple_clients() {
     let mut sv = StateVector::new();
-    sv.update("peer-1".to_string(), 1);
-    sv.update("peer-2".to_string(), 2);
-    sv.update("peer-3".to_string(), 3);
+    sv.set(1, 1);
+    sv.set(2, 2);
+    sv.set(3, 3);
 
-    assert_eq!(sv.get("peer-1"), Some(&1));
-    assert_eq!(sv.get("peer-2"), Some(&2));
-    assert_eq!(sv.get("peer-3"), Some(&3));
+    assert_eq!(sv.get(1), Some(&1));
+    assert_eq!(sv.get(2), Some(&2));
+    assert_eq!(sv.get(3), Some(&3));
 }
 
 #[test]
 fn test_state_vector_get_nonexistent() {
     let sv = StateVector::new();
-    assert_eq!(sv.get("nonexistent"), None);
+    assert_eq!(sv.get(999), None);
 }
 
 #[test]
-fn test_state_vector_merge() {
-    let mut sv1 = StateVector::new();
-    sv1.update("peer-1".to_string(), 5);
-
-    let mut sv2 = StateVector::new();
-    sv2.update("peer-1".to_string(), 3);
-    sv2.update("peer-2".to_string(), 10);
-
-    sv1.merge(&sv2);
-
-    assert_eq!(sv1.get("peer-1"), Some(&5)); // Max of 5 and 3
-    assert_eq!(sv1.get("peer-2"), Some(&10));
+fn test_state_vector_len() {
+    let mut sv = StateVector::new();
+    assert_eq!(sv.len(), 0);
+    sv.set(1, 1);
+    sv.set(2, 2);
+    assert_eq!(sv.len(), 2);
 }
 
 #[test]
-fn test_state_vector_causally_ready() {
-    let mut sv_local = StateVector::new();
-    sv_local.update("local".to_string(), 5);
-
-    let mut sv_remote = StateVector::new();
-    sv_remote.update("local".to_string(), 3);
-    sv_remote.update("remote".to_string(), 10);
-
-    assert!(sv_local.causally_ready(&sv_remote));
-}
-
-#[test]
-fn test_state_vector_not_causally_ready() {
-    let mut sv_local = StateVector::new();
-    sv_local.update("peer-1".to_string(), 5);
-
-    let mut sv_remote = StateVector::new();
-    sv_remote.update("peer-1".to_string(), 10);
-
-    assert!(!sv_local.causally_ready(&sv_remote));
-}
-
-// Test VectorClock
-#[test]
-fn test_vector_clock_new() {
-    let vc = VectorClock::new();
-    assert!(vc.0.is_empty());
-}
-
-#[test]
-fn test_vector_clock_increment() {
-    let mut vc = VectorClock::new();
-    vc.increment("peer-1".to_string());
-    assert_eq!(vc.get("peer-1"), Some(&1));
-}
-
-#[test]
-fn test_vector_clock_increment_multiple() {
-    let mut vc = VectorClock::new();
-    vc.increment("peer-1".to_string());
-    vc.increment("peer-1".to_string());
-    vc.increment("peer-1".to_string());
-    assert_eq!(vc.get("peer-1"), Some(&3));
-}
-
-#[test]
-fn test_vector_clock_compare_less_than() {
-    let mut vc1 = VectorClock::new();
-    vc1.increment("peer-1".to_string());
-
-    let mut vc2 = VectorClock::new();
-    vc2.increment("peer-1".to_string());
-    vc2.increment("peer-1".to_string());
-
-    assert_eq!(vc1.partial_cmp(&vc2), Some(std::cmp::Ordering::Less));
-}
-
-#[test]
-fn test_vector_clock_compare_greater_than() {
-    let mut vc1 = VectorClock::new();
-    vc1.increment("peer-1".to_string());
-    vc1.increment("peer-1".to_string());
-
-    let mut vc2 = VectorClock::new();
-    vc2.increment("peer-1".to_string());
-
-    assert_eq!(vc1.partial_cmp(&vc2), Some(std::cmp::Ordering::Greater));
-}
-
-#[test]
-fn test_vector_clock_compare_concurrent() {
-    let mut vc1 = VectorClock::new();
-    vc1.increment("peer-1".to_string());
-
-    let mut vc2 = VectorClock::new();
-    vc2.increment("peer-2".to_string());
-
-    assert_eq!(vc1.partial_cmp(&vc2), None); // Concurrent
-}
-
-// Test HlcTimestamp
-#[test]
-fn test_hlc_timestamp_new() {
-    let hlc = HlcTimestamp::new();
-    assert!(hlc.logical > 0 || hlc.physical > 0);
-}
-
-#[test]
-fn test_hlc_timestamp_increment() {
-    let mut hlc1 = HlcTimestamp::new();
-    let hlc2 = hlc1.increment();
-
-    assert!(hlc2.logical >= hlc1.logical);
-}
-
-#[test]
-fn test_hlc_timestamp_update() {
-    let mut hlc = HlcTimestamp::new();
-    hlc.update(100, "other-1".to_string());
-    assert!(hlc.logical >= 100);
-}
-
-#[test]
-fn test_hlc_timestamp_causal_order() {
-    let mut hlc1 = HlcTimestamp::new();
-    let hlc2 = hlc1.increment();
-    let hlc3 = hlc2.update(50, "other".to_string());
-
-    assert!(hlc3 >= hlc1);
-    assert!(hlc2 >= hlc1);
+fn test_state_vector_inner() {
+    let mut sv = StateVector::new();
+    sv.set(1, 5);
+    sv.set(2, 10);
+    let inner = sv.inner();
+    assert_eq!(inner.len(), 2);
+    assert_eq!(inner.get(&1), Some(&5));
+    assert_eq!(inner.get(&2), Some(&10));
 }
 
 // Test ConflictResolver
 #[test]
 fn test_conflict_resolver_new() {
-    let resolver = ConflictResolver::new();
-    assert!(resolver.strategies.is_empty());
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Merge);
+    let strategy = ConflictResolutionStrategy::Merge;
+    let _ = strategy;
 }
 
 #[test]
-fn test_conflict_resolver_add_strategy() {
-    let mut resolver = ConflictResolver::new();
-    resolver.add_strategy(ConflictType::Content, ResolutionStrategy::AcceptIncoming);
-    assert_eq!(resolver.strategies.len(), 1);
+fn test_conflict_resolver_resolve_state_vector() {
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Merge);
+
+    let mut sv1 = StateVector::new();
+    sv1.set(1, 10);
+
+    let mut sv2 = StateVector::new();
+    sv2.set(1, 5);
+    sv2.set(2, 20);
+
+    let (merged, resolution) = resolver.resolve_state_vector(&sv1, &sv2);
+
+    assert_eq!(resolution, ConflictResolution::Merged);
+    assert_eq!(merged.get(1), Some(&10));
+    assert_eq!(merged.get(2), Some(&20));
 }
 
 #[test]
-fn test_conflict_resolver_get_strategy() {
-    let mut resolver = ConflictResolver::new();
-    resolver.add_strategy(ConflictType::Content, ResolutionStrategy::AcceptIncoming);
+fn test_conflict_resolver_resolve_document_conflict_same() {
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Timestamp);
 
-    let strategy = resolver.get_strategy(&ConflictType::Content);
-    assert_eq!(strategy, Some(&ResolutionStrategy::AcceptIncoming));
+    let sv1 = StateVector::new();
+    let sv2 = StateVector::new();
+
+    let (result, resolution) = resolver.resolve_document_conflict(&"same", &"same", &sv1, &sv2);
+
+    assert_eq!(resolution, ConflictResolution::NoConflict);
+    assert_eq!(result, "same");
 }
 
 #[test]
-fn test_conflict_resolver_unknown_conflict() {
-    let resolver = ConflictResolver::new();
-    let strategy = resolver.get_strategy(&ConflictType::ConcurrentEdits);
-    assert_eq!(strategy, None); // Default fallback
+fn test_conflict_resolver_resolve_by_timestamp() {
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Timestamp);
+
+    let mut sv1 = StateVector::new();
+    sv1.set(1, 10);
+
+    let mut sv2 = StateVector::new();
+    sv2.set(2, 20);
+
+    let (result, resolution) = resolver.resolve_document_conflict(&"local", &"remote", &sv1, &sv2);
+
+    assert_eq!(resolution, ConflictResolution::KeepSecond);
+    assert_eq!(result, "remote");
 }
 
-// Test ConflictType
 #[test]
-fn test_conflict_type_variants() {
-    let _ = ConflictType::Content;
-    let _ = ConflictType::Metadata;
-    let _ = ConflictType::Delete;
-    let _ = ConflictType::ConcurrentEdits;
+fn test_conflict_resolver_get_missing_updates() {
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Merge);
+
+    let mut client_sv = StateVector::new();
+    client_sv.set(1, 5);
+
+    let mut server_sv = StateVector::new();
+    server_sv.set(1, 10);
+    server_sv.set(2, 5);
+
+    let missing = resolver.calculate_missing_updates(&client_sv, &server_sv);
+
+    assert_eq!(missing.len(), 2);
+    assert!(missing.contains(&(1, 6, 10)));
+    assert!(missing.contains(&(2, 0, 5)));
 }
 
-// Test ResolutionStrategy
 #[test]
-fn test_resolution_strategy_variants() {
-    let _ = ResolutionStrategy::AcceptIncoming;
-    let _ = ResolutionStrategy::KeepBoth;
-    let _ = ResolutionStrategy::Manual;
-    let _ = ResolutionStrategy::TimestampBased;
-    let _ = ResolutionStrategy::UserPriority;
+fn test_conflict_resolver_can_merge() {
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Merge);
+
+    let sv1 = StateVector::new();
+    let sv2 = StateVector::new();
+
+    assert!(resolver.can_merge(&sv1, &sv2));
 }
 
-// Test sync state operations
-#[tokio::test]
-async fn test_sync_state_new() {
-    let state = sync_service::SyncState::new();
-    assert!(state.pending_updates.is_empty());
+#[test]
+fn test_conflict_resolver_get_newer_state() {
+    let resolver = ConflictResolver::new(ConflictResolutionStrategy::Merge);
+
+    let mut sv1 = StateVector::new();
+    sv1.set(1, 10);
+
+    let mut sv2 = StateVector::new();
+    sv2.set(1, 20);
+
+    let (newer, older) = resolver.get_newer_state(&sv1, &sv2);
+
+    assert_eq!(newer.get(1), Some(&20));
+    assert_eq!(older.get(1), Some(&10));
+}
+
+// Test ConflictResolutionStrategy
+#[test]
+fn test_conflict_resolution_strategy_variants() {
+    let _ = ConflictResolutionStrategy::Merge;
+    let _ = ConflictResolutionStrategy::Timestamp;
+    let _ = ConflictResolutionStrategy::ClientId;
+    let _ = ConflictResolutionStrategy::Custom;
+}
+
+// Test ConflictResolution
+#[test]
+fn test_conflict_resolution_variants() {
+    let _ = ConflictResolution::NoConflict;
+    let _ = ConflictResolution::KeepFirst;
+    let _ = ConflictResolution::KeepSecond;
+    let _ = ConflictResolution::Merged;
+    let _ = ConflictResolution::Unresolved;
+}
+
+// Test StateVector compare and ancestor operations
+#[test]
+fn test_state_vector_compare() {
+    let mut sv1 = StateVector::new();
+    sv1.set(1, 10);
+
+    let mut sv2 = StateVector::new();
+    sv2.set(1, 20);
+
+    assert_eq!(sv1.compare(&sv2), std::cmp::Ordering::Less);
+    assert_eq!(sv2.compare(&sv1), std::cmp::Ordering::Greater);
+}
+
+#[test]
+fn test_state_vector_is_ancestor_of() {
+    let mut ancestor = StateVector::new();
+    ancestor.set(1, 10);
+    ancestor.set(2, 5);
+
+    let mut descendant = StateVector::new();
+    descendant.set(1, 15);
+    descendant.set(2, 10);
+
+    assert!(ancestor.is_ancestor_of(&descendant));
+    assert!(!descendant.is_ancestor_of(&ancestor));
+}
+
+#[test]
+fn test_state_vector_get_missing() {
+    let mut base = StateVector::new();
+    base.set(1, 10);
+
+    let mut target = StateVector::new();
+    target.set(1, 20);
+    target.set(2, 5);
+
+    let missing = base.get_missing(&target);
+    assert_eq!(missing.len(), 2);
+    assert!(missing.contains(&(1, 11)));
+    assert!(missing.contains(&(2, 0)));
 }
 
 #[test]
@@ -295,7 +289,7 @@ fn test_connection_state_with_reason() {
     match state {
         sync_service::ConnectionState::Disconnected(reason) => {
             assert_eq!(reason, Some("Network error".to_string()));
-        }
+        },
         other => panic!("Expected Disconnected variant, got {:?}", other),
     }
 }

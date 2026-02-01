@@ -155,7 +155,7 @@ where
 /// Normalizes CSP connect-src origins to prevent injection attacks.
 ///
 /// Parses each configured origin with strict URL parsing, ensuring:
-/// - Scheme is https or http
+/// - Scheme is https, http, ws, or wss
 /// - Extracts only scheme://host[:port]
 /// - Rejects values containing semicolons, newlines, or additional directives
 ///
@@ -199,16 +199,18 @@ fn normalize_csp_connect_src(origins: Option<&str>) -> String {
 
 /// Normalizes a single origin string for CSP use.
 ///
-/// Ensures the origin has a valid http/https scheme and extracts
-/// only the scheme://host[:port] portion.
+/// Ensures origin has a valid http/https/ws/wss scheme and extracts
+/// only scheme://host[:port] portion.
+///
+/// WebSocket schemes (ws://, wss://) are preserved as-is for CSP connect-src.
 fn normalize_single_origin(origin: &str) -> Option<String> {
-    // Check for valid scheme first (http:// or https://)
+    // Check for valid scheme first (http://, https://, ws://, or wss://)
     let lower_origin = origin.to_ascii_lowercase();
 
     let scheme_end = lower_origin.find("://")?;
     let scheme = &lower_origin[..scheme_end];
 
-    if !matches!(scheme, "http" | "https") {
+    if !matches!(scheme, "http" | "https" | "ws" | "wss") {
         return None;
     }
 
