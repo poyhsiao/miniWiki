@@ -34,7 +34,7 @@ jobs:
         run: |
           echo "Running tests with coverage..."
           cargo llvm-cov --html --output-dir target/llvm-cov
-          cargo llvm-cov --json --output-dir target/llvm-cov
+          cargo llvm-cov --json --output-path target/llvm-cov/llvm-cov.json
         shell: bash
         working-directory: backend
 
