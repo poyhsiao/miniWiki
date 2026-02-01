@@ -9,7 +9,7 @@ use shared_models::entities::RefreshToken;
 
 /// Masks an email address for display purposes.
 /// Shows first 2 characters of the local part and masks the rest.
-pub(crate) fn mask_email(email: &str) -> String {
+pub fn mask_email(email: &str) -> String {
     let parts: Vec<&str> = email.split('@').collect();
     if parts.len() == 2 {
         let name = parts[0];

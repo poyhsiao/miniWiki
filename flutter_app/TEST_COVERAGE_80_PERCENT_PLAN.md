@@ -133,7 +133,7 @@ flutter test test/version_repository_impl_test.dart
 cd backend
 cargo test --all
 cargo llvm-cov --html --output-dir target/llvm-cov
-cargo llvm-cov --json --output-dir target/llvm-cov
+cargo llvm-cov --json --output-path target/llvm-cov/llvm-cov.json
 ```
 
 ---
