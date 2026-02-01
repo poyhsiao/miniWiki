@@ -228,8 +228,9 @@ void main() {
         await Future.delayed(const Duration(milliseconds: 50));
 
         expect(searchProvider.state.hasError, true);
-        expect((searchProvider.state as AsyncError).error.toString(),
-            contains('Server error'));
+        final state = searchProvider.state;
+        expect(state, isA<AsyncError<List<SearchResult>>>());
+        expect((state as AsyncError).error.toString(), contains('Server error'));
       });
 
       test('_performSearch sets error state for null error', () async {

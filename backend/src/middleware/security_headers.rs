@@ -17,9 +17,7 @@ pub struct SecurityHeadersConfig {
 
 impl Default for SecurityHeadersConfig {
     fn default() -> Self {
-        Self {
-            csp_connect_src: None,
-        }
+        Self { csp_connect_src: None }
     }
 }
 
@@ -102,16 +100,12 @@ where
             );
 
             // Frame options
-            res.headers_mut().insert(
-                header::X_FRAME_OPTIONS,
-                HeaderValue::from_static("DENY"),
-            );
+            res.headers_mut()
+                .insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
 
             // Content type options
-            res.headers_mut().insert(
-                header::X_CONTENT_TYPE_OPTIONS,
-                HeaderValue::from_static("nosniff"),
-            );
+            res.headers_mut()
+                .insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
 
             // Referrer policy
             res.headers_mut().insert(
@@ -141,8 +135,8 @@ where
 
             // Apply cache-control only for dynamic/API responses
             // Skip for static assets (images, fonts, etc.)
-            let should_apply_cache_headers = is_dynamic_response(&request_path, &res)
-                && !res.headers().contains_key(header::CACHE_CONTROL);
+            let should_apply_cache_headers =
+                is_dynamic_response(&request_path, &res) && !res.headers().contains_key(header::CACHE_CONTROL);
 
             if should_apply_cache_headers {
                 res.headers_mut().insert(
@@ -150,10 +144,7 @@ where
                     HeaderValue::from_static("no-store, no-cache, must-revalidate, private"),
                 );
 
-                res.headers_mut().insert(
-                    header::PRAGMA,
-                    HeaderValue::from_static("no-cache"),
-                );
+                res.headers_mut().insert(header::PRAGMA, HeaderValue::from_static("no-cache"));
             }
 
             Ok(res)
@@ -182,7 +173,10 @@ fn normalize_csp_connect_src(origins: Option<&str>) -> String {
 
     let mut normalized_origins = vec![SELF_ORIGIN];
 
-    for origin in origins_str.split_whitespace() {
+    for origin in origins_str
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|s| !s.is_empty())
+    {
         // Reject values that could inject additional directives
         if origin.contains(';') || origin.contains('\n') || origin.contains('\r') {
             continue;

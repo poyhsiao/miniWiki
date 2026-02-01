@@ -2,7 +2,8 @@
 set -e
 
 echo "Installing cargo-llvm-cov..."
-cd /Users/kimhsiao/Templates/git/kimhsiao/miniWiki/backend
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 cargo install cargo-llvm-cov
 
 echo "Installation complete!"

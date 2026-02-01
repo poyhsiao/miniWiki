@@ -45,8 +45,7 @@ fn default_app_env() -> String {
 impl Config {
     pub fn from_env() -> Result<Self, config::ConfigError> {
         let config: Self = config::Config::builder()
-            .separator("__")
-            .add_source(config::Environment::default())
+            .add_source(config::Environment::default().separator("__"))
             .build()?
             .try_deserialize()?;
 
@@ -69,7 +68,9 @@ impl Config {
             // Adjust min to max and log a warning
             tracing::warn!(
                 "db_min_connections ({}) > db_max_connections ({}), adjusting min to {}",
-                min_connections, max_connections, max_connections
+                min_connections,
+                max_connections,
+                max_connections
             );
             max_connections
         } else {
@@ -103,10 +104,7 @@ where
         where
             E: serde::de::Error,
         {
-            Ok(v.split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect())
+            Ok(v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
         }
 
         fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
@@ -139,13 +137,19 @@ mod tests {
     fn test_deserialize_comma_separated_string() {
         let json = r#"{"origins": "http://localhost:3000, http://localhost:8080"}"#;
         let config: TestConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(config.origins, vec!["http://localhost:3000".to_string(), "http://localhost:8080".to_string()]);
+        assert_eq!(
+            config.origins,
+            vec!["http://localhost:3000".to_string(), "http://localhost:8080".to_string()]
+        );
     }
 
     #[test]
     fn test_deserialize_comma_separated_sequence() {
         let json = r#"{"origins": ["http://localhost:3000", "http://localhost:8080"]}"#;
         let config: TestConfig = serde_json::from_str(json).unwrap();
-        assert_eq!(config.origins, vec!["http://localhost:3000".to_string(), "http://localhost:8080".to_string()]);
+        assert_eq!(
+            config.origins,
+            vec!["http://localhost:3000".to_string(), "http://localhost:8080".to_string()]
+        );
     }
 }

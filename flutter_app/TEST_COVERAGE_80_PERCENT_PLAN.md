@@ -132,7 +132,8 @@ flutter test test/version_repository_impl_test.dart
 # Rust测试
 cd backend
 cargo test --all
-cargo tarpaulin --output-dir coverage
+cargo llvm-cov --html --output-dir target/llvm-cov
+cargo llvm-cov --json --output-dir target/llvm-cov
 ```
 
 ---
