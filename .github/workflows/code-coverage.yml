@@ -1,0 +1,87 @@
+name: Code Coverage Report
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install cargo-llvm-cov
+        run: |
+          echo "Installing cargo-llvm-cov..."
+          cargo install cargo-llvm-cov
+          cargo llvm-cov --version
+        shell: bash
+      
+      - name: Run tests with coverage
+        run: |
+          echo "Running tests with coverage..."
+          cargo llvm-cov --html --output-dir target/llvm-cov
+          cargo llvm-cov --json --output-dir target/llvm-cov
+        shell: bash
+      
+      - name: Generate coverage summary
+        id: coverage-summary
+        run: |
+          echo "Generating coverage summary..."
+          COVERAGE=$(cat target/llvm-cov/llvm-cov.json | jq '.data[0].totals.lines.covered')
+          TOTAL=$(cat target/llvm-cov/llvm-cov.json | jq '.data[0].totals.lines.total')
+          PERCENTAGE=$(awk "BEGIN {print ($COVERAGE/$TOTAL)*100 } END" <<< "")
+          
+          echo "Lines covered: $COVERAGE"
+          echo "Total lines: $TOTAL"
+          echo "Coverage: $PERCENTAGE%"
+          
+          # 保存覆盖率到文件
+          echo "$PERCENTAGE" > target/llvm-cov/coverage_percent.txt
+        shell: bash
+      
+      - name: Check coverage threshold
+        run: |
+          PERCENTAGE=$(cat target/llvm-cov/coverage_percent.txt)
+          echo "Current coverage: $PERCENTAGE%"
+          
+          # 设置最低覆盖率要求80%
+          MINIMUM_COVERAGE=80
+          
+          if (( $(echo "$PERCENTAGE" | cut -d. -f1) < MINIMUM_COVERAGE )); then
+            echo "::warning::Coverage ($PERCENTAGE%) is below threshold ($MINIMUM_COVERAGE%)"
+            echo "Please improve test coverage by adding more tests."
+          else
+            echo "::notice::Coverage ($PERCENTAGE%) meets threshold ($MINIMUM_COVERAGE%)"
+          fi
+        shell: bash
+      
+      - name: Generate coverage badge
+        uses: actions-rs/tarpaulin@v0.35.1
+        with:
+          json_path: target/llvm-cov/llvm-cov.json
+      
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/llvm-cov/
+          retention-days: 30
+      
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request'
+        uses: py-cov/action-pr-comment@v3
+        with:
+          coverage_file: ./target/llvm-cov/llvm-cov.json
