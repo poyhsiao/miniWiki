@@ -171,7 +171,7 @@ fn normalize_csp_connect_src(origins: Option<&str>) -> String {
         return SELF_ORIGIN.to_string();
     }
 
-    let mut normalized_origins = vec![SELF_ORIGIN];
+    let mut normalized_origins: Vec<String> = vec![SELF_ORIGIN.to_string()];
 
     for origin in origins_str
         .split(|c: char| c.is_whitespace() || c == ',')
