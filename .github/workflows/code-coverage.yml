@@ -42,15 +42,25 @@ jobs:
         id: coverage-summary
         run: |
           echo "Generating coverage summary..."
-          COVERAGE=$(cat target/llvm-cov/llvm-cov.json | jq '.data[0].totals.lines.covered')
-          TOTAL=$(cat target/llvm-cov/llvm-cov.json | jq '.data[0].totals.lines.total')
-          PERCENTAGE=$(awk "BEGIN {print ($COVERAGE/$TOTAL)*100 } END" <<< "")
-
+          
+          # Check if JSON file exists
+          if [ ! -f target/llvm-cov/llvm-cov.json ]; then
+            echo "::error::Coverage JSON file not found: target/llvm-cov/llvm-cov.json"
+            exit 1
+          fi
+          
+          # Read COVERAGE and TOTAL from target/llvm-cov/llvm-cov.json with fallback to 0 if jq fails
+          COVERAGE=$(cat target/llvm-cov/llvm-cov.json | jq -e '.data[0].totals.lines.covered' 2>/dev/null || echo "0")
+          TOTAL=$(cat target/llvm-cov/llvm-cov.json | jq -e '.data[0].totals.lines.total' 2>/dev/null || echo "0")
+          
+          # Compute PERCENTAGE using awk with -v to pass shell variables and explicit check for t==0
+          PERCENTAGE=$(awk -v c="$COVERAGE" -v t="$TOTAL" 'BEGIN {if (t==0) printf "0.00"; else printf "%.2f", (c/t)*100}')
+          
           echo "Lines covered: $COVERAGE"
           echo "Total lines: $TOTAL"
           echo "Coverage: $PERCENTAGE%"
-
-          # 保存覆盖率到文件
+          
+          # Save PERCENTAGE to target/llvm-cov/coverage_percent.txt
           echo "$PERCENTAGE" > target/llvm-cov/coverage_percent.txt
         shell: bash
         working-directory: backend
@@ -79,9 +89,3 @@ jobs:
           name: coverage-report
           path: backend/target/llvm-cov/
           retention-days: 30
-
-      - name: Comment coverage on PR
-        if: github.event_name == 'pull_request'
-        uses: py-cov/action-pr-comment@v3
-        with:
-          coverage_file: ./backend/target/llvm-cov/llvm-cov.json

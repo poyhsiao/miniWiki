@@ -156,9 +156,8 @@
 
 ## 参考资源
 - [cargo-llvm-cov 官方文档](https://github.com/taiki-e/cargo-llvm-cov)
-- [Rust 测试最佳实践](https://rust-projectprimer.com/)
-- [TDD 开发指南](https://rust-projectprimer.com/testing.html)
-- [覆盖率工具对比](https://crates.io/keywords/coverage)
+- [Rust Book - 测试章节](https://doc.rust-lang.org/book/ch11-00-testing.html)
+- [Rust by Example - 测试](https://doc.rust-lang.org/rust-by-example/testing.html)
 
 ## 下一步行动
 1. 创建 GitHub Actions 工作流（已完成）
