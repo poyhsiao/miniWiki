@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,17 +60,16 @@ void main() {
 
     testWidgets('shows keyboard shortcut on non-macOS platforms',
         (WidgetTester tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
       await tester.pumpWidget(
         const MaterialApp(
           home: Scaffold(body: WikiSearchBar()),
         ),
       );
 
-      // Either 'Ctrl' or '⌘' should be present depending on platform
-      expect(
-        anyOf(find.textContaining('Ctrl'), find.textContaining('⌘')),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Ctrl'), findsOneWidget);
     });
 
     testWidgets('has correct color scheme', (WidgetTester tester) async {

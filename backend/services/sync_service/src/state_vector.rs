@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 pub type ClientId = u64;
 pub type Clock = u64;
@@ -67,12 +67,8 @@ impl StateVector {
 
         let mut pos = 0;
         while pos + 16 <= data.len() {
-            let client_id = u64::from_le_bytes(
-                data[pos..pos + 8].try_into().map_err(|_| StateVectorError)?
-            );
-            let clock = u64::from_le_bytes(
-                data[pos + 8..pos + 16].try_into().map_err(|_| StateVectorError)?
-            );
+            let client_id = u64::from_le_bytes(data[pos..pos + 8].try_into().map_err(|_| StateVectorError)?);
+            let clock = u64::from_le_bytes(data[pos + 8..pos + 16].try_into().map_err(|_| StateVectorError)?);
             sv.set(client_id, clock);
             pos += 16;
         }
@@ -99,7 +95,7 @@ impl StateVector {
                 Some(other_clock) if *other_clock > clock => return Ordering::Less,
                 Some(other_clock) if *other_clock < clock => return Ordering::Greater,
                 None => return Ordering::Greater,
-                _ => {}
+                _ => {},
             }
         }
         Ordering::Equal
@@ -108,7 +104,7 @@ impl StateVector {
     pub fn is_ancestor_of(&self, other: &StateVector) -> bool {
         for (&client_id, &clock) in &self.0 {
             match other.get(client_id) {
-                Some(other_clock) if *other_clock >= clock => {}
+                Some(other_clock) if *other_clock >= clock => {},
                 Some(_) => return false,
                 None => return false,
             }
@@ -135,11 +131,11 @@ impl StateVector {
             match self.get(client_id) {
                 Some(self_clock) if *self_clock < clock => {
                     missing.push((client_id, *self_clock + 1));
-                }
+                },
                 None => {
                     missing.push((client_id, 0));
-                }
-                _ => {}
+                },
+                _ => {},
             }
         }
         missing
