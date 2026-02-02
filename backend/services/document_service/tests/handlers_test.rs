@@ -299,7 +299,7 @@ fn test_api_response_error() {
     assert!(!response.success);
     assert!(response.data.is_none());
     assert!(response.error.is_some());
-    assert_eq!(response.error.unwrap().code, "NOT_FOUND");
+    assert_eq!(response.error.unwrap().error, "NOT_FOUND");
 }
 
 // Test ChildrenResponse

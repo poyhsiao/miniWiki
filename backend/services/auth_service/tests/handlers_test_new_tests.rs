@@ -3,8 +3,8 @@
 //! This module contains additional tests for password verification,
 //! token validation, and error response handling.
 
-use auth_service::jwt::{Claims, JwtConfig, JwtService, JwtError};
-use auth_service::models::{RegisterRequest, LoginRequest};
+use auth_service::jwt::{Claims, JwtConfig, JwtService};
+use auth_service::models::{LoginRequest, RegisterRequest};
 use auth_service::password::{hash_password, verify_password};
 use chrono::{Duration, Utc};
 use std::collections::HashMap;
@@ -29,15 +29,15 @@ fn test_password_too_short() {
 }
 
 #[test]
-fn test_password_too_long() {
+fn test_password_long_but_within_limits() {
     let password = "abcdefghijklmnopqrstuvwxyz";
     let hash_result = hash_password(password);
 
-    // Should successfully hash
+    // Should successfully hash (still within max length of 128)
     assert!(hash_result.is_ok());
     let hash = hash_result.unwrap();
 
-    // Verify the password works
+    // Verify password works
     assert!(verify_password(password, &hash).expect("verify_password should succeed for correct password"));
 
     // Verify different password doesn't work - should return Ok(false) or Err

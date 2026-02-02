@@ -258,7 +258,6 @@ fn test_sync_message_serialization() {
             assert_eq!(content, "test content");
             assert_eq!(version, 1);
         },
-        _ => panic!("Wrong message type"),
     }
 }
 

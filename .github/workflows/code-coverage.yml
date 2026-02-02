@@ -33,8 +33,9 @@ jobs:
       - name: Run tests with coverage
         run: |
           echo "Running tests with coverage..."
-          cargo llvm-cov --html --output-dir target/llvm-cov
-          cargo llvm-cov --json --output-path target/llvm-cov/llvm-cov.json
+          cargo llvm-cov --no-report
+          cargo llvm-cov report --html --output-dir target/llvm-cov
+          cargo llvm-cov report --json --output-path target/llvm-cov/llvm-cov.json
         shell: bash
         working-directory: backend
 

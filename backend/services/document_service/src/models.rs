@@ -2,6 +2,20 @@ use serde::{Deserialize, Serialize};
 use validator::Validate;
 
 // ============================================
+// Document Content Type
+// ============================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentContent(pub String);
+
+impl DocumentContent {
+    pub fn truncate(&self, len: usize) -> Self {
+        let chars: Vec<char> = self.0.chars().take(len).collect();
+        DocumentContent(chars.into_iter().collect())
+    }
+}
+
+// ============================================
 // Request Types
 // ============================================
 
@@ -15,7 +29,7 @@ pub struct CreateDocumentRequest {
 
     pub parent_id: Option<String>,
 
-    pub content: Option<serde_json::Value>,
+    pub content: Option<DocumentContent>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -26,7 +40,7 @@ pub struct UpdateDocumentRequest {
     #[validate(length(max = 50))]
     pub icon: Option<String>,
 
-    pub content: Option<serde_json::Value>,
+    pub content: Option<DocumentContent>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -38,7 +52,7 @@ pub struct ListDocumentsQuery {
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateVersionRequest {
-    pub content: serde_json::Value,
+    pub content: DocumentContent,
 
     #[validate(length(min = 1, max = 200))]
     pub title: String,
@@ -74,7 +88,7 @@ pub struct DocumentResponse {
     pub parent_id: Option<String>,
     pub title: String,
     pub icon: Option<String>,
-    pub content: serde_json::Value,
+    pub content: DocumentContent,
     pub content_size: i32,
     pub is_archived: bool,
     pub created_by: String,
