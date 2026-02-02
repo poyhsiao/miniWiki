@@ -89,6 +89,16 @@ pub struct FullSyncResponse {
     pub errors: Vec<String>,
 }
 
+/// Sync message for document updates
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SyncMessage {
+    Update {
+        document_id: String,
+        content: String,
+        version: i64,
+    },
+}
+
 /// App state for sync handlers
 pub struct SyncAppState {
     pub pool: PgPool,

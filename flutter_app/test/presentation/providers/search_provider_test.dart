@@ -60,8 +60,7 @@ void main() {
         // Only second query should have triggered - first was cancelled
         verify(() => mockSearchService.searchDocuments(query: 'second'))
             .called(1);
-        // We cannot verify that 'first' was never called because verifyNever is tricky
-        // Instead we verify that 'second' was called exactly once
+        verifyNever(() => mockSearchService.searchDocuments(query: 'first'));
       });
 
       test('search does not call service immediately', () async {
@@ -160,6 +159,9 @@ void main() {
         // Only immediate should have triggered
         verify(() => mockSearchService.searchDocuments(query: 'immediate'))
             .called(1);
+        // Wait past the 300ms debounce window to ensure debounced search was cancelled
+        await Future.delayed(const Duration(milliseconds: 400));
+        verifyNever(() => mockSearchService.searchDocuments(query: 'debounced'));
       });
     });
 
