@@ -1,0 +1,92 @@
+name: Code Coverage Report
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      
+      - name: Install cargo-llvm-cov
+        run: |
+          echo "Installing cargo-llvm-cov..."
+          cargo install cargo-llvm-cov
+          cargo llvm-cov --version
+        shell: bash
+        working-directory: backend
+
+      - name: Run tests with coverage
+        run: |
+          echo "Running tests with coverage..."
+          cargo llvm-cov --no-report
+          cargo llvm-cov report --html --output-dir target/llvm-cov
+          cargo llvm-cov report --json --output-path target/llvm-cov/llvm-cov.json
+        shell: bash
+        working-directory: backend
+
+      - name: Generate coverage summary
+        id: coverage-summary
+        run: |
+          echo "Generating coverage summary..."
+          
+          # Check if JSON file exists
+          if [ ! -f target/llvm-cov/llvm-cov.json ]; then
+            echo "::error::Coverage JSON file not found: target/llvm-cov/llvm-cov.json"
+            exit 1
+          fi
+          
+          # Read COVERAGE and TOTAL from target/llvm-cov/llvm-cov.json with fallback to 0 if jq fails
+          COVERAGE=$(cat target/llvm-cov/llvm-cov.json | jq -e '.data[0].totals.lines.covered' 2>/dev/null || echo "0")
+          TOTAL=$(cat target/llvm-cov/llvm-cov.json | jq -e '.data[0].totals.lines.total' 2>/dev/null || echo "0")
+          
+          # Compute PERCENTAGE using awk with -v to pass shell variables and explicit check for t==0
+          PERCENTAGE=$(awk -v c="$COVERAGE" -v t="$TOTAL" 'BEGIN {if (t==0) printf "0.00"; else printf "%.2f", (c/t)*100}')
+          
+          echo "Lines covered: $COVERAGE"
+          echo "Total lines: $TOTAL"
+          echo "Coverage: $PERCENTAGE%"
+          
+          # Save PERCENTAGE to target/llvm-cov/coverage_percent.txt
+          echo "$PERCENTAGE" > target/llvm-cov/coverage_percent.txt
+        shell: bash
+        working-directory: backend
+
+      - name: Check coverage threshold
+        run: |
+          PERCENTAGE=$(cat target/llvm-cov/coverage_percent.txt)
+          echo "Current coverage: $PERCENTAGE%"
+
+          # 设置最低覆盖率要求80%
+          MINIMUM_COVERAGE=80
+
+          if (( $(echo "$PERCENTAGE" | cut -d. -f1) < MINIMUM_COVERAGE )); then
+            echo "::error::Coverage ($PERCENTAGE%) is below threshold ($MINIMUM_COVERAGE%)"
+            echo "Please improve test coverage by adding more tests."
+            exit 1
+          else
+            echo "::notice::Coverage ($PERCENTAGE%) meets threshold ($MINIMUM_COVERAGE%)"
+          fi
+        shell: bash
+        working-directory: backend
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: backend/target/llvm-cov/
+          retention-days: 30

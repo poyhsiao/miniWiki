@@ -1,14 +1,14 @@
 // Sync handler implementation for offline-first sync endpoints
 // Handles document sync state retrieval, update submission, and sync status
 
+use crate::state_vector::StateVector;
 use actix_web::{web, HttpResponse, Responder};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, FromRow};
-use uuid::Uuid;
+use sqlx::{FromRow, PgPool};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use crate::state_vector::StateVector;
-use chrono::NaiveDateTime;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct SyncDocument {
@@ -89,6 +89,16 @@ pub struct FullSyncResponse {
     pub errors: Vec<String>,
 }
 
+/// Sync message for document updates
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SyncMessage {
+    Update {
+        document_id: String,
+        content: String,
+        version: i64,
+    },
+}
+
 /// App state for sync handlers
 pub struct SyncAppState {
     pub pool: PgPool,
@@ -96,10 +106,7 @@ pub struct SyncAppState {
 }
 
 /// Get sync state for a document
-pub async fn get_sync_state(
-    path: web::Path<Uuid>,
-    state: web::Data<SyncAppState>,
-) -> impl Responder {
+pub async fn get_sync_state(path: web::Path<Uuid>, state: web::Data<SyncAppState>) -> impl Responder {
     let document_id = path.into_inner();
 
     // Fetch document from database
@@ -127,27 +134,23 @@ pub async fn get_sync_state(
                 last_modified: doc.updated_at,
                 error: None,
             })
-        }
-        Ok(None) => {
-            HttpResponse::NotFound().json(SyncStateResponse {
-                document_id: document_id.to_string(),
-                title: String::new(),
-                state_vector: Vec::new(),
-                version: 0,
-                last_modified: chrono::Utc::now().naive_utc(),
-                error: Some("Document not found".to_string()),
-            })
-        }
-        Err(e) => {
-            HttpResponse::InternalServerError().json(SyncStateResponse {
-                document_id: document_id.to_string(),
-                title: String::new(),
-                state_vector: Vec::new(),
-                version: 0,
-                last_modified: chrono::Utc::now().naive_utc(),
-                error: Some(format!("Database error: {}", e)),
-            })
-        }
+        },
+        Ok(None) => HttpResponse::NotFound().json(SyncStateResponse {
+            document_id: document_id.to_string(),
+            title: String::new(),
+            state_vector: Vec::new(),
+            version: 0,
+            last_modified: chrono::Utc::now().naive_utc(),
+            error: Some("Document not found".to_string()),
+        }),
+        Err(e) => HttpResponse::InternalServerError().json(SyncStateResponse {
+            document_id: document_id.to_string(),
+            title: String::new(),
+            state_vector: Vec::new(),
+            version: 0,
+            last_modified: chrono::Utc::now().naive_utc(),
+            error: Some(format!("Database error: {}", e)),
+        }),
     }
 }
 
@@ -171,7 +174,7 @@ pub async fn post_sync_update(
                 missing_updates: None,
                 error: Some(format!("Invalid base64 encoding: {}", e)),
             });
-        }
+        },
     };
 
     // Validate document exists and user has access
@@ -215,7 +218,7 @@ pub async fn post_sync_update(
                         missing_updates: None,
                         error: Some("Failed to update sync state".to_string()),
                     });
-                }
+                },
             };
 
             // Sync in-memory clock with persisted value (avoid stale writes under concurrency)
@@ -287,32 +290,26 @@ pub async fn post_sync_update(
                 missing_updates,
                 error: None,
             })
-        }
-        Ok(None) => {
-            HttpResponse::NotFound().json(SyncUpdateResponse {
-                success: false,
-                merged: false,
-                server_clock: 0,
-                missing_updates: None,
-                error: Some("Document not found".to_string()),
-            })
-        }
-        Err(e) => {
-            HttpResponse::InternalServerError().json(SyncUpdateResponse {
-                success: false,
-                merged: false,
-                server_clock: 0,
-                missing_updates: None,
-                error: Some(format!("Database error: {}", e)),
-            })
-        }
+        },
+        Ok(None) => HttpResponse::NotFound().json(SyncUpdateResponse {
+            success: false,
+            merged: false,
+            server_clock: 0,
+            missing_updates: None,
+            error: Some("Document not found".to_string()),
+        }),
+        Err(e) => HttpResponse::InternalServerError().json(SyncUpdateResponse {
+            success: false,
+            merged: false,
+            server_clock: 0,
+            missing_updates: None,
+            error: Some(format!("Database error: {}", e)),
+        }),
     }
 }
 
 /// Get sync status for offline-first
-pub async fn get_sync_status(
-    state: web::Data<SyncAppState>,
-) -> impl Responder {
+pub async fn get_sync_status(state: web::Data<SyncAppState>) -> impl Responder {
     // Count pending documents (documents with is_dirty flag - would be tracked in a sync queue table)
     let pending_count = sqlx::query!(
         r#"
@@ -345,23 +342,18 @@ pub async fn get_sync_status(
                 documents_in_sync: 0, // Would track active syncs
                 failed_syncs: 0,      // Would track failed syncs from a queue
             })
-        }
-        (Err(_e), _) | (_, Err(_e)) => {
-            HttpResponse::InternalServerError().json(SyncStatusResponse {
-                pending_documents: 0,
-                last_sync_time: None,
-                documents_in_sync: 0,
-                failed_syncs: 0,
-            })
-        }
+        },
+        (Err(_e), _) | (_, Err(_e)) => HttpResponse::InternalServerError().json(SyncStatusResponse {
+            pending_documents: 0,
+            last_sync_time: None,
+            documents_in_sync: 0,
+            failed_syncs: 0,
+        }),
     }
 }
 
 /// Trigger full sync for offline documents
-pub async fn post_full_sync(
-    body: web::Json<FullSyncRequest>,
-    state: web::Data<SyncAppState>,
-) -> impl Responder {
+pub async fn post_full_sync(body: web::Json<FullSyncRequest>, state: web::Data<SyncAppState>) -> impl Responder {
     // Get documents to sync (specific IDs or all pending)
     let documents: Result<Vec<SyncDocument>, sqlx::Error> = match &body.document_ids {
         Some(ids) => {
@@ -376,7 +368,7 @@ pub async fn post_full_sync(
             )
             .fetch_all(&state.pool)
             .await
-        }
+        },
         None => {
             sqlx::query_as!(
                 SyncDocument,
@@ -389,7 +381,7 @@ pub async fn post_full_sync(
             )
             .fetch_all(&state.pool)
             .await
-        }
+        },
     };
 
     match documents {
@@ -418,15 +410,13 @@ pub async fn post_full_sync(
                 failed_documents: failed,
                 errors,
             })
-        }
-        Err(e) => {
-            HttpResponse::InternalServerError().json(FullSyncResponse {
-                success: false,
-                synced_documents: 0,
-                failed_documents: 0,
-                errors: vec![format!("Database error: {}", e)],
-            })
-        }
+        },
+        Err(e) => HttpResponse::InternalServerError().json(FullSyncResponse {
+            success: false,
+            synced_documents: 0,
+            failed_documents: 0,
+            errors: vec![format!("Database error: {}", e)],
+        }),
     }
 }
 
@@ -436,10 +426,7 @@ fn extract_state_vector(content: &serde_json::Value) -> Vec<u8> {
         if let Some(sv) = vector.as_object() {
             let mut state_vec = StateVector::new();
             for (key, value) in sv {
-                if let (Ok(client_id), Some(clock)) = (
-                    key.parse::<u64>(),
-                    value.as_u64()
-                ) {
+                if let (Ok(client_id), Some(clock)) = (key.parse::<u64>(), value.as_u64()) {
                     state_vec.set(client_id, clock);
                 }
             }
@@ -469,22 +456,10 @@ fn calculate_missing_updates(_client_sv: &StateVector, _server_clock: u64) -> Op
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/sync")
-            .route(
-                "/documents/{document_id}",
-                web::get().to(get_sync_state),
-            )
-            .route(
-                "/documents/{document_id}",
-                web::post().to(post_sync_update),
-            )
-            .route(
-                "/offline/status",
-                web::get().to(get_sync_status),
-            )
-            .route(
-                "/offline/sync",
-                web::post().to(post_full_sync),
-            ),
+            .route("/documents/{document_id}", web::get().to(get_sync_state))
+            .route("/documents/{document_id}", web::post().to(post_sync_update))
+            .route("/offline/status", web::get().to(get_sync_status))
+            .route("/offline/sync", web::post().to(post_full_sync)),
     );
 }
 
@@ -509,9 +484,7 @@ mod tests {
         let update_base64 = base64::engine::general_purpose::STANDARD.encode(update_bytes);
 
         // Decode (this happens in the handler)
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(&update_base64)
-            .unwrap();
+        let decoded = base64::engine::general_purpose::STANDARD.decode(&update_base64).unwrap();
 
         assert_eq!(decoded, update_bytes, "Update data should decode correctly");
     }

@@ -1,7 +1,7 @@
 // CRDT conflict resolver for offline-first sync
 // Handles merging concurrent document updates without data loss
 
-use crate::state_vector::{StateVector, ClientId, Clock};
+use crate::state_vector::{ClientId, Clock, StateVector};
 use std::cmp::Ordering;
 
 /// Conflict resolution strategy
@@ -30,6 +30,73 @@ pub enum ConflictResolution {
     Merged,
     /// Conflict could not be resolved
     Unresolved,
+}
+
+/// Result of merging documents
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MergeResult {
+    /// Merge succeeded
+    Success { content: String, version: usize },
+    /// Merge conflict requires resolution
+    Conflict {
+        local_content: String,
+        remote_content: String,
+        resolution: String,
+    },
+}
+
+/// Sync error types
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SyncError {
+    /// Conflict occurred during sync
+    Conflict { document_id: String, details: String },
+    /// Version mismatch
+    VersionMismatch {
+        document_id: String,
+        expected: u64,
+        actual: u64,
+    },
+}
+
+/// Connection state
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConnectionState {
+    /// Connected to server
+    Connected,
+    /// Disconnected from server
+    Disconnected(Option<String>),
+}
+
+/// Awareness state for collaborative editing
+#[derive(Debug, Clone)]
+pub struct Awareness {
+    pub states: std::collections::HashMap<String, serde_json::Value>,
+}
+
+impl Awareness {
+    pub fn new() -> Self {
+        Self {
+            states: std::collections::HashMap::new(),
+        }
+    }
+
+    pub fn set_local_state(&mut self, client_id: String, state: serde_json::Value) {
+        self.states.insert(client_id, state);
+    }
+
+    pub fn get(&self, client_id: &str) -> Option<&serde_json::Value> {
+        self.states.get(client_id)
+    }
+
+    pub fn remove_state(&mut self, client_id: String) {
+        self.states.remove(&client_id);
+    }
+}
+
+impl Default for Awareness {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Conflict information
@@ -99,17 +166,13 @@ impl ConflictResolver {
                 // For simple types, prefer one value
                 // In production, this would use proper CRDT merge
                 self.resolve_by_timestamp(local, remote, local_sv, remote_sv)
-            }
-            ConflictResolutionStrategy::Timestamp => {
-                self.resolve_by_timestamp(local, remote, local_sv, remote_sv)
-            }
-            ConflictResolutionStrategy::ClientId => {
-                self.resolve_by_client_id(local, remote, local_sv, remote_sv)
-            }
+            },
+            ConflictResolutionStrategy::Timestamp => self.resolve_by_timestamp(local, remote, local_sv, remote_sv),
+            ConflictResolutionStrategy::ClientId => self.resolve_by_client_id(local, remote, local_sv, remote_sv),
             ConflictResolutionStrategy::Custom => {
                 // Custom resolution not implemented
                 (local.clone(), ConflictResolution::Unresolved)
-            }
+            },
         }
     }
 
@@ -235,12 +298,7 @@ mod tests {
         let sv1 = StateVector::new();
         let sv2 = StateVector::new();
 
-        let (result, resolution) = resolver.resolve_document_conflict(
-            &"same value",
-            &"same value",
-            &sv1,
-            &sv2,
-        );
+        let (result, resolution) = resolver.resolve_document_conflict(&"same value", &"same value", &sv1, &sv2);
 
         assert_eq!(resolution, ConflictResolution::NoConflict);
         assert_eq!(result, "same value");
@@ -256,12 +314,7 @@ mod tests {
         let mut sv2 = StateVector::new();
         sv2.set(2, 20);
 
-        let (result, resolution) = resolver.resolve_document_conflict(
-            &"local",
-            &"remote",
-            &sv1,
-            &sv2,
-        );
+        let (result, resolution) = resolver.resolve_document_conflict(&"local", &"remote", &sv1, &sv2);
 
         // Remote has higher clock, so it should be kept
         assert_eq!(result, "remote");

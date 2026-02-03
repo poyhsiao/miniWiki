@@ -1,5 +1,26 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use validator::Validate;
+
+// ============================================
+// Document Content Type
+// ============================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DocumentContent(pub String);
+
+impl fmt::Display for DocumentContent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl DocumentContent {
+    pub fn truncate(&self, len: usize) -> Self {
+        let chars: Vec<char> = self.0.chars().take(len).collect();
+        DocumentContent(chars.into_iter().collect())
+    }
+}
 
 // ============================================
 // Request Types
@@ -15,7 +36,7 @@ pub struct CreateDocumentRequest {
 
     pub parent_id: Option<String>,
 
-    pub content: Option<serde_json::Value>,
+    pub content: Option<DocumentContent>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
@@ -26,10 +47,10 @@ pub struct UpdateDocumentRequest {
     #[validate(length(max = 50))]
     pub icon: Option<String>,
 
-    pub content: Option<serde_json::Value>,
+    pub content: Option<DocumentContent>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ListDocumentsQuery {
     pub parent_id: Option<String>,
     pub limit: Option<i32>,
@@ -38,7 +59,7 @@ pub struct ListDocumentsQuery {
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateVersionRequest {
-    pub content: serde_json::Value,
+    pub content: DocumentContent,
 
     #[validate(length(min = 1, max = 200))]
     pub title: String,
@@ -47,7 +68,7 @@ pub struct CreateVersionRequest {
     pub change_summary: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ListVersionsQuery {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
@@ -58,7 +79,7 @@ pub struct RestoreVersionRequest {
     pub version_number: i32,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ExportQuery {
     pub format: Option<String>,
 }
@@ -74,7 +95,7 @@ pub struct DocumentResponse {
     pub parent_id: Option<String>,
     pub title: String,
     pub icon: Option<String>,
-    pub content: serde_json::Value,
+    pub content: DocumentContent,
     pub content_size: i32,
     pub is_archived: bool,
     pub created_by: String,
@@ -356,7 +377,7 @@ mod tests {
             title: "Test Document".to_string(),
             icon: Some("📝".to_string()),
             parent_id: None,
-            content: Some(serde_json::json!({"type": "Y.Doc"})),
+            content: Some(DocumentContent("{\"type\": \"Y.Doc\"}".to_string())),
         };
         assert!(request.validate().is_ok());
     }
@@ -408,7 +429,7 @@ mod tests {
     #[test]
     fn test_create_version_request_valid() {
         let request = CreateVersionRequest {
-            content: serde_json::json!({"text": "version content"}),
+            content: DocumentContent("{\"text\": \"version content\"}".to_string()),
             title: "Version 1".to_string(),
             change_summary: Some("Initial version".to_string()),
         };
@@ -418,7 +439,7 @@ mod tests {
     #[test]
     fn test_create_version_request_empty_title() {
         let request = CreateVersionRequest {
-            content: serde_json::json!({"text": "content"}),
+            content: DocumentContent("{\"text\": \"content\"}".to_string()),
             title: "".to_string(),
             change_summary: None,
         };
@@ -433,7 +454,7 @@ mod tests {
             parent_id: None,
             title: "My Document".to_string(),
             icon: Some("📄".to_string()),
-            content: serde_json::json!({"text": "content"}),
+            content: DocumentContent("{\"text\": \"content\"}".to_string()),
             content_size: 100,
             is_archived: false,
             created_by: "user-789".to_string(),

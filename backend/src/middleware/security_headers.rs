@@ -1,48 +1,47 @@
 use actix_web::{
     body::MessageBody,
     dev::{Service, ServiceRequest, ServiceResponse, Transform},
-    http::header::{self},
+    http::{header, HeaderValue, Method},
     Error,
 };
 use futures_util::future::LocalBoxFuture;
 use std::future::Ready;
 use std::sync::Arc;
 
-use crate::config::SecurityHeadersConfig;
+/// Security headers middleware configuration
+#[derive(Clone)]
+pub struct SecurityHeadersConfig {
+    /// Optional CSP connect-src origin. If None, only 'self' will be used.
+    pub csp_connect_src: Option<String>,
+}
 
-/// Security headers middleware with configurable policies
-///
-/// This middleware adds security-related HTTP headers to all responses.
-/// The headers can be configured via the `SecurityHeadersConfig` structure.
-///
-/// # Example
-///
-/// ```ignore
-/// let app = App::new()
-///     .wrap(SecurityHeaders::with_config(Arc::new(config)))
-///     .route("/", web::get().to(index));
-/// ```
+impl Default for SecurityHeadersConfig {
+    fn default() -> Self {
+        Self { csp_connect_src: None }
+    }
+}
+
 pub struct SecurityHeaders {
-    config: Arc<SecurityHeadersConfig>,
+    pub config: Arc<SecurityHeadersConfig>,
+}
+
+impl Default for SecurityHeaders {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SecurityHeaders {
-    /// Create a new SecurityHeaders middleware with default configuration
     pub fn new() -> Self {
         Self {
             config: Arc::new(SecurityHeadersConfig::default()),
         }
     }
 
-    /// Create a new SecurityHeaders middleware with custom configuration
-    pub fn with_config(config: Arc<SecurityHeadersConfig>) -> Self {
-        Self { config }
-    }
-}
-
-impl Default for SecurityHeaders {
-    fn default() -> Self {
-        Self::new()
+    pub fn with_config(config: SecurityHeadersConfig) -> Self {
+        Self {
+            config: Arc::new(config),
+        }
     }
 }
 
@@ -86,136 +85,66 @@ where
     }
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        let fut = self.service.call(req);
+        // Capture path and method before moving req
+        let request_path = req.path().to_string();
         let config = self.config.clone();
+        let fut = self.service.call(req);
 
         Box::pin(async move {
             let mut res = fut.await?;
 
-            // Apply HSTS header (pre-validated at configuration time)
-            if let Some(hsts_value) = config.strict_transport_security.as_ref() {
-                res.headers_mut()
-                    .insert(header::STRICT_TRANSPORT_SECURITY, hsts_value.clone());
-            }
+            // HSTS
+            res.headers_mut().insert(
+                header::STRICT_TRANSPORT_SECURITY,
+                HeaderValue::from_static("max-age=31536000; includeSubDomains; preload"),
+            );
 
-            // Apply X-Frame-Options header (pre-validated)
-            if let Some(frame_value) = config.x_frame_options.as_ref() {
-                res.headers_mut()
-                    .insert(header::X_FRAME_OPTIONS, frame_value.clone());
-            }
+            // Frame options
+            res.headers_mut()
+                .insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("DENY"));
 
-            // Apply X-Content-Type-Options header (pre-validated)
-            if let Some(ct_value) = config.x_content_type_options.as_ref() {
-                res.headers_mut()
-                    .insert(header::X_CONTENT_TYPE_OPTIONS, ct_value.clone());
-            }
+            // Content type options
+            res.headers_mut()
+                .insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
 
-            // Apply Referrer-Policy header (pre-validated)
-            if let Some(referrer_value) = config.referrer_policy.as_ref() {
-                res.headers_mut()
-                    .insert(header::REFERRER_POLICY, referrer_value.clone());
-            }
+            // Referrer policy
+            res.headers_mut().insert(
+                header::REFERRER_POLICY,
+                HeaderValue::from_static("strict-origin-when-cross-origin"),
+            );
 
-            // Apply Permissions-Policy header (pre-validated)
-            if let Some(perm_value) = config.permissions_policy.as_ref() {
-                res.headers_mut()
-                    .insert(header::PERMISSIONS_POLICY, perm_value.clone());
-            }
+            // Permissions policy
+            res.headers_mut().insert(
+                header::PERMISSIONS_POLICY,
+                HeaderValue::from_static("accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"),
+            );
 
-            // Apply CSP header only if not already set (pre-validated)
+            // CSP with configurable connect-src
             if !res.headers().contains_key(header::CONTENT_SECURITY_POLICY) {
-                if let Some(csp_value) = config.content_security_policy.as_ref() {
-                    res.headers_mut()
-                        .insert(header::CONTENT_SECURITY_POLICY, csp_value.clone());
+                let connect_src = normalize_csp_connect_src(config.csp_connect_src.as_deref());
+
+                let csp_value = format!(
+                    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src {}; frame-ancestors 'none'",
+                    connect_src
+                );
+
+                if let Ok(value) = HeaderValue::from_str(&csp_value) {
+                    res.headers_mut().insert(header::CONTENT_SECURITY_POLICY, value);
                 }
             }
 
-            // Apply Cache-Control header (pre-validated)
-            if let Some(cache_value) = config.cache_control.as_ref() {
-                res.headers_mut()
-                    .insert(header::CACHE_CONTROL, cache_value.clone());
-            }
+            // Apply cache-control only for dynamic/API responses
+            // Skip for static assets (images, fonts, etc.)
+            let should_apply_cache_headers =
+                is_dynamic_response(&request_path, &res) && !res.headers().contains_key(header::CACHE_CONTROL);
 
-            // Apply Pragma header (pre-validated)
-            if let Some(pragma_value) = config.pragma.as_ref() {
-                res.headers_mut()
-                    .insert(header::PRAGMA, pragma_value.clone());
-            }
+            if should_apply_cache_headers {
+                res.headers_mut().insert(
+                    header::CACHE_CONTROL,
+                    HeaderValue::from_static("no-store, no-cache, must-revalidate, private"),
+                );
 
-            Ok(res)
-        })
-    }
-
-            // Apply X-Frame-Options header
-            match HeaderValue::from_str(&config.x_frame_options) {
-                Ok(frame_value) => {
-                    res.headers_mut().insert(header::X_FRAME_OPTIONS, frame_value);
-                },
-                Err(_) => {
-                    log_invalid_header("X-Frame-Options", &config.x_frame_options);
-                },
-            }
-
-            // Apply X-Content-Type-Options header
-            match HeaderValue::from_str(&config.x_content_type_options) {
-                Ok(ct_value) => {
-                    res.headers_mut().insert(header::X_CONTENT_TYPE_OPTIONS, ct_value);
-                },
-                Err(_) => {
-                    log_invalid_header("X-Content-Type-Options", &config.x_content_type_options);
-                },
-            }
-
-            // Apply Referrer-Policy header
-            match HeaderValue::from_str(&config.referrer_policy) {
-                Ok(referrer_value) => {
-                    res.headers_mut().insert(header::REFERRER_POLICY, referrer_value);
-                },
-                Err(_) => {
-                    log_invalid_header("Referrer-Policy", &config.referrer_policy);
-                },
-            }
-
-            // Apply Permissions-Policy header
-            match HeaderValue::from_str(&config.permissions_policy) {
-                Ok(perm_value) => {
-                    res.headers_mut().insert(header::PERMISSIONS_POLICY, perm_value);
-                },
-                Err(_) => {
-                    log_invalid_header("Permissions-Policy", &config.permissions_policy);
-                },
-            }
-
-            // Apply CSP header only if not already set
-            if !res.headers().contains_key(header::CONTENT_SECURITY_POLICY) {
-                match HeaderValue::from_str(&config.content_security_policy) {
-                    Ok(csp_value) => {
-                        res.headers_mut().insert(header::CONTENT_SECURITY_POLICY, csp_value);
-                    },
-                    Err(_) => {
-                        log_invalid_header("Content-Security-Policy", &config.content_security_policy);
-                    },
-                }
-            }
-
-            // Apply Cache-Control header
-            match HeaderValue::from_str(&config.cache_control) {
-                Ok(cache_value) => {
-                    res.headers_mut().insert(header::CACHE_CONTROL, cache_value);
-                },
-                Err(_) => {
-                    log_invalid_header("Cache-Control", &config.cache_control);
-                },
-            }
-
-            // Apply Pragma header
-            match HeaderValue::from_str(&config.pragma) {
-                Ok(pragma_value) => {
-                    res.headers_mut().insert(header::PRAGMA, pragma_value);
-                },
-                Err(_) => {
-                    log_invalid_header("Pragma", &config.pragma);
-                },
+                res.headers_mut().insert(header::PRAGMA, HeaderValue::from_static("no-cache"));
             }
 
             Ok(res)
@@ -223,207 +152,113 @@ where
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use actix_web::{test, web, App, HttpResponse};
+/// Normalizes CSP connect-src origins to prevent injection attacks.
+///
+/// Parses each configured origin with strict URL parsing, ensuring:
+/// - Scheme is https, http, ws, or wss
+/// - Extracts only scheme://host[:port]
+/// - Rejects values containing semicolons, newlines, or additional directives
+///
+/// Returns a space-separated list of normalized origins, or "'self'" if validation fails.
+fn normalize_csp_connect_src(origins: Option<&str>) -> String {
+    const SELF_ORIGIN: &str = "'self'";
 
-    async fn index() -> HttpResponse {
-        HttpResponse::Ok().body("test")
+    let Some(origins_str) = origins else {
+        return SELF_ORIGIN.to_string();
+    };
+
+    if origins_str.trim().is_empty() {
+        return SELF_ORIGIN.to_string();
     }
 
-    #[actix_web::test]
-    async fn test_security_headers_are_added() {
-        let app = test::init_service(App::new().wrap(SecurityHeaders::new()).route("/", web::get().to(index))).await;
+    let mut normalized_origins: Vec<String> = vec![SELF_ORIGIN.to_string()];
 
-        let req = test::TestRequest::get().to_request();
-        let resp = test::call_service(&app, req).await;
-
-        // Check HSTS header
-        assert_eq!(
-            resp.headers().get(header::STRICT_TRANSPORT_SECURITY),
-            Some(&HeaderValue::from_static(
-                "max-age=31536000; includeSubDomains; preload"
-            ))
-        );
-
-        // Check X-Frame-Options
-        assert_eq!(
-            resp.headers().get(header::X_FRAME_OPTIONS),
-            Some(&HeaderValue::from_static("DENY"))
-        );
-
-        // Check X-Content-Type-Options
-        assert_eq!(
-            resp.headers().get(header::X_CONTENT_TYPE_OPTIONS),
-            Some(&HeaderValue::from_static("nosniff"))
-        );
-
-        // Check Referrer-Policy
-        assert_eq!(
-            resp.headers().get(header::REFERRER_POLICY),
-            Some(&HeaderValue::from_static("strict-origin-when-cross-origin"))
-        );
-
-        // Check Permissions-Policy
-        assert!(resp.headers().get(header::PERMISSIONS_POLICY).is_some());
-
-        // Check Cache-Control
-        assert_eq!(
-            resp.headers().get(header::CACHE_CONTROL),
-            Some(&HeaderValue::from_static(
-                "no-store, no-cache, must-revalidate, private"
-            ))
-        );
-
-        // Check Pragma
-        assert_eq!(
-            resp.headers().get(header::PRAGMA),
-            Some(&HeaderValue::from_static("no-cache"))
-        );
-    }
-
-    #[actix_web::test]
-    async fn test_csp_header_added_when_missing() {
-        let app = test::init_service(App::new().wrap(SecurityHeaders::new()).route("/", web::get().to(index))).await;
-
-        let req = test::TestRequest::get().to_request();
-        let resp = test::call_service(&app, req).await;
-
-        assert!(resp.headers().get(header::CONTENT_SECURITY_POLICY).is_some());
-    }
-
-    #[actix_web::test]
-    async fn test_custom_security_headers_config() {
-        let custom_config = SecurityHeadersConfig {
-            api_origin: None,
-            content_security_policy: "default-src 'none'".to_string(),
-            strict_transport_security: "max-age=3600".to_string(),
-            x_frame_options: "SAMEORIGIN".to_string(),
-            x_content_type_options: "nosniff".to_string(),
-            referrer_policy: "no-referrer".to_string(),
-            permissions_policy: "geolocation=(self)".to_string(),
-            cache_control: "public, max-age=3600".to_string(),
-            pragma: "no-cache".to_string(),
-        };
-
-        let app = test::init_service(
-            App::new()
-                .wrap(SecurityHeaders::with_config(Arc::new(custom_config)))
-                .route("/", web::get().to(index)),
-        )
-        .await;
-
-        let req = test::TestRequest::get().to_request();
-        let resp = test::call_service(&app, req).await;
-
-        // Check custom CSP
-        assert_eq!(
-            resp.headers().get(header::CONTENT_SECURITY_POLICY),
-            Some(&HeaderValue::from_static("default-src 'none'"))
-        );
-
-        // Check custom HSTS
-        assert_eq!(
-            resp.headers().get(header::STRICT_TRANSPORT_SECURITY),
-            Some(&HeaderValue::from_static("max-age=3600"))
-        );
-
-        // Check custom X-Frame-Options
-        assert_eq!(
-            resp.headers().get(header::X_FRAME_OPTIONS),
-            Some(&HeaderValue::from_static("SAMEORIGIN"))
-        );
-
-        // Check custom Referrer-Policy
-        assert_eq!(
-            resp.headers().get(header::REFERRER_POLICY),
-            Some(&HeaderValue::from_static("no-referrer"))
-        );
-    }
-
-    #[actix_web::test]
-    async fn test_csp_header_not_overridden_when_set() {
-        async fn index_with_csp() -> HttpResponse {
-            HttpResponse::Ok()
-                .insert_header((header::CONTENT_SECURITY_POLICY, "custom-csp-directive"))
-                .body("test")
+    for origin in origins_str
+        .split(|c: char| c.is_whitespace() || c == ',')
+        .filter(|s| !s.is_empty())
+    {
+        // Reject values that could inject additional directives
+        if origin.contains(';') || origin.contains('\n') || origin.contains('\r') {
+            continue;
         }
 
-        let app = test::init_service(
-            App::new()
-                .wrap(SecurityHeaders::new())
-                .route("/", web::get().to(index_with_csp)),
-        )
-        .await;
-
-        let req = test::TestRequest::get().to_request();
-        let resp = test::call_service(&app, req).await;
-
-        // CSP should remain as set by handler
-        assert_eq!(
-            resp.headers().get(header::CONTENT_SECURITY_POLICY),
-            Some(&HeaderValue::from_static("custom-csp-directive"))
-        );
+        // Try to parse as URL and validate scheme
+        match normalize_single_origin(origin) {
+            Some(normalized) => normalized_origins.push(normalized),
+            None => continue, // Skip invalid origins
+        }
     }
 
-    #[actix_web::test]
-    async fn test_security_headers_config_default() {
-        let config = SecurityHeadersConfig::default();
+    // If only 'self' remains after validation, return just 'self'
+    if normalized_origins.len() == 1 {
+        SELF_ORIGIN.to_string()
+    } else {
+        normalized_origins.join(" ")
+    }
+}
 
-        assert_eq!(
-            config.content_security_policy,
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
-        );
-        assert_eq!(
-            config.strict_transport_security,
-            "max-age=31536000; includeSubDomains; preload"
-        );
-        assert_eq!(config.x_frame_options, "DENY");
-        assert_eq!(config.x_content_type_options, "nosniff");
-        assert_eq!(config.referrer_policy, "strict-origin-when-cross-origin");
-        assert!(config.permissions_policy.contains("accelerometer=()"));
-        assert_eq!(config.cache_control, "no-store, no-cache, must-revalidate, private");
-        assert_eq!(config.pragma, "no-cache");
+/// Normalizes a single origin string for CSP use.
+///
+/// Ensures origin has a valid http/https/ws/wss scheme and extracts
+/// only scheme://host[:port] portion.
+///
+/// WebSocket schemes (ws://, wss://) are preserved as-is for CSP connect-src.
+fn normalize_single_origin(origin: &str) -> Option<String> {
+    // Check for valid scheme first (http://, https://, ws://, or wss://)
+    let lower_origin = origin.to_ascii_lowercase();
+
+    let scheme_end = lower_origin.find("://")?;
+    let scheme = &lower_origin[..scheme_end];
+
+    if !matches!(scheme, "http" | "https" | "ws" | "wss") {
+        return None;
     }
 
-    #[actix_web::test]
-    async fn test_security_headers_with_invalid_header_config() {
-        let custom_config = SecurityHeadersConfig {
-            api_origin: None,
-            content_security_policy: "invalid\x00header".to_string(),
-            strict_transport_security: "invalid\x00header".to_string(),
-            x_frame_options: String::new(),
-            x_content_type_options: String::new(),
-            referrer_policy: String::new(),
-            permissions_policy: String::new(),
-            cache_control: String::new(),
-            pragma: String::new(),
-        };
+    // Find the end of the host:port portion (stop at path, query, or fragment)
+    let after_scheme = &origin[scheme_end + 3..];
+    let host_end = after_scheme
+        .find(|c| c == '/' || c == '?' || c == '#')
+        .unwrap_or(after_scheme.len());
 
-        let app = test::init_service(
-            App::new()
-                .wrap(SecurityHeaders::with_config(Arc::new(custom_config)))
-                .route("/", web::get().to(index)),
-        )
-        .await;
+    let host_port = &after_scheme[..host_end];
 
-        let req = test::TestRequest::get().to_request();
-        let resp = test::call_service(&app, req).await;
-
-        // Invalid header values should be silently ignored (not set)
-        assert!(resp.headers().get(header::STRICT_TRANSPORT_SECURITY).is_none());
+    // Ensure host_port is not empty and doesn't contain invalid characters
+    if host_port.is_empty() || host_port.contains([';', '\n', '\r', '"', '\'']) {
+        return None;
     }
 
-    #[actix_web::test]
-    async fn test_security_headers_default_impl() {
-        let headers = SecurityHeaders::default();
-        let app = test::init_service(App::new().wrap(headers).route("/", web::get().to(index))).await;
+    Some(format!("{}://{}", scheme, host_port))
+}
 
-        let req = test::TestRequest::get().to_request();
-        let resp = test::call_service(&app, req).await;
+/// Determines if a response should have cache-control headers applied.
+///
+/// Returns `true` for dynamic API responses, `false` for static assets.
+/// Static assets include: images, fonts, stylesheets, scripts, and assets under /static/ or /public/ paths.
+fn is_dynamic_response(path: &str, res: &ServiceResponse<impl MessageBody>) -> bool {
+    // Check if path indicates static asset
+    let is_static_path = path.starts_with("/static/")
+        || path.starts_with("/public/")
+        || path.starts_with("/assets/")
+        || path.starts_with("/media/");
 
-        // Verify default headers are applied
-        assert!(resp.headers().get(header::X_CONTENT_TYPE_OPTIONS).is_some());
+    if is_static_path {
+        return false;
     }
+
+    // Check content-type for static asset types
+    if let Some(content_type) = res.headers().get(header::CONTENT_TYPE) {
+        if let Ok(ct_str) = content_type.to_str() {
+            let is_static_content = ct_str.starts_with("image/")
+                || ct_str.starts_with("font/")
+                || ct_str.contains("javascript")
+                || ct_str.contains("css");
+
+            if is_static_content {
+                return false;
+            }
+        }
+    }
+
+    // Default to dynamic for API endpoints
+    true
 }

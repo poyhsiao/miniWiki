@@ -47,9 +47,7 @@ pub struct SyncInitResponse {
     pub server_clock: u64,
 }
 
-pub async fn handle_sync_update(
-    data: web::Json<SyncUpdateRequest>,
-) -> impl Responder {
+pub async fn handle_sync_update(data: web::Json<SyncUpdateRequest>) -> impl Responder {
     HttpResponse::Ok().json(SyncUpdateResponse {
         success: true,
         document_id: data.document_id.clone(),
@@ -58,9 +56,7 @@ pub async fn handle_sync_update(
     })
 }
 
-pub async fn handle_sync_state(
-    data: web::Json<SyncStateRequest>,
-) -> impl Responder {
+pub async fn handle_sync_state(data: web::Json<SyncStateRequest>) -> impl Responder {
     HttpResponse::Ok().json(SyncStateResponse {
         document_id: data.document_id.clone(),
         state: Vec::new(),
@@ -68,9 +64,7 @@ pub async fn handle_sync_state(
     })
 }
 
-pub async fn handle_sync_init(
-    data: web::Json<SyncInitRequest>,
-) -> impl Responder {
+pub async fn handle_sync_init(data: web::Json<SyncInitRequest>) -> impl Responder {
     HttpResponse::Ok().json(SyncInitResponse {
         document_id: data.document_id.clone(),
         state: Vec::new(),
@@ -79,16 +73,7 @@ pub async fn handle_sync_init(
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.route(
-        "/sync/update",
-        web::post().to(handle_sync_update),
-    )
-    .route(
-        "/sync/state",
-        web::post().to(handle_sync_state),
-    )
-    .route(
-        "/sync/init",
-        web::post().to(handle_sync_init),
-    );
+    cfg.route("/sync/update", web::post().to(handle_sync_update))
+        .route("/sync/state", web::post().to(handle_sync_state))
+        .route("/sync/init", web::post().to(handle_sync_init));
 }

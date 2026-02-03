@@ -7,7 +7,9 @@ use crate::repository::AuthRepository;
 use actix_web::{http::header, web, HttpResponse, Responder};
 use shared_models::entities::RefreshToken;
 
-fn mask_email(email: &str) -> String {
+/// Masks an email address for display purposes.
+/// Shows first 2 characters of the local part and masks the rest.
+pub fn mask_email(email: &str) -> String {
     let parts: Vec<&str> = email.split('@').collect();
     if parts.len() == 2 {
         let name = parts[0];
