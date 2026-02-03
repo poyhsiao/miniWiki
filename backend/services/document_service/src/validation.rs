@@ -1,4 +1,4 @@
-use crate::models::{CreateDocumentRequest, UpdateDocumentRequest, CreateVersionRequest};
+use crate::models::{CreateDocumentRequest, CreateVersionRequest, UpdateDocumentRequest};
 use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
@@ -20,9 +20,7 @@ pub enum DocumentValidationError {
 }
 
 pub fn validate_create_document(req: &CreateDocumentRequest) -> Result<(), DocumentValidationError> {
-    if req.title.trim().is_empty() || req.title.len() > 200 {
-        return Err(DocumentValidationError::InvalidTitle);
-    }
+    validate_title(&req.title)?;
 
     if let Some(icon) = &req.icon {
         if icon.len() > 50 {
@@ -31,10 +29,7 @@ pub fn validate_create_document(req: &CreateDocumentRequest) -> Result<(), Docum
     }
 
     if let Some(content) = &req.content {
-        let content_str = content.to_string();
-        if content_str.len() > 10_485_760 {
-            return Err(DocumentValidationError::ContentTooLarge);
-        }
+        validate_content_size(&content.to_string())?;
     }
 
     Ok(())
@@ -42,9 +37,7 @@ pub fn validate_create_document(req: &CreateDocumentRequest) -> Result<(), Docum
 
 pub fn validate_update_document(req: &UpdateDocumentRequest) -> Result<(), DocumentValidationError> {
     if let Some(title) = &req.title {
-        if title.trim().is_empty() || title.len() > 200 {
-            return Err(DocumentValidationError::InvalidTitle);
-        }
+        validate_title(title)?;
     }
 
     if let Some(icon) = &req.icon {
@@ -54,19 +47,14 @@ pub fn validate_update_document(req: &UpdateDocumentRequest) -> Result<(), Docum
     }
 
     if let Some(content) = &req.content {
-        let content_str = content.to_string();
-        if content_str.len() > 10_485_760 {
-            return Err(DocumentValidationError::ContentTooLarge);
-        }
+        validate_content_size(&content.to_string())?;
     }
 
     Ok(())
 }
 
 pub fn validate_create_version(req: &CreateVersionRequest) -> Result<(), DocumentValidationError> {
-    if req.title.trim().is_empty() || req.title.len() > 200 {
-        return Err(DocumentValidationError::InvalidTitle);
-    }
+    validate_title(&req.title)?;
 
     if let Some(summary) = &req.change_summary {
         if summary.len() > 500 {
@@ -74,11 +62,22 @@ pub fn validate_create_version(req: &CreateVersionRequest) -> Result<(), Documen
         }
     }
 
-    let content_str = req.content.to_string();
-    if content_str.len() > 10_485_760 {
+    validate_content_size(&req.content.to_string())?;
+
+    Ok(())
+}
+
+pub fn validate_title(title: &str) -> Result<(), DocumentValidationError> {
+    if title.trim().is_empty() || title.len() > 200 {
+        return Err(DocumentValidationError::InvalidTitle);
+    }
+    Ok(())
+}
+
+pub fn validate_content_size(content: &str) -> Result<(), DocumentValidationError> {
+    if content.len() > 10_485_760 {
         return Err(DocumentValidationError::ContentTooLarge);
     }
-
     Ok(())
 }
 
@@ -99,6 +98,8 @@ pub fn validate_version_number(version: i32) -> Result<(), DocumentValidationErr
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::DocumentContent;
+    use serde_json;
 
     #[test]
     fn test_validate_create_document_valid() {
@@ -106,7 +107,7 @@ mod tests {
             title: "Valid Title".to_string(),
             icon: Some("📝".to_string()),
             parent_id: None,
-            content: Some(serde_json::json!({"type": "Y.Doc"})),
+            content: Some(DocumentContent("{\"type\": \"Y.Doc\"}".to_string())),
         };
         assert!(validate_create_document(&req).is_ok());
     }
@@ -156,7 +157,7 @@ mod tests {
     #[test]
     fn test_validate_create_version_valid() {
         let req = CreateVersionRequest {
-            content: serde_json::json!({"text": "content"}),
+            content: DocumentContent("{\"text\": \"content\"}".to_string()),
             title: "Version Title".to_string(),
             change_summary: Some("Changes made".to_string()),
         };

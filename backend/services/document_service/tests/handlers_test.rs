@@ -53,12 +53,13 @@ fn test_create_document_request_valid() {
         title: "New Document".to_string(),
         parent_id: Some("parent-id".to_string()),
         icon: Some("📝".to_string()),
-        content: DocumentContent("Initial content".to_string()),
+        content: Some(DocumentContent("Initial content".to_string())),
     };
 
     assert_eq!(req.title, "New Document");
     assert!(req.parent_id.is_some());
     assert!(req.icon.is_some());
+    assert!(req.content.is_some());
 }
 
 // Test UpdateDocumentRequest
@@ -83,7 +84,7 @@ fn test_version_response_structure() {
         document_id: "doc-456".to_string(),
         version_number: 1,
         title: "Document Title".to_string(),
-        content: DocumentContent("Version content".to_string()),
+        content: serde_json::json!({"text": "Version content"}),
         created_by: "user-789".to_string(),
         created_at: "2024-01-01T00:00:00Z".to_string(),
         change_summary: Some("Initial version".to_string()),
@@ -162,11 +163,13 @@ fn test_space_response_structure() {
         owner_id: "user-456".to_string(),
         created_at: "2024-01-01T00:00:00Z".to_string(),
         updated_at: "2024-01-01T00:00:00Z".to_string(),
+        user_role: Some("owner".to_string()),
     };
 
     assert_eq!(response.id, "space-123");
     assert_eq!(response.name, "My Space");
     assert!(!response.is_public);
+    assert_eq!(response.user_role, Some("owner".to_string()));
 }
 
 // Test CreateSpaceRequest
@@ -187,17 +190,18 @@ fn test_create_space_request_valid() {
 #[test]
 fn test_member_response_structure() {
     let response = MemberResponse {
+        id: "member-123".to_string(),
+        space_id: "space-456".to_string(),
         user_id: "user-123".to_string(),
-        email: "user@example.com".to_string(),
-        display_name: "Test User".to_string(),
-        avatar_url: None,
         role: "editor".to_string(),
         joined_at: "2024-01-01T00:00:00Z".to_string(),
+        invited_by: "user-abc".to_string(),
     };
 
+    assert_eq!(response.id, "member-123");
+    assert_eq!(response.space_id, "space-456");
     assert_eq!(response.user_id, "user-123");
     assert_eq!(response.role, "editor");
-    assert!(response.avatar_url.is_none());
 }
 
 // Test AddMemberRequest
@@ -439,8 +443,8 @@ fn test_version_diff_response() {
     let response = VersionDiffResponse {
         from_version: 1,
         to_version: 2,
-        from_content: "Old content".to_string(),
-        to_content: "New content".to_string(),
+        from_content: serde_json::json!({"text": "old"}),
+        to_content: serde_json::json!({"text": "new"}),
     };
 
     assert_eq!(response.from_version, 1);

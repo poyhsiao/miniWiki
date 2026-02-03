@@ -35,13 +35,14 @@ async fn check_space_access(repo: &DocumentRepository, space_id: &str, user_id: 
 
 // Helper to convert DocumentRow to DocumentResponse
 fn document_row_to_response(row: &crate::repository::DocumentRow) -> DocumentResponse {
+    let content_str = row.content.0.as_str().unwrap_or("").to_string();
     DocumentResponse {
         id: row.id.to_string(),
         space_id: row.space_id.to_string(),
         parent_id: row.parent_id.map(|u| u.to_string()),
         title: row.title.clone(),
         icon: row.icon.clone(),
-        content: row.content.0.clone(),
+        content: DocumentContent(content_str),
         content_size: row.content_size,
         is_archived: row.is_archived,
         created_by: row.created_by.to_string(),
@@ -201,13 +202,16 @@ pub async fn create_document(
     }
 
     // Create document
+    // Convert DocumentContent to Json<Value> for database
+    let content_json = req.content.as_ref().map(|c| serde_json::Value::String(c.0.clone()));
+
     match repo
         .create(
             &space_id,
             req.parent_id.as_deref(),
             &req.title,
             req.icon.as_deref(),
-            req.content.clone(),
+            &content_json,
             &user_id,
         )
         .await
@@ -312,12 +316,15 @@ pub async fn update_document(
         },
     }
 
+    // Convert DocumentContent to Json<Value> for database
+    let content_json = req.content.as_ref().map(|c| serde_json::Value::String(c.0.clone()));
+
     match repo
         .update(
             &document_id,
             req.title.as_deref(),
             req.icon.as_deref(),
-            req.content.clone(),
+            &content_json,
             &user_id,
         )
         .await
@@ -572,10 +579,13 @@ pub async fn create_version(
         },
     }
 
+    // Convert DocumentContent to Json<Value> for database
+    let content_json = serde_json::Value::String(req.content.0.clone());
+
     match repo
         .create_version(
             &document_id,
-            req.content.clone(),
+            &content_json,
             &req.title,
             &user_id,
             req.change_summary.as_deref(),
